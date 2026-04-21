@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Permission } from '../types';
+import { dataStore } from '../services/dataService';
 
 interface AuthContextType {
   user: User | null;
-  login: (username: string) => Promise<boolean>;
+  login: (username: string, password?: string) => Promise<boolean>;
   logout: () => void;
   hasPermission: (permission: Permission) => boolean;
   isLoading: boolean;
@@ -23,26 +24,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const login = async (username: string): Promise<boolean> => {
-    // In a real app, this would be an API call. 
-    // Here we check against our Users Management list in localStorage
-    const savedUsers = localStorage.getItem('hospital_users');
-    const users: User[] = savedUsers ? JSON.parse(savedUsers) : [
-      {
-        id: '1',
-        username: 'admin',
-        name: 'مدير النظام',
-        role: 'admin',
-        permissions: ['all' as Permission],
-        status: 'active'
+  const login = async (username: string, password?: string): Promise<boolean> => {
+    try {
+      const users = await dataStore.getAll<User>('users');
+      const foundUser = users.find(u => 
+        u.username === username && 
+        u.status === 'active' && 
+        (!u.password || u.password === password)
+      );
+      
+      if (foundUser) {
+        setUser(foundUser);
+        localStorage.setItem('hospital_current_user', JSON.stringify(foundUser));
+        return true;
       }
-    ];
 
-    const foundUser = users.find(u => u.username === username && u.status === 'active');
-    if (foundUser) {
-      setUser(foundUser);
-      localStorage.setItem('hospital_current_user', JSON.stringify(foundUser));
-      return true;
+      // Initial admin fallback if no users in DB yet
+      if (username === 'admin' && users.length === 0) {
+        const adminUser: User = {
+          id: '1',
+          username: 'admin',
+          name: 'مدير النظام',
+          role: 'admin',
+          permissions: ['all' as Permission],
+          status: 'active'
+        };
+        setUser(adminUser);
+        return true;
+      }
+    } catch (error) {
+      console.error("Login check failed", error);
     }
     return false;
   };

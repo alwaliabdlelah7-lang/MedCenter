@@ -1,37 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Pill, Package, DollarSign, Trash2, AlertTriangle, ListFilter } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { PharmacyItem } from '../types';
+import { PharmacyItem, MasterMedicine } from '../types';
 import { YEMEN_MEDICINES } from '../data/seedData';
 import { cn } from '../lib/utils';
+import { dataStore } from '../services/dataService';
 
 export default function Pharmacy() {
-  const [masterMedicines] = useState(() => {
-    const saved = localStorage.getItem('hospital_master_medicines');
-    return saved ? JSON.parse(saved) : YEMEN_MEDICINES.map((m, i) => ({
-      id: `MED-M-${i + 1}`,
-      tradeName: m.tradeName,
-      scientificName: m.scientificName,
-      category: 'أدوية عامة',
-      price: m.price,
-      unit: 'شريط/علبة'
-    }));
-  });
+  const [masterMedicines, setMasterMedicines] = useState<MasterMedicine[]>([]);
+  const [inventory, setInventory] = useState<PharmacyItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [inventory, setInventory] = useState<PharmacyItem[]>(() => {
-    const saved = localStorage.getItem('hospital_pharmacy');
-    if (saved) return JSON.parse(saved);
-    
-    // Seed from master medicines
-    return masterMedicines.slice(0, 10).map((m: any, idx: number) => ({
-      id: `PHM-${idx}`,
-      name: m.tradeName,
-      category: m.category,
-      price: m.price,
-      stock: 50,
-      expiryDate: '2027-12-30'
-    }));
-  });
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [invData, masterData] = await Promise.all([
+          dataStore.getAll<PharmacyItem>('pharmacy_inventory'),
+          dataStore.getAll<MasterMedicine>('master_medicines')
+        ]);
+        setInventory(invData);
+        setMasterMedicines(masterData);
+        
+        // Seed logic if both empty
+        if (invData.length === 0 && masterData.length === 0) {
+           const seeded = YEMEN_MEDICINES.slice(0, 10).map((m: any, idx: number) => ({
+             id: `PHM-${idx}`,
+             name: m.tradeName,
+             category: 'أدوية عامة',
+             price: m.price,
+             stock: 50,
+             expiryDate: '2027-12-30'
+           }));
+           setInventory(seeded);
+        }
+      } catch (error) {
+        console.error("Failed to load pharmacy data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -43,11 +52,7 @@ export default function Pharmacy() {
     expiryDate: ''
   });
 
-  useEffect(() => {
-    localStorage.setItem('hospital_pharmacy', JSON.stringify(inventory));
-  }, [inventory]);
-
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItem.name) return;
     
@@ -60,6 +65,7 @@ export default function Pharmacy() {
       expiryDate: newItem.expiryDate!
     };
     
+    await dataStore.addItem('pharmacy_inventory', item);
     setInventory([...inventory, item]);
     setShowAddModal(false);
     setNewItem({ name: '', category: 'أدوية عامة', price: 0, stock: 0, expiryDate: '' });
@@ -78,23 +84,35 @@ export default function Pharmacy() {
     }
   };
 
-  const handleSale = () => {
+  const handleSale = async () => {
     if (!patientName || saleCart.length === 0) return;
     
-    // Update Stock
-    const newInventory = inventory.map(item => {
-      const cartItem = saleCart.find(c => c.id === item.id);
-      if (cartItem) {
-        return { ...item, stock: item.stock - cartItem.qty };
+    try {
+      // Update Stock in DB
+      for (const cartItem of saleCart) {
+        const invItem = inventory.find(i => i.id === cartItem.id);
+        if (invItem) {
+          await dataStore.updateItem<PharmacyItem>('pharmacy_inventory', invItem.id, { stock: invItem.stock - cartItem.qty });
+        }
       }
-      return item;
-    });
-    
-    setInventory(newInventory);
-    setShowSalesModal(false);
-    setSaleCart([]);
-    setPatientName('');
-    alert('تمت عملية البيع وصرف الدواء بنجاح');
+
+      // Update Local State
+      const newInventory = inventory.map(item => {
+        const cartItem = saleCart.find(c => c.id === item.id);
+        if (cartItem) {
+          return { ...item, stock: item.stock - cartItem.qty };
+        }
+        return item;
+      });
+      
+      setInventory(newInventory);
+      setShowSalesModal(false);
+      setSaleCart([]);
+      setPatientName('');
+      alert('تمت عملية البيع وصرف الدواء بنجاح');
+    } catch (error) {
+      alert('حدث خطأ أثناء إتمام البيع');
+    }
   };
 
   const filtered = inventory.filter(p => 

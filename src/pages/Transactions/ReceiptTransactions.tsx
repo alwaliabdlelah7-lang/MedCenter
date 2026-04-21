@@ -2,22 +2,33 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Search, Receipt, User, Stethoscope, Activity as ActivityIcon, CreditCard, Printer, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Receipt as ReceiptType, Doctor, Service } from '../../types';
+import { dataStore } from '../../services/dataService';
 
 export default function ReceiptTransactions() {
-  const [receipts, setReceipts] = useState<ReceiptType[]>(() => {
-    const saved = localStorage.getItem('hospital_receipts');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [receipts, setReceipts] = useState<ReceiptType[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [doctors] = useState<Doctor[]>(() => {
-    const saved = localStorage.getItem('hospital_doctors');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [services] = useState<Service[]>(() => {
-    const saved = localStorage.getItem('hospital_services');
-    return saved ? JSON.parse(saved) : [];
-  });
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [receiptsData, doctorsData, servicesData] = await Promise.all([
+          dataStore.getAll<ReceiptType>('receipts'),
+          dataStore.getAll<Doctor>('doctors'),
+          dataStore.getAll<Service>('services')
+        ]);
+        setReceipts(receiptsData);
+        setDoctors(doctorsData);
+        setServices(servicesData);
+      } catch (error) {
+        console.error("Failed to load receipts data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,11 +42,7 @@ export default function ReceiptTransactions() {
 
   const printRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    localStorage.setItem('hospital_receipts', JSON.stringify(receipts));
-  }, [receipts]);
-
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newReceipt.patientName || !newReceipt.serviceId || !newReceipt.doctorId) return;
     
@@ -53,6 +60,7 @@ export default function ReceiptTransactions() {
       status: 'paid'
     };
     
+    await dataStore.addItem('receipts', receipt);
     setReceipts([receipt, ...receipts]);
     setShowAddModal(false);
     setNewReceipt({ patientName: '', patientAge: 25, serviceId: '', doctorId: '', paymentMethod: 'cash' });

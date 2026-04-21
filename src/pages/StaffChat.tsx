@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Send, 
   Search, 
@@ -11,45 +11,57 @@ import {
   Paperclip,
   Smile,
   MoreVertical,
-  Circle
+  Circle,
+  AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User as UserProfile, Message } from '../types';
 import { cn } from '../lib/utils';
+import { io, Socket } from 'socket.io-client';
 
 export default function StaffChat() {
   const [activeChat, setActiveChat] = useState<string>('general');
   const [messageText, setMessageText] = useState('');
-  const [messages, setMessages] = useState<Message[]>(() => {
-    const saved = localStorage.getItem('hospital_chats');
-    return saved ? JSON.parse(saved) : [
-      { id: '1', senderId: 'u-1', content: 'مرحباً بالجميع، تم تهيئة نظام التواصل الداخلي.', timestamp: new Date().toISOString(), chatId: 'general' },
-      { id: '2', senderId: 'u-1', content: 'يرجى إبلاغي عند وصول د. خالد.', timestamp: new Date().toISOString(), chatId: 'reception' }
-    ];
-  });
-
-  const [users] = useState<UserProfile[]>(() => {
-    const saved = localStorage.getItem('hospital_users');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    localStorage.setItem('hospital_chats', JSON.stringify(messages));
-  }, [messages]);
+    // Initialize socket
+    socketRef.current = io();
+
+    socketRef.current.on('receive-message', (msg: Message) => {
+      setMessages(prev => {
+        // Prevent indexing issues or duplicate rendering
+        if (prev.some(m => m.id === msg.id)) return prev;
+        return [...prev, msg];
+      });
+    });
+
+    return () => {
+      socketRef.current?.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (socketRef.current) {
+      socketRef.current.emit('join-chat', activeChat);
+    }
+  }, [activeChat]);
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageText.trim()) return;
+    if (!messageText.trim() || !socketRef.current) return;
 
     const newMessage: Message = {
-      id: Date.now().toString(),
-      senderId: 'u-1', // Assuming current user is admin for demo
+      id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      senderId: 'u-admin', // Current user fallback
       content: messageText,
       timestamp: new Date().toISOString(),
       chatId: activeChat
     };
 
-    setMessages([...messages, newMessage]);
+    socketRef.current.emit('send-message', newMessage);
     setMessageText('');
   };
 
@@ -199,10 +211,3 @@ const UserChatButton: React.FC<{ profile: UserProfile, active: boolean, onClick:
   );
 };
 
-function AlertCircle(props: any) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-    </svg>
-  );
-}

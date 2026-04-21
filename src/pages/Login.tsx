@@ -18,11 +18,11 @@ export default function Login() {
     setError('');
     
     try {
-      const success = await login(username);
+      const success = await login(username, password);
       if (success) {
         navigate('/');
       } else {
-        setError('اسم المستخدم غير صحيح أو الحساب غير نشط');
+        setError('اسم المستخدم أو كلمة المرور غير صحيحة');
       }
     } catch (err) {
       setError('حدث خطأ أثناء تسجيل الدخول');
@@ -63,7 +63,7 @@ export default function Login() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full py-4 pr-12 pl-6 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold"
-                  placeholder="admin"
+                  placeholder="Abdlelahalwali6"
                 />
               </div>
             </div>

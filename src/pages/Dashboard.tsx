@@ -33,6 +33,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { Appointment, Patient, User } from '../types';
 import { useNavigate } from 'react-router-dom';
+import { dataStore } from '../services/dataService';
 
 const revenueData = [
   { name: 'السبت', value: 45000 },
@@ -54,17 +55,27 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [activeUsersCount] = useState(14);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [appointments, setAppointments] = useState<Appointment[]>(() => {
-    const saved = localStorage.getItem('hospital_appointments');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [patientCount] = useState<number>(() => {
-    const saved = localStorage.getItem('hospital_patients');
-    return saved ? JSON.parse(saved).length : 1248;
-  });
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [apptsData, patientsData] = await Promise.all([
+          dataStore.getAll<Appointment>('appointments'),
+          dataStore.getAll<Patient>('patients')
+        ]);
+        setAppointments(apptsData);
+        setPatients(patientsData);
+      } catch (error) {
+        console.error("Dashboard data load failed", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -79,7 +90,7 @@ export default function Dashboard() {
   const stats = [
     { 
       label: 'إجمالي المرضى', 
-      value: patientCount.toLocaleString(), 
+      value: patients.length.toLocaleString(), 
       trend: '+12%', 
       trendUp: true, 
       icon: Users, 

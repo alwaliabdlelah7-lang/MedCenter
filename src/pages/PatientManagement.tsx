@@ -25,17 +25,36 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Patient, Appointment, LabTest, PharmacyItem, DynamicFieldDefinition } from '../types';
 import { cn } from '../lib/utils';
 import { INITIAL_PATIENTS } from '../data/seedData';
+import { dataStore } from '../services/dataService';
 
 export default function PatientManagement() {
-  const [patients, setPatients] = useState<Patient[]>(() => {
-    const saved = localStorage.getItem('hospital_patients');
-    return saved ? JSON.parse(saved) : INITIAL_PATIENTS;
-  });
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [dynamicFields, setDynamicFields] = useState<DynamicFieldDefinition[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [labTests, setLabTests] = useState<LabTest[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [dynamicFields] = useState<DynamicFieldDefinition[]>(() => {
-    const saved = localStorage.getItem('hospital_dynamic_fields');
-    return saved ? JSON.parse(saved) : [];
-  });
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [patientsData, fieldsData, apptsData, labsData] = await Promise.all([
+          dataStore.getAll<Patient>('patients'),
+          dataStore.getAll<DynamicFieldDefinition>('dynamic_fields'),
+          dataStore.getAll<Appointment>('appointments'),
+          dataStore.getAll<LabTest>('lab_tests')
+        ]);
+        setPatients(patientsData.length > 0 ? patientsData : INITIAL_PATIENTS);
+        setDynamicFields(fieldsData);
+        setAppointments(apptsData);
+        setLabTests(labsData);
+      } catch (error) {
+        console.error("Failed to load patient management data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -44,24 +63,16 @@ export default function PatientManagement() {
 
   const [newPatientCustomFields, setNewPatientCustomFields] = useState<Record<string, any>>({});
 
-  // Related data for EMR
-  const [appointments] = useState<Appointment[]>(() => JSON.parse(localStorage.getItem('hospital_appointments') || '[]'));
-  const [labTests] = useState<LabTest[]>(() => JSON.parse(localStorage.getItem('hospital_lab_tests') || '[]'));
-
-  useEffect(() => {
-    localStorage.setItem('hospital_patients', JSON.stringify(patients));
-  }, [patients]);
-
   const filtered = patients.filter(p => 
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.phone.includes(searchQuery) ||
     p.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-    const patientAppointments = selectedPatient ? appointments.filter(a => a.patientId === selectedPatient.id || a.patientName === selectedPatient.name) : [];
+  const patientAppointments = selectedPatient ? appointments.filter(a => a.patientId === selectedPatient.id || a.patientName === selectedPatient.name) : [];
   const patientLabs = selectedPatient ? labTests.filter(l => l.patientName === selectedPatient.name) : [];
 
-  const handleAddPatient = (e: React.FormEvent) => {
+  const handleAddPatient = async (e: React.FormEvent) => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
@@ -79,6 +90,7 @@ export default function PatientManagement() {
       createdAt: new Date().toISOString()
     };
     
+    await dataStore.addItem('patients', newPatient);
     setPatients([newPatient, ...patients]);
     setShowAddModal(false);
     setNewPatientCustomFields({});

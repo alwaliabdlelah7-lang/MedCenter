@@ -4,19 +4,35 @@ import { motion, AnimatePresence } from 'motion/react';
 import { YEMEN_LAB_TESTS as SEED_TESTS } from '../../data/seedData';
 import { MasterLabItem, LabTestParameter, DynamicFieldDefinition } from '../../types';
 import { cn } from '../../lib/utils';
+import { dataStore } from '../../services/dataService';
 
 export default function LabDirectory() {
-  const [tests, setTests] = useState<MasterLabItem[]>(() => {
-    const saved = localStorage.getItem('hospital_master_lab_tests');
-    if (saved) return JSON.parse(saved);
-    return SEED_TESTS.map((t, i) => ({
-      id: `LBT-${i + 1}`,
-      name: t.name,
-      price: t.price,
-      category: 'عام',
-      parameters: []
-    }));
-  });
+  const [tests, setTests] = useState<MasterLabItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const data = await dataStore.getAll<MasterLabItem>('master_lab_tests');
+        if (data.length === 0) {
+          setTests(SEED_TESTS.map((t, i) => ({
+            id: `LBT-${i + 1}`,
+            name: t.name,
+            price: t.price,
+            category: 'عام',
+            parameters: []
+          })));
+        } else {
+          setTests(data);
+        }
+      } catch (error) {
+        console.error("Failed to load lab tests", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const [showModal, setShowModal] = useState(false);
   const [editingTest, setEditingTest] = useState<MasterLabItem | null>(null);
@@ -44,12 +60,14 @@ export default function LabDirectory() {
     localStorage.setItem('hospital_master_lab_tests', JSON.stringify(tests));
   }, [tests]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTest.name || !newTest.price) return;
     
     if (editingTest) {
-      setTests(tests.map(t => t.id === editingTest.id ? { ...editingTest, ...newTest, customFields: customFieldValues } as MasterLabItem : t));
+      const updated = { ...editingTest, ...newTest, customFields: customFieldValues } as MasterLabItem;
+      await dataStore.updateItem('master_lab_tests', updated.id, updated);
+      setTests(tests.map(t => t.id === editingTest.id ? updated : t));
     } else {
       const test: MasterLabItem = {
         id: `LBT-${Date.now().toString().slice(-4)}`,
@@ -60,6 +78,7 @@ export default function LabDirectory() {
         parameters: newTest.parameters || [],
         customFields: customFieldValues
       };
+      await dataStore.addItem('master_lab_tests', test);
       setTests([...tests, test]);
     }
     

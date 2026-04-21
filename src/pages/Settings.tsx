@@ -13,7 +13,26 @@ export default function SettingsPage() {
   const [serverIp, setServerIp] = useState('192.168.1.105');
   const [isRealtimeEnabled, setIsRealtimeEnabled] = useState(true);
   const [printAuto, setPrintAuto] = useState(false);
-  const [activeTab, setActiveTab] = useState<'general' | 'dynamic_fields'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'dynamic_fields' | 'cloud'>('general');
+  const [isSeeding, setIsSeeding] = useState(false);
+
+  const seedDatabase = async () => {
+    if (!confirm('هل أنت متأكد من زرع البيانات الأولية في قاعدة البيانات السحابية؟ سيتم إضافة البيانات فقط إذا كانت المجموعات فارغة.')) return;
+    setIsSeeding(true);
+    try {
+      const response = await fetch('/api/admin/seed', { method: 'POST' });
+      const data = await response.json();
+      if (response.ok) {
+        alert('تم زرع البيانات بنجاح: ' + data.message);
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      alert('فشل في زرع البيانات: ' + (error as Error).message);
+    } finally {
+      setIsSeeding(false);
+    }
+  };
 
   const [dynamicFields, setDynamicFields] = useState<DynamicFieldDefinition[]>(() => {
     const saved = localStorage.getItem('hospital_dynamic_fields');
@@ -110,11 +129,56 @@ export default function SettingsPage() {
         >
           تخصيص البيانات (الحقول الديناميكية)
         </button>
+        <button 
+          onClick={() => setActiveTab('cloud')}
+          className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'cloud' ? 'bg-white/10 text-sky-400 shadow-xl' : 'text-slate-500 hover:text-slate-300'}`}
+        >
+          البيانات السحابية (Firebase)
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-6">
           <AnimatePresence mode="wait">
+            {activeTab === 'cloud' && (
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                <div className="glass p-8 rounded-[40px] space-y-6 border border-white/5">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Cloud className="text-sky-400" size={20} />
+                    <h3 className="text-white font-black italic uppercase tracking-widest text-sm">Cloud Database Seeding</h3>
+                  </div>
+                  
+                  <div className="bg-sky-500/10 border border-sky-500/20 p-6 rounded-3xl space-y-4">
+                    <h4 className="text-sky-400 font-bold flex items-center gap-2">
+                       <Database size={18} />
+                       زرع البيانات الأولية
+                    </h4>
+                    <p className="text-sm text-slate-300 leading-relaxed">
+                      هذه الإضافة تسمح لك بتهيئة قاعدة البيانات السحابية (Firebase) بمجموعة كاملة من البيانات الحقيقية والمهنية (الأطباء، الأصناف الدوائية، الفحوصات المخبرية، الأقسام، العيادات).
+                      <br /><b>ملاحظة:</b> لن يتم تكرار البيانات إذا كانت موجودة مسبقاً.
+                    </p>
+                    <button 
+                      onClick={seedDatabase}
+                      disabled={isSeeding}
+                      className="w-full py-4 bg-sky-600 hover:bg-sky-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-sky-600/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {isSeeding ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>جاري الزرع...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Database size={20} />
+                          <span>زرع البيانات المهنية الآن</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
             {activeTab === 'general' ? (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                 {/* General Config */}

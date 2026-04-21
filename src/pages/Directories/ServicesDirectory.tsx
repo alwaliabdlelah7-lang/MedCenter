@@ -1,26 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Building2, Trash2, Edit2, DollarSign, Tag } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Service, Operation, Department, DynamicFieldDefinition } from '../../types';
+import { Service, Department, DynamicFieldDefinition } from '../../types';
 import { YEMEN_SERVICES, INITIAL_DEPARTMENTS } from '../../data/seedData';
+import { dataStore } from '../../services/dataService';
 
 export default function ServicesDirectory() {
-  const [departments] = useState<Department[]>(() => {
-    const saved = localStorage.getItem('hospital_departments');
-    return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
-  });
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [services, setServices] = useState<Service[]>(() => {
-    const saved = localStorage.getItem('hospital_services');
-    if (saved) return JSON.parse(saved);
-    
-    return YEMEN_SERVICES.map((s, idx) => ({
-      ...s,
-      id: `SRV-SEED-${idx}`,
-      departmentId: (s as any).departmentId || departments[0]?.id || 'dept-1',
-      revenueAccountId: 'REV-GEN'
-    })) as Service[];
-  });
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [deptsData, servicesData] = await Promise.all([
+          dataStore.getAll<Department>('departments'),
+          dataStore.getAll<Service>('services')
+        ]);
+        setDepartments(deptsData.length > 0 ? deptsData : INITIAL_DEPARTMENTS);
+        setServices(servicesData.length > 0 ? servicesData : YEMEN_SERVICES.map((s, idx) => ({
+          ...s,
+          id: `SRV-SEED-${idx}`,
+          departmentId: (s as any).departmentId || deptsData[0]?.id || 'dept-1',
+          revenueAccountId: 'REV-GEN'
+        })) as Service[]);
+      } catch (error) {
+        console.error("Failed to load services data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [newService, setNewService] = useState({ name: '', price: 0, departmentId: departments[0]?.id || '', revenueAccountId: 'REV-001' });
@@ -40,15 +51,18 @@ export default function ServicesDirectory() {
     localStorage.setItem('hospital_services', JSON.stringify(services));
   }, [services]);
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newService.name) return;
     
-    setServices([...services, { 
+    const service: Service = { 
       id: `S-${Math.random().toString(36).substr(2, 4).toUpperCase()}`, 
       ...newService,
       customFields: customFieldValues 
-    }]);
+    } as Service;
+
+    await dataStore.addItem('services', service);
+    setServices([...services, service]);
     setNewService({ name: '', price: 0, departmentId: departments[0]?.id || '', revenueAccountId: 'REV-001' });
     setCustomFieldValues({});
     setShowAddModal(false);

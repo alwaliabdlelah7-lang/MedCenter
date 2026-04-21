@@ -3,19 +3,30 @@ import { Plus, Building2, Trash2, Edit2, Stethoscope, Tag } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Department, Clinic, DynamicFieldDefinition } from '../../types';
 import { INITIAL_DEPARTMENTS, INITIAL_CLINICS } from '../../data/seedData';
+import { dataStore } from '../../services/dataService';
 
 export default function ClinicsDirectory() {
-  const [departments] = useState<Department[]>(() => {
-    const saved = localStorage.getItem('hospital_departments');
-    if (saved) return JSON.parse(saved);
-    return INITIAL_DEPARTMENTS as Department[];
-  });
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [clinics, setClinics] = useState<Clinic[]>(() => {
-    const saved = localStorage.getItem('hospital_clinics');
-    if (saved) return JSON.parse(saved);
-    return INITIAL_CLINICS as Clinic[];
-  });
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [deptsData, clinicsData] = await Promise.all([
+          dataStore.getAll<Department>('departments'),
+          dataStore.getAll<Clinic>('clinics')
+        ]);
+        setDepartments(deptsData.length > 0 ? deptsData : INITIAL_DEPARTMENTS);
+        setClinics(clinicsData.length > 0 ? clinicsData : INITIAL_CLINICS as Clinic[]);
+      } catch (error) {
+        console.error("Failed to load clinics data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const [dynamicFields, setDynamicFields] = useState<DynamicFieldDefinition[]>([]);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
@@ -35,15 +46,19 @@ export default function ClinicsDirectory() {
     localStorage.setItem('hospital_clinics', JSON.stringify(clinics));
   }, [clinics]);
 
-  const handleAddClinic = (e: React.FormEvent) => {
+  const handleAddClinic = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newClinic.name) return;
-    setClinics([...clinics, { 
+    
+    const clinic: Clinic = { 
       id: `C-${Math.random().toString(36).substr(2, 4).toUpperCase()}`, 
       ...newClinic, 
       doctorIds: [],
       customFields: customFieldValues
-    }]);
+    };
+
+    await dataStore.addItem('clinics', clinic);
+    setClinics([...clinics, clinic]);
     setNewClinic({ name: '', departmentId: departments[0]?.id || '' });
     setCustomFieldValues({});
     setShowAddModal(false);

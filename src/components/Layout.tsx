@@ -190,6 +190,11 @@ export default function Layout() {
                 <LogOut size={20} />
                 <span>تسجيل الخروج</span>
               </button>
+              <div className="mt-4 text-center">
+                 <p className="text-[10px] text-slate-600 font-black uppercase tracking-[2px] italic">
+                   الإصدار: {import.meta.env.VITE_APP_VERSION || '1.0.0'}
+                 </p>
+              </div>
             </>
           ) : (
              <div className="flex flex-col items-center gap-4">
@@ -203,6 +208,9 @@ export default function Layout() {
                >
                   <LogOut size={20} />
                </button>
+               <span className="text-[8px] text-slate-700 font-bold rotate-90 whitespace-nowrap mt-4 tracking-widest">
+                 V{import.meta.env.VITE_APP_VERSION || '1.0.0'}
+               </span>
              </div>
           )}
         </div>

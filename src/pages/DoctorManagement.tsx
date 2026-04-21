@@ -20,17 +20,30 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Doctor, Department, DynamicFieldDefinition } from '../types';
 import { cn } from '../lib/utils';
 import { INITIAL_DOCTORS, INITIAL_DEPARTMENTS } from '../data/seedData';
+import { dataStore } from '../services/dataService';
 
 export default function DoctorManagement() {
-  const [doctors, setDoctors] = useState<Doctor[]>(() => {
-    const saved = localStorage.getItem('hospital_doctors');
-    return saved ? JSON.parse(saved) : INITIAL_DOCTORS;
-  });
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [departments] = useState<Department[]>(() => {
-    const saved = localStorage.getItem('hospital_departments');
-    return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
-  });
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [docsData, deptsData] = await Promise.all([
+          dataStore.getAll<Doctor>('doctors'),
+          dataStore.getAll<Department>('departments')
+        ]);
+        setDoctors(docsData.length > 0 ? docsData : INITIAL_DOCTORS);
+        setDepartments(deptsData.length > 0 ? deptsData : INITIAL_DEPARTMENTS);
+      } catch (error) {
+        console.error("Failed to load doctors data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const [dynamicFields, setDynamicFields] = useState<DynamicFieldDefinition[]>([]);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
@@ -149,7 +162,7 @@ export default function DoctorManagement() {
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowAddModal(false)} className="absolute inset-0 bg-slate-950/70 backdrop-blur-md" />
               <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative w-full max-w-3xl glass bg-[#0f172a]/95 rounded-[40px] p-10 border border-white/10 text-right overflow-y-auto max-h-[90vh] custom-scrollbar">
                  <h3 className="text-2xl font-black mb-10 text-white border-r-4 border-sky-500 pr-5">إضافة كادر طبي / استشاري جديد</h3>
-                  <form className="space-y-6" onSubmit={(e) => {
+                  <form className="space-y-6" onSubmit={async (e) => {
                     e.preventDefault();
                     const form = e.target as HTMLFormElement;
                     const formData = new FormData(form);
@@ -175,6 +188,7 @@ export default function DoctorManagement() {
                       customFields: customFieldValues
                     };
                     
+                    await dataStore.addItem('doctors', newDoc);
                     setDoctors([...doctors, newDoc]);
                     setShowAddModal(false);
                     setCustomFieldValues({});

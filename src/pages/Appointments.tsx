@@ -25,27 +25,36 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Appointment, Doctor, Clinic, Patient } from '../types';
 import { cn } from '../lib/utils';
 import { INITIAL_PATIENTS } from '../data/seedData';
+import { dataStore } from '../services/dataService';
 
 export default function Appointments() {
-  const [appointments, setAppointments] = useState<Appointment[]>(() => {
-    const saved = localStorage.getItem('hospital_appointments');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [doctors] = useState<Doctor[]>(() => {
-    const saved = localStorage.getItem('hospital_doctors');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [clinics] = useState<Clinic[]>(() => {
-    const saved = localStorage.getItem('hospital_clinics');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [patients] = useState<Patient[]>(() => {
-    const saved = localStorage.getItem('hospital_patients');
-    return saved ? JSON.parse(saved) : INITIAL_PATIENTS;
-  });
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [apptsData, doctorsData, clinicsData, patientsData] = await Promise.all([
+          dataStore.getAll<Appointment>('appointments'),
+          dataStore.getAll<Doctor>('doctors'),
+          dataStore.getAll<Clinic>('clinics'),
+          dataStore.getAll<Patient>('patients')
+        ]);
+        setAppointments(apptsData);
+        setDoctors(doctorsData);
+        setClinics(clinicsData);
+        setPatients(patientsData.length > 0 ? patientsData : INITIAL_PATIENTS);
+      } catch (error) {
+        console.error("Failed to load appointments data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,11 +71,7 @@ export default function Appointments() {
     status: 'scheduled'
   });
 
-  useEffect(() => {
-    localStorage.setItem('hospital_appointments', JSON.stringify(appointments));
-  }, [appointments]);
-
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAppointment.patientName && !newAppointment.patientId) return;
     
@@ -87,12 +92,14 @@ export default function Appointments() {
       isPaid: false
     };
     
+    await dataStore.addItem('appointments', appointment);
     setAppointments([...appointments, appointment]);
     setShowAddModal(false);
     setNewAppointment({ ...newAppointment, patientName: '', patientId: '' });
   };
 
-  const updateStatus = (id: string, status: Appointment['status']) => {
+  const updateStatus = async (id: string, status: Appointment['status']) => {
+    await dataStore.updateItem<Appointment>('appointments', id, { status });
     setAppointments(appointments.map(a => {
       if (a.id === id) {
         const updated = { ...a, status };

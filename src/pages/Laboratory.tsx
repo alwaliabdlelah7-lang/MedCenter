@@ -1,24 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, FlaskConical, Beaker, FileText, Trash2, CheckCircle, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LabTest, Doctor } from '../types';
+import { LabTest, Doctor, MasterLabItem } from '../types';
 import { YEMEN_LAB_TESTS } from '../data/seedData';
+import { dataStore } from '../services/dataService';
 
 export default function Laboratory() {
-  const [tests, setTests] = useState<LabTest[]>(() => {
-    const saved = localStorage.getItem('hospital_lab_tests');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [tests, setTests] = useState<LabTest[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [masterTests, setMasterTests] = useState<MasterLabItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [doctors] = useState<Doctor[]>(() => {
-    const saved = localStorage.getItem('hospital_doctors');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [masterTests] = useState(() => {
-    const saved = localStorage.getItem('hospital_master_lab_tests');
-    return saved ? JSON.parse(saved) : YEMEN_LAB_TESTS;
-  });
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [testsData, doctorsData, masterData] = await Promise.all([
+          dataStore.getAll<LabTest>('lab_tests'),
+          dataStore.getAll<Doctor>('doctors'),
+          dataStore.getAll<MasterLabItem>('master_lab_tests')
+        ]);
+        setTests(testsData);
+        setDoctors(doctorsData);
+        setMasterTests(masterData.length > 0 ? masterData : YEMEN_LAB_TESTS);
+      } catch (error) {
+        console.error("Failed to load lab data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showResultModal, setShowResultModal] = useState<LabTest | null>(null);
@@ -27,20 +38,27 @@ export default function Laboratory() {
   const [searchQuery, setSearchQuery] = useState('');
   const [newTest, setNewTest] = useState<Partial<LabTest>>({
     patientName: '',
-    testType: masterTests[0]?.name || '',
-    testId: masterTests[0]?.id || '',
+    testType: '',
+    testId: '',
     doctorId: '',
     date: new Date().toISOString().split('T')[0],
     status: 'pending'
   });
 
+  // Re-sync newTest defaults once masterTests are loaded
   useEffect(() => {
-    localStorage.setItem('hospital_lab_tests', JSON.stringify(tests));
-  }, [tests]);
+    if (masterTests.length > 0 && !newTest.testType) {
+      setNewTest(prev => ({
+        ...prev,
+        testType: masterTests[0].name,
+        testId: masterTests[0].id
+      }));
+    }
+  }, [masterTests]);
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTest.patientName) return;
+    if (!newTest.patientName || !newTest.testType) return;
     
     const master = masterTests.find((m: any) => m.name === newTest.testType);
     
@@ -54,13 +72,16 @@ export default function Laboratory() {
       status: 'pending'
     };
     
+    await dataStore.addItem('lab_tests', test);
     setTests([...tests, test]);
     setShowAddModal(false);
     setNewTest({ ...newTest, patientName: '' });
   };
 
-  const updateResults = (id: string) => {
-    setTests(tests.map(t => t.id === id ? { ...t, status: 'completed', parameterResults: resultParams } : t));
+  const updateResults = async (id: string) => {
+    const updates = { status: 'completed' as const, parameterResults: resultParams };
+    await dataStore.updateItem<LabTest>('lab_tests', id, updates);
+    setTests(tests.map(t => t.id === id ? { ...t, ...updates } : t));
     setShowResultModal(null);
     setResultParams({});
   };

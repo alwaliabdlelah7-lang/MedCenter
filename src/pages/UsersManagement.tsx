@@ -3,57 +3,71 @@ import { Plus, Search, User, Shield, Key, Trash2, Edit2, Check, X, ShieldCheck, 
 import { motion, AnimatePresence } from 'motion/react';
 import { User as UserType, Permission } from '../types';
 import { cn } from '../lib/utils';
+import { dataStore } from '../services/dataService';
 
 const ROLES: UserType['role'][] = ['admin', 'doctor', 'nurse', 'pharmacist', 'lab_tech', 'receptionist'];
 const PERMISSIONS: Permission[] = ['all', 'read_only', 'clinical', 'pharmacy', 'lab', 'admin'];
 
 export default function UsersManagement() {
-  const [users, setUsers] = useState<UserType[]>(() => {
-    const saved = localStorage.getItem('hospital_users');
-    if (saved) return JSON.parse(saved);
-    return [
-      {
-        id: 'u-1',
-        username: 'admin',
-        name: 'المدير العام',
-        role: 'admin',
-        permissions: ['all'],
-        status: 'active',
-        lastLogin: new Date().toISOString()
+  const [users, setUsers] = useState<UserType[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const usersData = await dataStore.getAll<UserType>('users');
+        if (usersData.length === 0) {
+          const initialAdmin: UserType = {
+            id: 'u-1',
+            username: 'admin',
+            name: 'المدير العام',
+            role: 'admin',
+            permissions: ['all'],
+            status: 'active',
+            lastLogin: new Date().toISOString()
+          };
+          setUsers([initialAdmin]);
+        } else {
+          setUsers(usersData);
+        }
+      } catch (error) {
+        console.error("Failed to load users", error);
+      } finally {
+        setLoading(false);
       }
-    ];
-  });
+    };
+    loadUsers();
+  }, []);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [newUser, setNewUser] = useState<Partial<UserType>>({
     username: '',
+    password: '',
     name: '',
     role: 'receptionist',
     permissions: ['read_only'],
     status: 'active'
   });
 
-  useEffect(() => {
-    localStorage.setItem('hospital_users', JSON.stringify(users));
-  }, [users]);
-
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUser.username || !newUser.name) return;
     
     const user: UserType = {
       id: `USR-${Date.now().toString().slice(-4)}`,
       username: newUser.username!,
+      password: newUser.password!,
       name: newUser.name!,
       role: newUser.role as any,
       permissions: newUser.permissions as any,
       status: 'active'
     };
     
+    await dataStore.addItem('users', user);
     setUsers([...users, user]);
     setShowAddModal(false);
-    setNewUser({ username: '', name: '', role: 'receptionist', permissions: ['read_only'] });
+    setNewUser({ username: '', password: '', name: '', role: 'receptionist', permissions: ['read_only'] });
   };
 
   const togglePermission = (perm: Permission) => {

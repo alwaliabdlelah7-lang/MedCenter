@@ -3,19 +3,30 @@ import { Plus, Building2, Trash2, Edit2, Hospital, Stethoscope, ChevronRight, Ta
 import { motion, AnimatePresence } from 'motion/react';
 import { Department, Clinic, DynamicFieldDefinition } from '../../types';
 import { INITIAL_DEPARTMENTS, INITIAL_CLINICS } from '../../data/seedData';
+import { dataStore } from '../../services/dataService';
 
 export default function StructureDirectory() {
-  const [departments, setDepartments] = useState<Department[]>(() => {
-    const saved = localStorage.getItem('hospital_departments');
-    if (saved) return JSON.parse(saved);
-    return INITIAL_DEPARTMENTS as Department[];
-  });
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [clinics] = useState<Clinic[]>(() => {
-    const saved = localStorage.getItem('hospital_clinics');
-    if (saved) return JSON.parse(saved);
-    return INITIAL_CLINICS as Clinic[];
-  });
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [deptsData, clinicsData] = await Promise.all([
+          dataStore.getAll<Department>('departments'),
+          dataStore.getAll<Clinic>('clinics')
+        ]);
+        setDepartments(deptsData.length > 0 ? deptsData : INITIAL_DEPARTMENTS);
+        setClinics(clinicsData.length > 0 ? clinicsData : INITIAL_CLINICS);
+      } catch (error) {
+        console.error("Failed to load structure data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const [dynamicFields, setDynamicFields] = useState<DynamicFieldDefinition[]>([]);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
@@ -35,14 +46,18 @@ export default function StructureDirectory() {
     localStorage.setItem('hospital_departments', JSON.stringify(departments));
   }, [departments]);
 
-  const handleAddDept = (e: React.FormEvent) => {
+  const handleAddDept = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newDept.name) return;
-    setDepartments([...departments, { 
+    
+    const dept: Department = { 
       id: `DEPT-${Math.random().toString(36).substr(2, 4).toUpperCase()}`, 
       ...newDept,
       customFields: customFieldValues
-    }]);
+    };
+
+    await dataStore.addItem('departments', dept);
+    setDepartments([...departments, dept]);
     setNewDept({ name: '', description: '' });
     setCustomFieldValues({});
     setShowAddModal(false);

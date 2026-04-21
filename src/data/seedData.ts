@@ -126,3 +126,24 @@ export const INITIAL_PATIENTS: Patient[] = [
     createdAt: new Date().toISOString()
   }
 ];
+
+export const INITIAL_USERS: any[] = [
+  {
+    id: 'u-1',
+    username: 'admin',
+    password: '123',
+    name: 'مدير النظام',
+    role: 'admin',
+    permissions: ['all'],
+    status: 'active'
+  },
+  {
+    id: 'u-admin-2',
+    username: 'Abdlelahalwali6',
+    password: '159632Asd',
+    name: 'Abdlelah Alwali',
+    role: 'admin',
+    permissions: ['all'],
+    status: 'active'
+  }
+];
