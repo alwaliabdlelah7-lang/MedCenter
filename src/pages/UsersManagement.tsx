@@ -10,12 +10,19 @@ const PERMISSIONS: Permission[] = ['all', 'read_only', 'clinical', 'pharmacy', '
 
 export default function UsersManagement() {
   const [users, setUsers] = useState<UserType[]>([]);
+  const [dynamicFields, setDynamicFields] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadUsers = async () => {
+    const loadData = async () => {
       try {
-        const usersData = await dataStore.getAll<UserType>('users');
+        const [usersData, fieldsData] = await Promise.all([
+          dataStore.getAll<UserType>('users'),
+          dataStore.getAll<any>('dynamic_fields')
+        ]);
+        
+        setDynamicFields(fieldsData.filter((f: any) => f.entity === 'user' && f.isActive));
+
         if (usersData.length === 0) {
           const initialAdmin: UserType = {
             id: 'u-1',
@@ -41,6 +48,7 @@ export default function UsersManagement() {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [newUserCustomFields, setNewUserCustomFields] = useState<Record<string, any>>({});
   const [newUser, setNewUser] = useState<Partial<UserType>>({
     username: '',
     password: '',
@@ -50,7 +58,7 @@ export default function UsersManagement() {
     status: 'active'
   });
 
-  const handleAdd = async (e: React.FormEvent) => {
+   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUser.username || !newUser.name) return;
     
@@ -61,13 +69,15 @@ export default function UsersManagement() {
       name: newUser.name!,
       role: newUser.role as any,
       permissions: newUser.permissions as any,
-      status: 'active'
+      status: 'active',
+      customFields: newUserCustomFields
     };
     
     await dataStore.addItem('users', user);
     setUsers([...users, user]);
     setShowAddModal(false);
     setNewUser({ username: '', password: '', name: '', role: 'receptionist', permissions: ['read_only'] });
+    setNewUserCustomFields({});
   };
 
   const togglePermission = (perm: Permission) => {

@@ -145,5 +145,14 @@ export const INITIAL_USERS: any[] = [
     role: 'admin',
     permissions: ['all'],
     status: 'active'
+  },
+  {
+    id: 'u-admin-3',
+    username: 'alwaliabdlelah7@gmail.com',
+    password: '159632Asd',
+    name: 'Alwali Abdlelah',
+    role: 'admin',
+    permissions: ['all'],
+    status: 'active'
   }
 ];

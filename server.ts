@@ -55,9 +55,9 @@ async function startServer() {
 
   const db = admin.apps.length ? admin.firestore() : null;
 
-  // Admin Seed Route
-  app.post("/api/admin/seed", async (req, res) => {
-    if (!db) return res.status(503).json({ error: "Firebase not initialized" });
+  // Seeding logic extracted for automatic and manual use
+  async function performSeeding() {
+    if (!db) return { success: false, error: "Firebase not initialized" };
     try {
       const { 
         INITIAL_DEPARTMENTS, 
@@ -94,10 +94,27 @@ async function startServer() {
         seedTask("master_lab_tests", YEMEN_LAB_TESTS),
         seedTask("master_medicines", YEMEN_MEDICINES),
       ]);
-
-      res.json({ success: true, message: "Database seeded with initial clinical data" });
+      return { success: true };
     } catch (error) {
-      res.status(500).json({ error: (error as Error).message });
+      console.error("Seeding error:", error);
+      return { success: false, error: (error as Error).message };
+    }
+  }
+
+  // Auto-seed on startup
+  if (db) {
+    performSeeding().then(res => {
+      if (res.success) console.log("Automatic database seeding/checking completed.");
+    });
+  }
+
+  // Admin Seed Route (keeping for manual trigger)
+  app.post("/api/admin/seed", async (req, res) => {
+    const result = await performSeeding();
+    if (result.success) {
+      res.json({ success: true, message: "Database seeded with initial clinical data" });
+    } else {
+      res.status(500).json({ error: result.error });
     }
   });
 

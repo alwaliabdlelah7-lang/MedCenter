@@ -18,7 +18,7 @@ export interface DynamicFieldDefinition {
   type: 'text' | 'number' | 'date' | 'select' | 'boolean';
   options?: string[];
   required: boolean;
-  entity: 'patient' | 'doctor' | 'nurse' | 'visit' | 'service' | 'operation' | 'lab_test' | 'medicine' | 'clinic' | 'companion' | 'department';
+  entity: 'patient' | 'doctor' | 'nurse' | 'visit' | 'service' | 'operation' | 'lab_test' | 'medicine' | 'clinic' | 'companion' | 'department' | 'user';
   isActive: boolean;
 }
 
@@ -190,6 +190,7 @@ export interface User {
   permissions: Permission[];
   lastLogin?: string;
   status: 'active' | 'inactive';
+  customFields?: Record<string, any>;
 }
 
 export interface Receipt {

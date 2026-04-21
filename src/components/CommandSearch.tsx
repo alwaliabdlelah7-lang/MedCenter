@@ -24,8 +24,18 @@ interface SearchResult {
   description: string;
   type: 'patient' | 'doctor' | 'page' | 'action';
   path: string;
-  icon: any;
+  iconName: string;
 }
+
+const iconMap: Record<string, any> = {
+  'users': Users,
+  'stethoscope': Stethoscope,
+  'calendar': Calendar,
+  'pill': Pill,
+  'flask': FlaskConical,
+  'activity': ActivityIcon,
+  'history': HistoryIcon
+};
 
 export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [query, setQuery] = useState('');
@@ -37,8 +47,13 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
   });
   const navigate = useNavigate();
 
+  // Helper to render icon safely
+  const renderIcon = (name: string, size: number) => {
+    const Icon = iconMap[name] || Search;
+    return <Icon size={size} />;
+  };
+
   // Mock data for searching - stabilize values to prevent infinite re-renders
-  // We only refresh when the modal opens to stay updated with localStorage
   const patients = useMemo<Patient[]>(() => 
     isOpen ? JSON.parse(localStorage.getItem('hospital_patients') || '[]') : [], 
   [isOpen]);
@@ -48,12 +63,12 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
   [isOpen]);
 
   const searchPages = useMemo(() => [
-    { title: 'لوحة التحكم', path: '/', icon: ActivityIcon },
-    { title: 'المواعيد والحجوزات', path: '/appointments', icon: Calendar },
-    { title: 'إدارة المرضى', path: '/patients', icon: Users },
-    { title: 'قائمة الانتظار', path: '/queue', icon: HistoryIcon },
-    { title: 'الصيدلية', path: '/pharmacy', icon: Pill },
-    { title: 'المختبرات', path: '/laboratory', icon: FlaskConical },
+    { title: 'لوحة التحكم', path: '/', iconName: 'activity' },
+    { title: 'المواعيد والحجوزات', path: '/appointments', iconName: 'calendar' },
+    { title: 'إدارة المرضى', path: '/patients', iconName: 'users' },
+    { title: 'قائمة الانتظار', path: '/queue', iconName: 'history' },
+    { title: 'الصيدلية', path: '/pharmacy', iconName: 'pill' },
+    { title: 'المختبرات', path: '/laboratory', iconName: 'flask' },
   ], []);
 
   const performSearch = useCallback((q: string) => {
@@ -70,7 +85,7 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
         description: `رقم الهاتف: ${p.phone} • العمر: ${p.age}`,
         type: 'patient',
         path: `/patients`,
-        icon: Users
+        iconName: 'users'
       }));
 
     const doctorResults: SearchResult[] = doctors
@@ -81,7 +96,7 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
         description: d.specialization,
         type: 'doctor',
         path: `/directories/doctors`,
-        icon: Stethoscope
+        iconName: 'stethoscope'
       }));
 
     const pageResults: SearchResult[] = searchPages
@@ -92,7 +107,7 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
         description: 'انتقال سريع إلى الصفحة',
         type: 'page',
         path: p.path,
-        icon: p.icon
+        iconName: p.iconName
       }));
 
     const combinedResults = [...pageResults, ...patientResults, ...doctorResults].slice(0, 8);
@@ -211,7 +226,7 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
                                  <p className="text-[9px] text-slate-500">{result.description}</p>
                                </div>
                                <div className="w-8 h-8 rounded-lg glass bg-white/5 flex items-center justify-center text-sky-400">
-                                 <result.icon size={16} />
+                                 {renderIcon(result.iconName, 16)}
                                </div>
                              </div>
                           </button>
@@ -264,7 +279,7 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
                           "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
                           selectedIndex === idx ? "bg-white/20 text-white" : "glass bg-white/5 text-sky-400"
                         )}>
-                          <result.icon size={20} />
+                          {renderIcon(result.iconName, 20)}
                         </div>
                       </div>
                     </button>

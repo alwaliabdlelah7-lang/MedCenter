@@ -442,6 +442,7 @@ export default function SettingsPage() {
                       <option value="operation" className="bg-slate-900">دليل العمليات</option>
                       <option value="lab_test" className="bg-slate-900">دليل المختبر</option>
                       <option value="medicine" className="bg-slate-900">دليل الصيدلية</option>
+                      <option value="user" className="bg-slate-900">بيانات المستخدمين / الموظفين</option>
                     </select>
                   </div>
                 </div>
