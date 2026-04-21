@@ -1,0 +1,129 @@
+{
+  "entities": {
+    "doctor": {
+      "title": "Doctor",
+      "description": "Medical professional staff member",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "specialization": { "type": "string" },
+        "phone": { "type": "string" },
+        "departmentId": { "type": "string" },
+        "percentage": { "type": "integer" }
+      },
+      "required": ["id", "name", "specialization", "departmentId"]
+    },
+    "nurse": {
+      "title": "Nurse",
+      "description": "Nursing staff member",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "departmentId": { "type": "string" }
+      },
+      "required": ["id", "name", "departmentId"]
+    },
+    "department": {
+      "title": "Department",
+      "description": "Hospital department (e.g., Cardiology)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "clinic": {
+      "title": "Clinic",
+      "description": "Outpatient clinic within a department",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "departmentId": { "type": "string" }
+      },
+      "required": ["id", "name", "departmentId"]
+    },
+    "medical_service": {
+      "title": "Medical Service",
+      "description": "Consultation or medical service",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "departmentId": { "type": "string" }
+      },
+      "required": ["id", "name", "price"]
+    },
+    "operation": {
+      "title": "Surgical Operation",
+      "description": "Surgical procedure with associated cost",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "cost": { "type": "number" },
+        "departmentId": { "type": "string" }
+      },
+      "required": ["id", "name", "cost"]
+    },
+    "companion": {
+      "title": "Companion",
+      "description": "Person accompanying an inpatient",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "idNumber": { "type": "string" },
+        "phone": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "inpatient": {
+      "title": "Inpatient Admission",
+      "description": "Patient admitted for hospital stay",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "patientName": { "type": "string" },
+        "roomNumber": { "type": "string" },
+        "bedNumber": { "type": "string" },
+        "department": { "type": "string" },
+        "admissionDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "discharged"] }
+      },
+      "required": ["id", "patientName", "roomNumber", "bedNumber", "status"]
+    },
+    "receipt": {
+      "title": "Consultation Receipt",
+      "description": "Financial transaction for a medical visit",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "patientName": { "type": "string" },
+        "date": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "amount": { "type": "number" },
+        "paymentMethod": { "type": "string", "enum": ["cash", "card", "insurance"] }
+      },
+      "required": ["id", "patientName", "date", "serviceId", "doctorId", "amount", "paymentMethod"]
+    }
+  },
+  "firestore": {
+    "/doctors/{doctorId}": { "schema": "doctor", "description": "Global list of doctors" },
+    "/nurses/{nurseId}": { "schema": "nurse", "description": "Global list of nurses" },
+    "/departments/{departmentId}": { "schema": "department", "description": "Hospital departments" },
+    "/clinics/{clinicId}": { "schema": "clinic", "description": "Hospital clinics" },
+    "/services/{serviceId}": { "schema": "medical_service", "description": "Medical services available" },
+    "/operations/{operationId}": { "schema": "operation", "description": "Surgical operations" },
+    "/companions/{companionId}": { "schema": "companion", "description": "Registered companions" },
+    "/inpatients/{inpatientId}": { "schema": "inpatient", "description": "Current and past inpatient admissions" },
+    "/receipts/{receiptId}": { "schema": "receipt", "description": "Patient transaction receipts" }
+  }
+}
