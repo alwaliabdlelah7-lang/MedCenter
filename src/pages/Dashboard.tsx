@@ -66,9 +66,14 @@ export default function Dashboard() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [medicines, setMedicines] = useState<PharmacyItem[]>([]);
+  const [isCloudMode, setIsCloudMode] = useState(dataStore.isCloudEnabled());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const unsubscribe = dataStore.subscribe(() => {
+      setIsCloudMode(dataStore.isCloudEnabled());
+    });
+
     const loadData = async () => {
       try {
         const [apptsData, patientsData, doctorsData, medsData] = await Promise.all([
@@ -90,7 +95,10 @@ export default function Dashboard() {
     loadData();
 
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      unsubscribe();
+    };
   }, []);
 
   const quickActions = [
@@ -189,9 +197,14 @@ export default function Dashboard() {
           
           <div className="h-10 w-px bg-white/10 mx-2 hidden lg:block" />
           
-          <div className="px-5 py-2.5 glass bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-black flex items-center gap-3">
-             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-             حالة السيرفر: متصل عبر Cloud
+          <div className={cn(
+            "px-5 py-2.5 glass border rounded-xl text-xs font-black flex items-center gap-3 transition-all",
+            isCloudMode 
+              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 shadow-lg shadow-emerald-500/10" 
+              : "bg-rose-500/10 border-rose-500/20 text-rose-400 shadow-lg shadow-rose-500/10"
+          )}>
+             <div className={cn("w-2 h-2 rounded-full animate-pulse", isCloudMode ? "bg-emerald-500" : "bg-rose-500")} />
+             حالة السيرفر: {isCloudMode ? 'متصل عبر Cloud' : 'وضع العمل المحلي (Offline)'}
           </div>
         </div>
       </div>

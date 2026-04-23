@@ -13,6 +13,14 @@ export default function SettingsPage() {
   const [logoUrl, setLogoUrl] = useState('');
   const [serverIp, setServerIp] = useState('192.168.1.105');
   const [isRealtimeEnabled, setIsRealtimeEnabled] = useState(dataStore.isCloudEnabled());
+
+  useEffect(() => {
+    const unsubscribe = dataStore.subscribe(() => {
+      setIsRealtimeEnabled(dataStore.isCloudEnabled());
+    });
+    return () => unsubscribe();
+  }, []);
+
   const [printAuto, setPrintAuto] = useState(false);
   const [activeTab, setActiveTab] = useState<'general' | 'dynamic_fields' | 'cloud'>('general');
   const [isSeeding, setIsSeeding] = useState(false);
@@ -67,7 +75,10 @@ export default function SettingsPage() {
 
   const toggleStorageSource = (source: 'local' | 'cloud') => {
     if (source === 'cloud' && !isRealtimeEnabled) {
-      if (!confirm('سيتم تفعيل الربط السحابي واستخدام قاعدة بيانات Firebase. هل أنت متأكد؟')) return;
+      if (!confirm('سيتم تفعيل الربط السحابي واستخدام قاعدة بيانات Firebase. يتطلب هذا اتصالاً بالإنترنت لمزامنة البيانات بين الأجهزة.')) return;
+    }
+    if (source === 'local' && isRealtimeEnabled) {
+      if (!confirm('هل أنت متأكد من العودة لوضع العمل المحلي؟ سيتم حفظ البيانات في هذا المتصفح فقط ولن يراها الآخرون.')) return;
     }
     dataStore.setStorageSource(source);
     setIsRealtimeEnabled(source === 'cloud');
@@ -188,20 +199,26 @@ export default function SettingsPage() {
                   </div>
 
                   {/* Storage Source Toggle */}
-                  <div className="grid grid-cols-2 gap-4 p-2 glass bg-white/5 rounded-3xl">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <button 
                       onClick={() => toggleStorageSource('local')}
-                      className={`flex flex-col items-center gap-2 py-6 rounded-2xl transition-all ${!isRealtimeEnabled ? 'bg-white/10 text-white shadow-xl' : 'text-slate-500'}`}
+                      className={`flex flex-col items-center gap-4 p-8 rounded-[35px] transition-all border-2 text-center ${!isRealtimeEnabled ? 'bg-rose-500/10 border-rose-500 shadow-2xl shadow-rose-500/10 text-white' : 'glass bg-white/5 border-transparent text-slate-500 hover:bg-white/10'}`}
                     >
-                      <Database size={24} />
-                      <span className="text-xs font-bold">قاعدة بيانات محلية (LocalStorage)</span>
+                      <Database size={32} className={!isRealtimeEnabled ? 'text-rose-400' : ''} />
+                      <div>
+                        <span className="text-sm font-black block mb-1">وضع العمل المنفرد (Local)</span>
+                        <span className="text-[10px] opacity-70 leading-relaxed italic block">يتم حفظ البيانات في المتصفح الحالي فقط. مثالي للاستخدام الشخصي أو عند فقدان الإنترنت تماماً.</span>
+                      </div>
                     </button>
                     <button 
                       onClick={() => toggleStorageSource('cloud')}
-                      className={`flex flex-col items-center gap-2 py-6 rounded-2xl transition-all ${isRealtimeEnabled ? 'bg-sky-500/20 text-sky-400 shadow-xl border border-sky-500/20' : 'text-slate-500'}`}
+                      className={`flex flex-col items-center gap-4 p-8 rounded-[35px] transition-all border-2 text-center ${isRealtimeEnabled ? 'bg-sky-500/10 border-sky-500 shadow-2xl shadow-sky-500/10 text-white' : 'glass bg-white/5 border-transparent text-slate-500 hover:bg-white/10'}`}
                     >
-                      <Cloud size={24} />
-                      <span className="text-xs font-bold">قاعدة بيانات سحابية (Firebase)</span>
+                      <Cloud size={32} className={isRealtimeEnabled ? 'text-sky-400' : ''} />
+                      <div>
+                        <span className="text-sm font-black block mb-1">وضع الربط الشبكي (Cloud)</span>
+                        <span className="text-[10px] opacity-70 leading-relaxed italic block">مزامنة لحظية بين جميع أجهزة وسيرفرات العيادات (Firebase). يسمح بالعمل الجماعي ومشاركة التقارير.</span>
+                      </div>
                     </button>
                   </div>
 

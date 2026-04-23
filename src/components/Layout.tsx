@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Permission } from '../types';
+import { dataStore } from '../services/dataService';
 
 // ... rest of imports ...
 import { 
@@ -33,7 +34,9 @@ import {
   ListOrdered,
   UsersRound,
   FileHeart,
-  History as HistoryIcon
+  History as HistoryIcon,
+  Cloud,
+  Database
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -80,8 +83,13 @@ export default function Layout() {
   const [showNotifications, setShowNotifications] = React.useState(false);
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
   const [hospitalName, setHospitalName] = React.useState('إبداع الطبي');
+  const [isCloudMode, setIsCloudMode] = React.useState(dataStore.isCloudEnabled());
 
   React.useEffect(() => {
+    const unsubscribe = dataStore.subscribe(() => {
+      setIsCloudMode(dataStore.isCloudEnabled());
+    });
+
     const saved = localStorage.getItem('hospital_settings');
     if (saved) {
       const settings = JSON.parse(saved);
@@ -107,7 +115,10 @@ export default function Layout() {
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      unsubscribe();
+    };
   }, [isSearchOpen]);
 
   return (
@@ -176,9 +187,17 @@ export default function Layout() {
         <div className="p-2 mt-auto border-t border-white/5 pt-4">
           {!isCollapsed ? (
             <>
-              <div className="glass-card p-3 rounded-xl flex items-center gap-2 mb-4 overflow-hidden">
-                <div className="min-w-[8px] w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] text-slate-300 whitespace-nowrap">متصل بالسيرفر المركزي</span>
+              <div className={cn(
+                "glass-card p-3 rounded-xl flex items-center justify-between mb-4 overflow-hidden border-r-4 transition-all",
+                isCloudMode ? "border-emerald-500 bg-emerald-500/5" : "border-rose-500 bg-rose-500/5"
+              )}>
+                <div className="flex items-center gap-2">
+                  <div className={cn("w-2 h-2 rounded-full animate-pulse", isCloudMode ? "bg-emerald-500" : "bg-rose-500")} />
+                  <span className="text-[10px] text-slate-300 font-bold whitespace-nowrap">
+                    {isCloudMode ? 'متصل بالسيرفر (Cloud)' : 'وضع العمل المحلي (Offline)'}
+                  </span>
+                </div>
+                {isCloudMode ? <Cloud size={14} className="text-emerald-400" /> : <Database size={14} className="text-rose-400" />}
               </div>
               <button 
                 onClick={() => {
@@ -198,7 +217,7 @@ export default function Layout() {
             </>
           ) : (
              <div className="flex flex-col items-center gap-4">
-               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+               <div className={cn("w-2 h-2 rounded-full animate-pulse", isCloudMode ? "bg-emerald-500" : "bg-rose-500")} />
                <button 
                 onClick={() => {
                   logout();
@@ -239,6 +258,13 @@ export default function Layout() {
           
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 p-1 glass-card rounded-xl">
+               <div className={cn(
+                 "flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-black uppercase tracking-widest italic",
+                 isCloudMode ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-rose-500/10 border-rose-500/20 text-rose-400"
+               )}>
+                 {isCloudMode ? <Cloud size={12} /> : <Database size={12} />}
+                 {isCloudMode ? 'Cloud Online' : 'Local Offline'}
+               </div>
                <button 
                 onClick={() => setShowNotifications(!showNotifications)}
                 className="p-2 text-slate-400 hover:text-white relative group"

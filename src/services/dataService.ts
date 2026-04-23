@@ -7,6 +7,7 @@ class DataService {
   private static instance: DataService;
   private baseUrl = import.meta.env.VITE_API_BASE_URL || '';
   private _useCloud: boolean = localStorage.getItem('hospital_storage_source') === 'cloud';
+  private listeners: (() => void)[] = [];
   
   private constructor() {}
 
@@ -17,6 +18,17 @@ class DataService {
     return DataService.instance;
   }
 
+  public subscribe(listener: () => void) {
+    this.listeners.push(listener);
+    return () => {
+      this.listeners = this.listeners.filter(l => l !== listener);
+    };
+  }
+
+  private notify() {
+    this.listeners.forEach(l => l());
+  }
+
   public isCloudEnabled(): boolean {
     return this._useCloud;
   }
@@ -24,6 +36,7 @@ class DataService {
   public setStorageSource(source: 'local' | 'cloud') {
     this._useCloud = source === 'cloud';
     localStorage.setItem('hospital_storage_source', source);
+    this.notify();
   }
 
   // Generic Get All
