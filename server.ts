@@ -41,37 +41,47 @@ async function startServer() {
   // Initialize Firebase Admin
   const serviceAccountVar = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!serviceAccountVar) {
-    console.warn("FIREBASE_SERVICE_ACCOUNT is not defined. Firebase features will be disabled.");
+    console.error("CRITICAL: FIREBASE_SERVICE_ACCOUNT environment variable is NOT defined.");
+    console.error("Please set up Firebase using the 'set_up_firebase' tool to enable cloud features.");
   } else {
     try {
       const serviceAccount = JSON.parse(serviceAccountVar);
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-      });
-      console.log("Firebase Admin initialized successfully.");
+      if (admin.apps.length === 0) {
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount)
+        });
+        console.log("Firebase Admin initialized successfully.");
+      }
     } catch (error) {
-      console.error("Failed to initialize Firebase Admin:", error);
+      console.error("Failed to parse or initialize Firebase Admin with FIREBASE_SERVICE_ACCOUNT:", error);
     }
   }
 
   let db: admin.firestore.Firestore | null = null;
-  if (admin.apps.length) {
+  if (admin.apps.length > 0) {
     try {
-      const configPath = path.join(__dirname, "firebase-applet-config.json");
+      const configPath = path.join(process.cwd(), "firebase-applet-config.json");
       if (fs.existsSync(configPath)) {
         const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
         if (config.firestoreDatabaseId) {
           db = admin.firestore(config.firestoreDatabaseId);
-          console.log(`Using Firestore database: ${config.firestoreDatabaseId}`);
+          console.log(`Using dedicated Firestore database ID: ${config.firestoreDatabaseId}`);
         } else {
           db = admin.firestore();
+          console.log("Using default Firestore database.");
         }
       } else {
         db = admin.firestore();
+        console.log("firebase-applet-config.json not found, using default Firestore database.");
       }
     } catch (error) {
       console.error("Error setting up Firestore DB instance:", error);
-      db = admin.firestore();
+      // Fallback to default if dedicated fails
+      try {
+        db = admin.firestore();
+      } catch (e) {
+        console.error("Total failure to initialize Firestore:", e);
+      }
     }
   }
 
@@ -173,8 +183,12 @@ async function startServer() {
     if (!db) return res.status(503).json({ error: "Firebase not initialized" });
     try {
       const { collection, id } = req.params;
+      const data = { ...req.body };
+      delete data.id;
+      delete data.createdAt;
+      
       await db.collection(collection).doc(id).update({
-        ...req.body,
+        ...data,
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
       res.json({ success: true });
