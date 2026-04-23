@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 import admin from "firebase-admin";
 import { Server } from "socket.io";
 import { createServer } from "http";
+import fs from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -53,7 +54,26 @@ async function startServer() {
     }
   }
 
-  const db = admin.apps.length ? admin.firestore() : null;
+  let db: admin.firestore.Firestore | null = null;
+  if (admin.apps.length) {
+    try {
+      const configPath = path.join(__dirname, "firebase-applet-config.json");
+      if (fs.existsSync(configPath)) {
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        if (config.firestoreDatabaseId) {
+          db = admin.firestore(config.firestoreDatabaseId);
+          console.log(`Using Firestore database: ${config.firestoreDatabaseId}`);
+        } else {
+          db = admin.firestore();
+        }
+      } else {
+        db = admin.firestore();
+      }
+    } catch (error) {
+      console.error("Error setting up Firestore DB instance:", error);
+      db = admin.firestore();
+    }
+  }
 
   // Seeding logic extracted for automatic and manual use
   async function performSeeding() {
@@ -65,6 +85,8 @@ async function startServer() {
         INITIAL_DOCTORS, 
         INITIAL_PATIENTS,
         INITIAL_USERS,
+        INITIAL_NURSES,
+        INITIAL_OPERATIONS,
         YEMEN_SERVICES,
         YEMEN_LAB_TESTS,
         YEMEN_MEDICINES
@@ -90,6 +112,8 @@ async function startServer() {
         seedTask("doctors", INITIAL_DOCTORS),
         seedTask("patients", INITIAL_PATIENTS),
         seedTask("users", INITIAL_USERS),
+        seedTask("nurses", INITIAL_NURSES),
+        seedTask("operations", INITIAL_OPERATIONS),
         seedTask("services", YEMEN_SERVICES),
         seedTask("master_lab_tests", YEMEN_LAB_TESTS),
         seedTask("master_medicines", YEMEN_MEDICINES),

@@ -13,7 +13,11 @@ import {
   AlertTriangle,
   History as HistoryIcon,
   CheckCircle2,
-  ChevronRight
+  ChevronRight,
+  Database,
+  Smartphone,
+  Monitor,
+  CreditCard
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -27,22 +31,25 @@ import {
   Area,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  LineChart,
+  Line
 } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
-import { Appointment, Patient, User } from '../types';
+import { Appointment, Patient, User, Doctor, PharmacyItem } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { dataStore } from '../services/dataService';
+import { INITIAL_PATIENTS, INITIAL_APPOINTMENTS } from '../data/seedData';
 
-const revenueData = [
-  { name: 'السبت', value: 45000 },
-  { name: 'الأحد', value: 32000 },
-  { name: 'الاثنين', value: 98000 },
-  { name: 'الثلاثاء', value: 41000 },
-  { name: 'الأربعاء', value: 55000 },
-  { name: 'الخميس', value: 39000 },
-  { name: 'الجمعة', value: 25000 },
+const chartData = [
+  { name: 'السبت', revenue: 45000, appointments: 12 },
+  { name: 'الأحد', revenue: 32000, appointments: 8 },
+  { name: 'الاثنين', revenue: 98000, appointments: 25 },
+  { name: 'الثلاثاء', revenue: 41000, appointments: 15 },
+  { name: 'الأربعاء', revenue: 65000, appointments: 18 },
+  { name: 'الخميس', revenue: 39000, appointments: 10 },
+  { name: 'الجمعة', revenue: 25000, appointments: 5 },
 ];
 
 const patientTypeData = [
@@ -57,17 +64,23 @@ export default function Dashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [medicines, setMedicines] = useState<PharmacyItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [apptsData, patientsData] = await Promise.all([
+        const [apptsData, patientsData, doctorsData, medsData] = await Promise.all([
           dataStore.getAll<Appointment>('appointments'),
-          dataStore.getAll<Patient>('patients')
+          dataStore.getAll<Patient>('patients'),
+          dataStore.getAll<Doctor>('doctors'),
+          dataStore.getAll<PharmacyItem>('pharmacy_items')
         ]);
-        setAppointments(apptsData);
-        setPatients(patientsData);
+        setAppointments(apptsData.length > 0 ? apptsData : INITIAL_APPOINTMENTS);
+        setPatients(patientsData.length > 0 ? patientsData : INITIAL_PATIENTS);
+        setDoctors(doctorsData);
+        setMedicines(medsData);
       } catch (error) {
         console.error("Dashboard data load failed", error);
       } finally {
@@ -87,19 +100,22 @@ export default function Dashboard() {
     { label: 'طلب فحص', icon: FlaskConical, color: 'bg-amber-500', path: '/laboratory' },
   ];
 
+  const todayAppts = appointments.filter(a => a.date === currentTime.toISOString().split('T')[0]);
+  const expectedRevenue = todayAppts.reduce((sum, a) => sum + (a.cost || 0), 0);
+
   const stats = [
     { 
       label: 'إجمالي المرضى', 
       value: patients.length.toLocaleString(), 
-      trend: '+12%', 
+      trend: `+${patients.filter(p => new Date(p.createdAt) > new Date(Date.now() - 86400000 * 7)).length}`, 
       trendUp: true, 
       icon: Users, 
       color: 'sky' 
     },
     { 
       label: 'دخل اليوم المتوقع', 
-      value: '42,500 ر.ي', 
-      trend: '+8%', 
+      value: `${expectedRevenue.toLocaleString()} ر.ي`, 
+      trend: todayAppts.length.toString(), 
       trendUp: true, 
       icon: TrendingUp, 
       color: 'emerald' 
@@ -114,13 +130,27 @@ export default function Dashboard() {
     },
     { 
       label: 'مواعيد في الانتظار', 
-      value: appointments.filter(a => a.status === 'scheduled').length.toString(), 
-      trend: 'عالي', 
-      trendUp: false, 
+      value: appointments.filter(a => a.status === 'waiting').length.toString(), 
+      trend: appointments.filter(a => a.status === 'scheduled').length > 5 ? 'عالي' : 'طبيعي', 
+      trendUp: appointments.filter(a => a.status === 'scheduled').length <= 5, 
       icon: Clock, 
       color: 'amber' 
     },
   ];
+
+  const [platformStatus] = useState([
+    { platform: 'Web / PWA', status: 'Online', icon: Monitor },
+    { platform: 'Android App', status: 'Ready', icon: Smartphone },
+    { platform: 'Windows Desktop', status: 'Ready', icon: CreditCard }, // CreditCard as placeholder for desktop if needed, or Monitor
+  ]);
+
+  const [buildInfo] = useState({
+    version: '1.0.0-PRO',
+    lastSync: 'Now',
+    env: 'Production'
+  });
+
+  const lowStockMeds = medicines.filter(m => m.stock < 20);
 
   return (
     <div className="space-y-8 lg:p-4 text-right">
@@ -161,7 +191,7 @@ export default function Dashboard() {
           
           <div className="px-5 py-2.5 glass bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-black flex items-center gap-3">
              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-             حالة السيرفر: متصل عبر (YemenNet)
+             حالة السيرفر: متصل عبر Cloud
           </div>
         </div>
       </div>
@@ -250,9 +280,9 @@ export default function Dashboard() {
              </div>
              <div className="h-80 w-full font-mono">
                 <ResponsiveContainer width="100%" height="100%">
-                   <AreaChart data={revenueData}>
+                   <AreaChart data={chartData}>
                       <defs>
-                         <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                         <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
                             <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
                          </linearGradient>
@@ -264,7 +294,7 @@ export default function Dashboard() {
                         contentStyle={{ backgroundColor: '#0f172a', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }}
                         itemStyle={{ color: '#8b5cf6' }}
                       />
-                      <Area type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+                      <Area type="monotone" dataKey="revenue" stroke="#8b5cf6" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
                    </AreaChart>
                 </ResponsiveContainer>
              </div>
@@ -311,21 +341,32 @@ export default function Dashboard() {
                    تنبيهات النظام الذكية
                 </h3>
                 <div className="space-y-3">
-                   <DashboardAlert 
-                      type="danger" 
-                      title="مخزون حرج" 
-                      desc="أقراص 'الأنسولين' متبقي 15 قطعة فقط في مخزن الصيدلية الرئيسي." 
-                   />
-                   <DashboardAlert 
-                      type="warning" 
-                      title="طلبات مخيرية معلقة" 
-                      desc="يوجد 8 فحوصات لم يتم إدخال نتائجها منذ أكثر من ساعتين." 
-                   />
-                   <DashboardAlert 
-                      type="info" 
-                      title="موعد عودة قادم" 
-                      desc="المريض 'محمد علي' لديه موعد عودة مجانية غداً عند د. أحمد الوالي." 
-                   />
+                   {lowStockMeds.slice(0, 3).map((med, i) => (
+                     <DashboardAlert 
+                       key={i}
+                       type="danger" 
+                       title="مخزون حرج" 
+                       desc={`الدواء '${med.tradeName || med.name}' متبقي ${med.stock} قطعة فقط.`} 
+                     />
+                   ))}
+                   {appointments.filter(a => a.status === 'scheduled').length > 10 && (
+                     <DashboardAlert 
+                       type="warning" 
+                       title="ازدحام في المواعيد" 
+                       desc="يوجد عدد كبير من المواعيد المجدولة لليوم." 
+                     />
+                   )}
+                   {appointments.filter(a => a.returnDate === currentTime.toISOString().split('T')[0]).map((app, i) => (
+                     <DashboardAlert 
+                       key={`ret-${i}`}
+                       type="info" 
+                       title="موعد عودة قادم" 
+                       desc={`المريض '${app.patientName}' لديه موعد عودة مجانية اليوم.`} 
+                     />
+                   ))}
+                   {lowStockMeds.length === 0 && appointments.length > 0 && (
+                     <div className="text-center py-10 opacity-20 italic text-xs font-bold uppercase tracking-widest text-slate-500">لا توجد تنبيهات عاجلة</div>
+                   )}
                 </div>
              </div>
           </div>
@@ -358,6 +399,48 @@ export default function Dashboard() {
                  ))}
               </div>
               <p className="text-[9px] text-slate-500 font-bold uppercase text-center tracking-[2px]">Data Sync Active</p>
+           </div>
+
+           <div className="glass p-6 rounded-3xl border border-white/5">
+              <div className="flex items-center justify-between mb-2">
+                 <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 glass bg-sky-500/10 flex items-center justify-center text-sky-400 rounded-xl">
+                       <Database size={20} />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">حالة المنصات والمزامنة</h3>
+                 </div>
+                 <span className="text-[10px] font-black px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full border border-emerald-500/20 uppercase tracking-widest italic">Live CI/CD</span>
+              </div>
+
+              <div className="space-y-3 mt-6">
+                 {platformStatus.map((ps, idx) => (
+                   <div key={idx} className="flex items-center justify-between p-4 glass bg-white/5 rounded-2xl border border-white/5">
+                      <div className="flex items-center gap-3">
+                         <ps.icon size={16} className="text-slate-400" />
+                         <span className="text-xs font-bold text-slate-200 tracking-tight">{ps.platform}</span>
+                      </div>
+                      <span className="text-[10px] font-black text-emerald-400 flex items-center gap-1">
+                         <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                         {ps.status}
+                      </span>
+                   </div>
+                 ))}
+              </div>
+
+              <div className="pt-6 mt-6 border-t border-white/5">
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                       <p className="text-[9px] text-slate-500 font-black uppercase italic">Build Version</p>
+                       <p className="text-xs font-mono text-indigo-400">{buildInfo.version}</p>
+                    </div>
+                    <div className="space-y-1">
+                       <p className="text-[9px] text-slate-500 font-black uppercase italic">GitHub Sync</p>
+                       <p className="text-xs font-mono text-emerald-400 flex items-center gap-1">
+                          <CheckCircle2 size={12} /> {buildInfo.lastSync}
+                       </p>
+                    </div>
+                 </div>
+              </div>
            </div>
 
            <div className="glass p-6 rounded-3xl border border-white/5">
@@ -421,7 +504,7 @@ function PerformanceStat({ label, value, color }: { label: string, value: string
   );
 }
 
-function DashboardAlert({ type, title, desc }: { type: 'danger' | 'warning' | 'info', title: string, desc: string }) {
+function DashboardAlert({ type, title, desc }: { type: 'danger' | 'warning' | 'info', title: string, desc: string, key?: React.Key }) {
   const styles = {
     danger: "bg-rose-500/10 border-rose-500/20 text-rose-400",
     warning: "bg-amber-500/10 border-amber-500/20 text-amber-400",

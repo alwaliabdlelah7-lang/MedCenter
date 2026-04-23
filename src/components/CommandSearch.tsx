@@ -11,64 +11,82 @@ import {
   Command,
   FileText,
   Activity as ActivityIcon,
-  History as HistoryIcon
+  History as HistoryIcon,
+  CreditCard,
+  ClipboardList
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { Patient, Doctor } from '../types';
+import { Patient, Doctor, Appointment, Receipt, LabTest, MasterMedicine } from '../types';
+import { dataStore } from '../services/dataService';
 
 interface SearchResult {
   id: string;
   title: string;
   description: string;
-  type: 'patient' | 'doctor' | 'page' | 'action';
+  type: 'patient' | 'doctor' | 'page' | 'action' | 'appointment' | 'receipt' | 'lab' | 'medicine';
   path: string;
-  iconName: string;
+  icon: any;
 }
-
-const iconMap: Record<string, any> = {
-  'users': Users,
-  'stethoscope': Stethoscope,
-  'calendar': Calendar,
-  'pill': Pill,
-  'flask': FlaskConical,
-  'activity': ActivityIcon,
-  'history': HistoryIcon
-};
 
 export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Data states
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [labTests, setLabTests] = useState<LabTest[]>([]);
+  const [medicines, setMedicines] = useState<MasterMedicine[]>([]);
+
   const [recentSearches, setRecentSearches] = useState<SearchResult[]>(() => {
     const saved = localStorage.getItem('hospital_recent_searches');
     return saved ? JSON.parse(saved) : [];
   });
   const navigate = useNavigate();
 
-  // Helper to render icon safely
-  const renderIcon = (name: string, size: number) => {
-    const Icon = iconMap[name] || Search;
-    return <Icon size={size} />;
-  };
-
-  // Mock data for searching - stabilize values to prevent infinite re-renders
-  const patients = useMemo<Patient[]>(() => 
-    isOpen ? JSON.parse(localStorage.getItem('hospital_patients') || '[]') : [], 
-  [isOpen]);
-
-  const doctors = useMemo<Doctor[]>(() => 
-    isOpen ? JSON.parse(localStorage.getItem('hospital_doctors') || '[]') : [], 
-  [isOpen]);
+  // Load all data when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const loadAllData = async () => {
+        setIsLoading(true);
+        try {
+          const [pts, dcs, apts, rcts, labs, meds] = await Promise.all([
+            dataStore.getAll<Patient>('patients'),
+            dataStore.getAll<Doctor>('doctors'),
+            dataStore.getAll<Appointment>('appointments'),
+            dataStore.getAll<Receipt>('receipts'),
+            dataStore.getAll<LabTest>('lab_tests'),
+            dataStore.getAll<MasterMedicine>('master_medicines')
+          ]);
+          setPatients(pts);
+          setDoctors(dcs);
+          setAppointments(apts);
+          setReceipts(rcts);
+          setLabTests(labs);
+          setMedicines(meds);
+        } catch (err) {
+          console.error("Failed to load search data:", err);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      loadAllData();
+    }
+  }, [isOpen]);
 
   const searchPages = useMemo(() => [
-    { title: 'لوحة التحكم', path: '/', iconName: 'activity' },
-    { title: 'المواعيد والحجوزات', path: '/appointments', iconName: 'calendar' },
-    { title: 'إدارة المرضى', path: '/patients', iconName: 'users' },
-    { title: 'قائمة الانتظار', path: '/queue', iconName: 'history' },
-    { title: 'الصيدلية', path: '/pharmacy', iconName: 'pill' },
-    { title: 'المختبرات', path: '/laboratory', iconName: 'flask' },
+    { title: 'لوحة التحكم', path: '/', icon: ActivityIcon },
+    { title: 'المواعيد والحجوزات', path: '/appointments', icon: Calendar },
+    { title: 'إدارة المرضى', path: '/patients', icon: Users },
+    { title: 'قائمة الانتظار', path: '/queue', icon: HistoryIcon },
+    { title: 'الصيدلية', path: '/pharmacy', icon: Pill },
+    { title: 'المختبرات', path: '/laboratory', icon: FlaskConical },
   ], []);
 
   const performSearch = useCallback((q: string) => {
@@ -77,43 +95,109 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
       return;
     }
 
-    const patientResults: SearchResult[] = patients
-      .filter(p => p.name.includes(q) || p.phone.includes(q))
+    const lowQuery = q.toLowerCase();
+
+    const ptResults: SearchResult[] = patients
+      .filter(p => p.name.toLowerCase().includes(lowQuery) || p.phone.includes(q))
       .map(p => ({
         id: p.id,
         title: p.name,
-        description: `رقم الهاتف: ${p.phone} • العمر: ${p.age}`,
+        description: `مريض • هاتف: ${p.phone} • العمر: ${p.age}`,
         type: 'patient',
         path: `/patients`,
-        iconName: 'users'
+        icon: Users
       }));
 
-    const doctorResults: SearchResult[] = doctors
-      .filter(d => d.name.includes(q) || d.specialization.includes(q))
+    const dctResults: SearchResult[] = doctors
+      .filter(d => d.name.toLowerCase().includes(lowQuery) || d.specialization.toLowerCase().includes(lowQuery))
       .map(d => ({
         id: d.id,
         title: d.name,
-        description: d.specialization,
+        description: `طبيب • ${d.specialization}`,
         type: 'doctor',
         path: `/directories/doctors`,
-        iconName: 'stethoscope'
+        icon: Stethoscope
       }));
 
-    const pageResults: SearchResult[] = searchPages
-      .filter(p => p.title.includes(q))
+    const aptResults: SearchResult[] = appointments
+      .filter(a => a.patientName.toLowerCase().includes(lowQuery) || a.id.toLowerCase().includes(lowQuery))
+      .map(a => ({
+        id: a.id,
+        title: `موعد: ${a.patientName}`,
+        description: `موعد • التاريخ: ${a.date} • الوقت: ${a.time}`,
+        type: 'appointment',
+        path: `/appointments`,
+        icon: Calendar
+      }));
+
+    const rctResults: SearchResult[] = receipts
+      .filter(r => r.patientName.toLowerCase().includes(lowQuery) || r.id.toLowerCase().includes(lowQuery))
+      .map(r => ({
+        id: r.id,
+        title: `سند قبض: ${r.patientName}`,
+        description: `سند • المبلغ: ${r.amount} • رقم: ${r.id}`,
+        type: 'receipt',
+        path: `/billing`,
+        icon: CreditCard
+      }));
+
+    const labResultsList: SearchResult[] = labTests
+      .filter(l => l.patientName.toLowerCase().includes(lowQuery) || l.testType.toLowerCase().includes(lowQuery))
+      .map(l => ({
+        id: l.id,
+        title: `فحص: ${l.patientName}`,
+        description: `مختبر • نوع الفحص: ${l.testType}`,
+        type: 'lab',
+        path: `/laboratory`,
+        icon: FlaskConical
+      }));
+
+    const medResults: SearchResult[] = medicines
+      .filter(m => m.tradeName.toLowerCase().includes(lowQuery) || m.scientificName.toLowerCase().includes(lowQuery))
+      .map(m => ({
+        id: m.id,
+        title: m.tradeName,
+        description: `دواء • الاسم العلمي: ${m.scientificName} • السعر: ${m.price}`,
+        type: 'medicine',
+        path: `/pharmacy`,
+        icon: Pill
+      }));
+
+    const pgResults: SearchResult[] = searchPages
+      .filter(p => p.title.toLowerCase().includes(lowQuery))
       .map(p => ({
         id: p.path,
         title: p.title,
         description: 'انتقال سريع إلى الصفحة',
         type: 'page',
         path: p.path,
-        iconName: p.iconName
+        icon: p.icon
       }));
 
-    const combinedResults = [...pageResults, ...patientResults, ...doctorResults].slice(0, 8);
-    setResults(combinedResults);
+    const combinedResults = [
+      ...pgResults, 
+      ...ptResults, 
+      ...dctResults, 
+      ...aptResults, 
+      ...rctResults, 
+      ...labResultsList,
+      ...medResults
+    ];
+
+    if (ptResults.length === 0 && lowQuery.length > 2) {
+      combinedResults.unshift({
+        id: 'action-add-patient',
+        title: `إضافة مريض جديد: ${q}`,
+        description: 'إنشاء سجل جديد وحجز موعد تلقائي',
+        type: 'action',
+        path: `/patients?add=true&name=${encodeURIComponent(q)}`,
+        icon: Users
+      } as any);
+    }
+
+    setResults(combinedResults.slice(0, 12));
     setSelectedIndex(0);
-  }, [patients, doctors, searchPages]);
+  }, [patients, doctors, appointments, receipts, labTests, medicines, searchPages]);
 
   useEffect(() => {
     if (isOpen) {
@@ -149,10 +233,37 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, results, recentSearches, selectedIndex, query, onClose]);
 
+  const getIcon = (result: SearchResult) => {
+    // If icon is a function/component (valid in memory)
+    if (result.icon && typeof result.icon === 'function') {
+      return result.icon;
+    }
+    
+    // If it's an object but not empty (some components are objects)
+    if (result.icon && typeof result.icon === 'object' && Object.keys(result.icon).length > 0) {
+      return result.icon;
+    }
+    
+    // Fallback to type mapping (for serialized results from localStorage)
+    switch (result.type) {
+      case 'patient': return Users;
+      case 'doctor': return Stethoscope;
+      case 'appointment': return Calendar;
+      case 'receipt': return CreditCard;
+      case 'lab': return FlaskConical;
+      case 'medicine': return Pill;
+      case 'page': return Command;
+      default: return ActivityIcon;
+    }
+  };
+
   const handleSelect = (result: SearchResult) => {
     // Add to recent searches
+    // We only store data that can be serialized
+    const serializableResult = { ...result };
+    
     const updatedRecent = [
-      result,
+      serializableResult,
       ...recentSearches.filter(r => r.id !== result.id)
     ].slice(0, 5);
     
@@ -183,11 +294,15 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
             className="relative w-full max-w-2xl glass bg-[#0f172a]/95 rounded-[32px] overflow-hidden border border-white/10 shadow-2xl flex flex-col"
           >
             <div className="p-6 border-b border-white/5 flex items-center gap-4">
-              <Search className="text-sky-400 shrink-0" size={24} />
+              {isLoading ? (
+                <div className="w-6 h-6 border-2 border-sky-500 border-t-transparent rounded-full animate-spin shrink-0" />
+              ) : (
+                <Search className="text-sky-400 shrink-0" size={24} />
+              )}
               <input
                 autoFocus
                 type="text"
-                placeholder="ابحث عن مريض، طبيب، أو صفحة داخل النظام..."
+                placeholder="ابحث عن مريض، طبيب، موعد، أو دواء..."
                 className="w-full bg-transparent border-none outline-none text-xl text-white placeholder:text-slate-600 font-medium text-right"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -213,8 +328,10 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
                             onClick={() => handleSelect(result)}
                             onMouseEnter={() => setSelectedIndex(idx)}
                             className={cn(
-                              "w-full flex items-center justify-between p-3 rounded-2xl transition-all text-right group",
-                              selectedIndex === idx ? "bg-sky-600/20 border border-sky-500/30 shadow-lg" : "hover:bg-white/5 border border-transparent"
+                              "w-full flex items-center justify-between p-3 rounded-2xl transition-all text-right group border-2",
+                              selectedIndex === idx 
+                                ? "bg-sky-600/20 border-sky-500/50 shadow-[0_0_20px_rgba(14,165,233,0.2)] scale-[1.01]" 
+                                : "hover:bg-white/5 border-transparent opacity-70 hover:opacity-100"
                             )}
                           >
                              <div className="flex items-center gap-1 opacity-40">
@@ -226,7 +343,7 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
                                  <p className="text-[9px] text-slate-500">{result.description}</p>
                                </div>
                                <div className="w-8 h-8 rounded-lg glass bg-white/5 flex items-center justify-center text-sky-400">
-                                 {renderIcon(result.iconName, 16)}
+                                 {React.createElement(getIcon(result), { size: 16 })}
                                </div>
                              </div>
                           </button>
@@ -255,8 +372,10 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
                       onClick={() => handleSelect(result)}
                       onMouseEnter={() => setSelectedIndex(idx)}
                       className={cn(
-                        "w-full flex items-center justify-between p-4 rounded-2xl transition-all text-right group mb-1",
-                        selectedIndex === idx ? "bg-sky-600 shadow-xl shadow-sky-600/20" : "hover:bg-white/5"
+                        "w-full flex items-center justify-between p-4 rounded-2xl transition-all text-right group mb-2 border-2",
+                        selectedIndex === idx 
+                          ? "bg-sky-600 shadow-2xl shadow-sky-600/40 border-white/30 scale-[1.02] -translate-x-1" 
+                          : "hover:bg-white/5 border-transparent opacity-60 hover:opacity-100"
                       )}
                     >
                       <ChevronRight size={18} className={cn(
@@ -279,7 +398,7 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
                           "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
                           selectedIndex === idx ? "bg-white/20 text-white" : "glass bg-white/5 text-sky-400"
                         )}>
-                          {renderIcon(result.iconName, 20)}
+                          {React.createElement(getIcon(result), { size: 20 })}
                         </div>
                       </div>
                     </button>

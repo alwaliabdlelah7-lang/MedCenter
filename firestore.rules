@@ -3,26 +3,32 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Default deny catch-all
+    // 0. Default deny
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Common Helpers
+    // --- Helpers ---
     function isSignedIn() {
       return request.auth != null;
     }
     
     function isValidId(id) {
-      return id is string && id.size() <= 64 && id.matches('^[a-zA-Z0-9_\\-]+$');
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // Role-based access could be added here later (e.g. isAdmin())
+    // Simplified Admin Check (In real app, lookup from users collection)
+    // For now, we allow signed in users to read/write for the demo purposes 
+    // but with basic constraints.
     
-    // Global Collections (Accessible by all staff)
-    match /departments/{deptId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn(); // In production, restrict to Admin
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // --- Rules for Collections ---
+
+    // 1. Staff & System Data
+    match /users/{userId} {
+      allow read, write: if isSignedIn();
     }
     
     match /doctors/{docId} {
@@ -31,38 +37,85 @@ service cloud.firestore {
     }
     
     match /nurses/{nurseId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    match /departments/{id} {
+      allow read, write: if isSignedIn();
+    }
+    
+    match /clinics/{id} {
+      allow read, write: if isSignedIn();
+    }
+
+    // 2. Patient Data
+    match /patients/{patientId} {
       allow read: if isSignedIn();
       allow write: if isSignedIn();
     }
-    
-    match /services/{serviceId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+
+    // 3. Clinical Data
+    match /appointments/{id} {
+      allow read, write: if isSignedIn();
     }
     
-    match /operations/{opId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+    match /queues/{id} {
+      allow read, write: if isSignedIn();
     }
     
-    match /clinics/{clinicId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+    match /clinical_visits/{id} {
+      allow read, write: if isSignedIn();
     }
     
-    match /companions/{compId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+    match /lab_tests/{id} {
+      allow read, write: if isSignedIn();
     }
     
-    match /inpatients/{inpatientId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+    match /radiology_scans/{id} {
+      allow read, write: if isSignedIn();
     }
     
-    match /receipts/{receiptId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+    match /pharmacy_prescriptions/{id} {
+      allow read, write: if isSignedIn();
+    }
+
+    // 4. Financial Data
+    match /receipts/{id} {
+      allow read, write: if isSignedIn();
+    }
+
+    // 5. Directories (Master Data)
+    match /services/{id} {
+      allow read, write: if isSignedIn();
+    }
+    
+    match /operations/{id} {
+      allow read, write: if isSignedIn();
+    }
+    
+    match /master_lab_tests/{id} {
+      allow read, write: if isSignedIn();
+    }
+    
+    match /master_medicines/{id} {
+      allow read, write: if isSignedIn();
+    }
+    
+    match /companions/{id} {
+      allow read, write: if isSignedIn();
+    }
+    
+    match /inpatients/{id} {
+      allow read, write: if isSignedIn();
+    }
+    
+    // Chats
+    match /chats/{chatId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    match /messages/{msgId} {
+      allow read, write: if isSignedIn();
     }
   }
 }

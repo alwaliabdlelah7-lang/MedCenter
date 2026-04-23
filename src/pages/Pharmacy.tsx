@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Pill, Package, DollarSign, Trash2, AlertTriangle, ListFilter } from 'lucide-react';
+import { Plus, Search, Pill, Package, DollarSign, Trash2, AlertTriangle, ListFilter, ClipboardCheck, History, Clock, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { PharmacyItem, MasterMedicine } from '../types';
+import { PharmacyItem, MasterMedicine, Prescription } from '../types';
 import { YEMEN_MEDICINES } from '../data/seedData';
 import { cn } from '../lib/utils';
 import { dataStore } from '../services/dataService';
@@ -9,17 +9,21 @@ import { dataStore } from '../services/dataService';
 export default function Pharmacy() {
   const [masterMedicines, setMasterMedicines] = useState<MasterMedicine[]>([]);
   const [inventory, setInventory] = useState<PharmacyItem[]>([]);
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'inventory' | 'prescriptions'>('inventory');
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [invData, masterData] = await Promise.all([
+        const [invData, masterData, prescriptionsData] = await Promise.all([
           dataStore.getAll<PharmacyItem>('pharmacy_inventory'),
-          dataStore.getAll<MasterMedicine>('master_medicines')
+          dataStore.getAll<MasterMedicine>('master_medicines'),
+          dataStore.getAll<Prescription>('pharmacy_prescriptions')
         ]);
         setInventory(invData);
         setMasterMedicines(masterData);
+        setPrescriptions(prescriptionsData);
         
         // Seed logic if both empty
         if (invData.length === 0 && masterData.length === 0) {
@@ -156,65 +160,161 @@ export default function Pharmacy() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-         <StatCard label="إجمالي الأصناف" value={inventory.length} color="sky" icon={ListFilter} />
-         <StatCard label="أصناف قاربت على النفاد" value={inventory.filter(i => i.stock < 10).length} color="amber" icon={AlertTriangle} />
-         <StatCard label="إجمالي قيمة المخزون" value={`${inventory.reduce((acc, i) => acc + (i.price * i.stock), 0).toLocaleString()} ر.ي`} color="emerald" icon={DollarSign} />
-         <StatCard label="أصناف منتهية" value={inventory.filter(i => new Date(i.expiryDate) < new Date()).length} color="rose" icon={Pill} />
+      {/* Modern Tabs */}
+      <div className="flex items-center gap-2 mb-8 bg-white/5 p-1.5 rounded-2xl w-fit">
+        <button 
+          onClick={() => setActiveTab('inventory')}
+          className={cn(
+            "px-6 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2",
+            activeTab === 'inventory' ? "bg-indigo-600 text-white shadow-xl shadow-indigo-600/20" : "text-slate-500 hover:text-slate-300"
+          )}
+        >
+          <Package size={14} /> المستودع الدوائي
+        </button>
+        <button 
+          onClick={() => setActiveTab('prescriptions')}
+          className={cn(
+            "px-6 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2",
+            activeTab === 'prescriptions' ? "bg-indigo-600 text-white shadow-xl shadow-indigo-600/20" : "text-slate-500 hover:text-slate-300"
+          )}
+        >
+          <ClipboardCheck size={14} /> الوصفات الطبية (العيادات)
+        </button>
       </div>
 
-      <div className="glass rounded-3xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-right">
-            <thead>
-              <tr className="bg-white/5 text-slate-400 text-xs uppercase tracking-widest italic">
-                <th className="px-6 py-4 font-bold border-b border-white/5">الصنف / الاسم التجاري</th>
-                <th className="px-6 py-4 font-bold border-b border-white/5">المجموعة</th>
-                <th className="px-6 py-4 font-bold border-b border-white/5">السعر</th>
-                <th className="px-6 py-4 font-bold border-b border-white/5">المخزون المتوفر</th>
-                <th className="px-6 py-4 font-bold border-b border-white/5">تاريخ الانتهاء</th>
-                <th className="px-6 py-4 font-bold border-b border-white/5">العمليات</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {filtered.map((item) => (
-                <tr key={item.id} className="hover:bg-white/5 transition-colors group">
-                  <td className="px-6 py-5">
-                    <div className="flex items-center gap-3">
-                       <div className="p-2 glass bg-white/5 text-sky-400 rounded-lg group-hover:bg-sky-500/10 transition-colors">
-                         <Pill size={16} />
-                       </div>
-                       <div className="font-bold text-white tracking-wide">{item.name}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5 text-slate-400 text-xs">{item.category}</td>
-                  <td className="px-6 py-5 text-emerald-400 font-mono font-bold">{item.price} ر.ي</td>
-                  <td className="px-6 py-5">
-                     <div className="flex items-center gap-2">
-                       <span className={`w-8 text-center font-bold font-mono ${item.stock < 10 ? 'text-amber-500' : 'text-sky-400'}`}>{item.stock}</span>
-                       <div className="flex-1 max-w-[100px] h-1.5 bg-white/5 rounded-full overflow-hidden">
-                          <div className={`h-full ${item.stock < 10 ? 'bg-amber-500' : 'bg-sky-500'}`} style={{ width: `${Math.min(item.stock * 2, 100)}%` }} />
-                       </div>
+      {activeTab === 'inventory' ? (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+             <StatCard label="إجمالي الأصناف" value={inventory.length} color="sky" icon={ListFilter} />
+             <StatCard label="أصناف قاربت على النفاد" value={inventory.filter(i => i.stock < 10).length} color="amber" icon={AlertTriangle} />
+             <StatCard label="إجمالي قيمة المخزون" value={`${inventory.reduce((acc, i) => acc + (i.price * i.stock), 0).toLocaleString()} ر.ي`} color="emerald" icon={DollarSign} />
+             <StatCard label="أصناف منتهية" value={inventory.filter(i => new Date(i.expiryDate) < new Date()).length} color="rose" icon={Pill} />
+          </div>
+
+          <div className="glass rounded-3xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-right">
+                <thead>
+                  <tr className="bg-white/5 text-slate-400 text-xs uppercase tracking-widest italic">
+                    <th className="px-6 py-4 font-bold border-b border-white/5">الصنف / الاسم التجاري</th>
+                    <th className="px-6 py-4 font-bold border-b border-white/5">المجموعة</th>
+                    <th className="px-6 py-4 font-bold border-b border-white/5">السعر</th>
+                    <th className="px-6 py-4 font-bold border-b border-white/5">المخزون المتوفر</th>
+                    <th className="px-6 py-4 font-bold border-b border-white/5">تاريخ الانتهاء</th>
+                    <th className="px-6 py-4 font-bold border-b border-white/5">العمليات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {filtered.map((item) => (
+                    <tr key={item.id} className="hover:bg-white/5 transition-colors group">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-3">
+                           <div className="p-2 glass bg-white/5 text-sky-400 rounded-lg group-hover:bg-sky-500/10 transition-colors">
+                             <Pill size={16} />
+                           </div>
+                           <div className="font-bold text-white tracking-wide">{item.name}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 text-slate-400 text-xs">{item.category}</td>
+                      <td className="px-6 py-5 text-emerald-400 font-mono font-bold">{item.price} ر.ي</td>
+                      <td className="px-6 py-5">
+                         <div className="flex items-center gap-2">
+                           <span className={`w-8 text-center font-bold font-mono ${item.stock < 10 ? 'text-amber-500' : 'text-sky-400'}`}>{item.stock}</span>
+                           <div className="flex-1 max-w-[100px] h-1.5 bg-white/5 rounded-full overflow-hidden">
+                              <div className={`h-full ${item.stock < 10 ? 'bg-amber-500' : 'bg-sky-500'}`} style={{ width: `${Math.min(item.stock * 2, 100)}%` }} />
+                           </div>
+                         </div>
+                      </td>
+                      <td className="px-6 py-5 text-xs text-slate-500 font-mono italic">
+                        {item.expiryDate}
+                        {new Date(item.expiryDate) < new Date() && <span className="mr-2 text-[10px] bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded font-bold uppercase">منتهي</span>}
+                      </td>
+                      <td className="px-6 py-5">
+                        <button 
+                          onClick={() => setInventory(inventory.filter(i => i.id !== item.id))}
+                          className="p-2 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+           {prescriptions.map((p) => (
+             <motion.div 
+               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+               key={p.id} 
+               className="glass p-8 rounded-[40px] border border-white/10 relative overflow-hidden group"
+             >
+                <div className="absolute top-0 left-0 w-2 h-full bg-emerald-500/30" />
+                <div className="flex items-center justify-between mb-6">
+                   <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                         <User size={24} />
+                      </div>
+                      <div>
+                         <h4 className="text-lg font-black text-white">{p.patientName}</h4>
+                         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">ID: {p.patientId} • #{p.id}</p>
+                      </div>
+                   </div>
+                   <div className="text-right">
+                      <div className="flex items-center gap-2 text-slate-500 text-xs mb-1">
+                         <Clock size={14} /> {p.date}
+                      </div>
+                      <span className={cn(
+                        "text-[9px] font-black px-3 py-1 rounded-full border uppercase tracking-widest",
+                        p.status === 'completed' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                      )}>
+                        {p.status === 'completed' ? 'DISPENSED' : 'PENDING DISPENSE'}
+                      </span>
+                   </div>
+                </div>
+
+                <div className="space-y-3 mb-8">
+                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic mb-2">Prescribed Medications (الأدوية الموصوفة):</p>
+                   {p.items.map((item, idx) => (
+                     <div key={idx} className="flex items-center justify-between p-4 glass bg-white/5 rounded-2xl border border-white/5">
+                        <div className="flex items-center gap-3">
+                           <Pill size={16} className="text-sky-400" />
+                           <div>
+                              <p className="text-sm font-bold text-white">{item.tradeName}</p>
+                              <p className="text-[10px] text-slate-500 italic">{item.strength || ''} - {item.dosage || ''}</p>
+                           </div>
+                        </div>
+                        <div className="text-right">
+                           <p className="text-xs font-black text-emerald-400">{item.frequency || ''}</p>
+                           <p className="text-[10px] text-slate-500 font-mono italic">Qty: {item.quantity || 0}</p>
+                        </div>
                      </div>
-                  </td>
-                  <td className="px-6 py-5 text-xs text-slate-500 font-mono italic">
-                    {item.expiryDate}
-                    {new Date(item.expiryDate) < new Date() && <span className="mr-2 text-[10px] bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded font-bold uppercase">منتهي</span>}
-                  </td>
-                  <td className="px-6 py-5">
-                    <button 
-                      onClick={() => setInventory(inventory.filter(i => i.id !== item.id))}
-                      className="p-2 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                   ))}
+                </div>
+
+                <div className="flex gap-4">
+                   {p.status === 'pending' && (
+                     <button className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-black shadow-xl shadow-emerald-600/20 hover:bg-emerald-500 transition-all text-xs uppercase tracking-widest">
+                       صرف الوصفة الطبية الآن
+                     </button>
+                   )}
+                   <button className="p-4 glass bg-white/5 text-slate-500 rounded-2xl hover:text-white transition-colors">
+                      <History size={18} />
+                   </button>
+                </div>
+             </motion.div>
+           ))}
+           {prescriptions.length === 0 && (
+             <div className="col-span-full py-32 flex flex-col items-center justify-center glass rounded-[50px] border-2 border-dashed border-white/5 opacity-50">
+                <ClipboardCheck size={64} className="text-slate-700 mb-4" />
+                <p className="text-lg font-bold text-slate-600 tracking-widest uppercase">لا توجد وصفات طبية معلقة حالياً</p>
+             </div>
+           )}
         </div>
-      </div>
+      )}
 
       <AnimatePresence>
         {showSalesModal && (

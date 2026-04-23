@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Shield, Bell, Cloud, Database, Monitor, Printer, Smartphone, Save, Plus, Trash2, Tag, Calendar, List, CheckSquare, Type, Hash, X } from 'lucide-react';
+import { Settings, Shield, Bell, Cloud, Database, Monitor, Printer, Smartphone, Save, Plus, Trash2, Tag, Calendar, List, CheckSquare, Type, Hash, X, RefreshCw, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DynamicFieldDefinition } from '../types';
+import { dataStore } from '../services/dataService';
 
 export default function SettingsPage() {
   const [hospitalName, setHospitalName] = useState('إبداع الطبي');
@@ -11,10 +12,12 @@ export default function SettingsPage() {
   const [hospitalAddress, setHospitalAddress] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [serverIp, setServerIp] = useState('192.168.1.105');
-  const [isRealtimeEnabled, setIsRealtimeEnabled] = useState(true);
+  const [isRealtimeEnabled, setIsRealtimeEnabled] = useState(dataStore.isCloudEnabled());
   const [printAuto, setPrintAuto] = useState(false);
   const [activeTab, setActiveTab] = useState<'general' | 'dynamic_fields' | 'cloud'>('general');
   const [isSeeding, setIsSeeding] = useState(false);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationStatus, setMigrationStatus] = useState<string | null>(null);
 
   const seedDatabase = async () => {
     if (!confirm('هل أنت متأكد من زرع البيانات الأولية في قاعدة البيانات السحابية؟ سيتم إضافة البيانات فقط إذا كانت المجموعات فارغة.')) return;
@@ -32,6 +35,42 @@ export default function SettingsPage() {
     } finally {
       setIsSeeding(false);
     }
+  };
+
+  const handleMigrate = async () => {
+    const collections = [
+      'departments', 'clinics', 'doctors', 'patients', 'users', 'services', 
+      'master_lab_tests', 'master_medicines', 'lab_tests', 'radiology_scans', 
+      'receipts', 'appointments', 'queues', 'clinical_visits', 
+      'pharmacy_prescriptions', 'nurses', 'companions', 'operations'
+    ];
+    
+    if (!confirm('هل تريد ترحيل كافة البيانات المحلية الحالية إلى قاعدة البيانات السحابية؟ قد يستغرق هذا وقتاً طويلاً.')) return;
+    
+    setIsMigrating(true);
+    setMigrationStatus('جاري التحليل والترحيل...');
+    
+    const result = await dataStore.migrateLocalToCloud(collections);
+    
+    if (result.success) {
+      setMigrationStatus('تم الترحيل بنجاح!');
+      const summary = Object.entries(result.migrated)
+        .map(([col, count]) => `${col}: ${count}`)
+        .join('\n');
+      alert('تم ترحيل البيانات بنجاح:\n' + summary);
+    } else {
+      setMigrationStatus('فشل الترحيل');
+      alert('حدث خطأ أثناء ترحيل البيانات. يرجى التحقق من اتصال السيرفر.');
+    }
+    setIsMigrating(false);
+  };
+
+  const toggleStorageSource = (source: 'local' | 'cloud') => {
+    if (source === 'cloud' && !isRealtimeEnabled) {
+      if (!confirm('سيتم تفعيل الربط السحابي واستخدام قاعدة بيانات Firebase. هل أنت متأكد؟')) return;
+    }
+    dataStore.setStorageSource(source);
+    setIsRealtimeEnabled(source === 'cloud');
   };
 
   const [dynamicFields, setDynamicFields] = useState<DynamicFieldDefinition[]>(() => {
@@ -142,39 +181,131 @@ export default function SettingsPage() {
           <AnimatePresence mode="wait">
             {activeTab === 'cloud' && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-                <div className="glass p-8 rounded-[40px] space-y-6 border border-white/5">
+                <div className="glass p-8 rounded-[40px] space-y-8 border border-white/5">
                   <div className="flex items-center gap-3 mb-4">
                     <Cloud className="text-sky-400" size={20} />
-                    <h3 className="text-white font-black italic uppercase tracking-widest text-sm">Cloud Database Seeding</h3>
+                    <h3 className="text-white font-black italic uppercase tracking-widest text-sm">Cloud Data Management</h3>
                   </div>
-                  
-                  <div className="bg-sky-500/10 border border-sky-500/20 p-6 rounded-3xl space-y-4">
-                    <h4 className="text-sky-400 font-bold flex items-center gap-2">
-                       <Database size={18} />
-                       زرع البيانات الأولية
-                    </h4>
-                    <p className="text-sm text-slate-300 leading-relaxed">
-                      هذه الإضافة تسمح لك بتهيئة قاعدة البيانات السحابية (Firebase) بمجموعة كاملة من البيانات الحقيقية والمهنية (الأطباء، الأصناف الدوائية، الفحوصات المخبرية، الأقسام، العيادات).
-                      <br /><b>ملاحظة:</b> لن يتم تكرار البيانات إذا كانت موجودة مسبقاً.
-                    </p>
+
+                  {/* Storage Source Toggle */}
+                  <div className="grid grid-cols-2 gap-4 p-2 glass bg-white/5 rounded-3xl">
                     <button 
-                      onClick={seedDatabase}
-                      disabled={isSeeding}
-                      className="w-full py-4 bg-sky-600 hover:bg-sky-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-sky-600/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      onClick={() => toggleStorageSource('local')}
+                      className={`flex flex-col items-center gap-2 py-6 rounded-2xl transition-all ${!isRealtimeEnabled ? 'bg-white/10 text-white shadow-xl' : 'text-slate-500'}`}
                     >
-                      {isSeeding ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>جاري الزرع...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Database size={20} />
-                          <span>زرع البيانات المهنية الآن</span>
-                        </>
-                      )}
+                      <Database size={24} />
+                      <span className="text-xs font-bold">قاعدة بيانات محلية (LocalStorage)</span>
+                    </button>
+                    <button 
+                      onClick={() => toggleStorageSource('cloud')}
+                      className={`flex flex-col items-center gap-2 py-6 rounded-2xl transition-all ${isRealtimeEnabled ? 'bg-sky-500/20 text-sky-400 shadow-xl border border-sky-500/20' : 'text-slate-500'}`}
+                    >
+                      <Cloud size={24} />
+                      <span className="text-xs font-bold">قاعدة بيانات سحابية (Firebase)</span>
                     </button>
                   </div>
+
+                  {isRealtimeEnabled && (
+                    <div className="space-y-6">
+                      <div className="bg-amber-500/10 border border-amber-500/20 p-6 rounded-3xl flex items-start gap-4">
+                        <AlertTriangle className="text-amber-500 shrink-0" size={24} />
+                        <div>
+                          <h4 className="text-amber-400 font-bold text-sm mb-1">ترحيل البيانات المحلية</h4>
+                          <p className="text-xs text-slate-400 leading-relaxed italic">
+                            يمكنك دفع كافة البيانات المخزنة حالياً في المتصفح إلى السحابة. سيتم رفع جميع السجلات (المرضى، الفحوصات، السندات) لضمان عدم ضياع العمل السابق.
+                          </p>
+                          <button 
+                            onClick={handleMigrate}
+                            disabled={isMigrating}
+                            className="mt-6 px-6 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 disabled:opacity-50"
+                          >
+                            {isMigrating ? <RefreshCw className="animate-spin" size={14} /> : <RefreshCw size={14} />}
+                            {isMigrating ? migrationStatus : 'ترحيل البيانات إلى السحابة الآن'}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="bg-sky-500/10 border border-sky-500/20 p-6 rounded-3xl space-y-4">
+                        <h4 className="text-sky-400 font-bold flex items-center gap-2">
+                           <Database size={18} />
+                           النسخ الاحتياطي والاستعادة
+                        </h4>
+                        <p className="text-sm text-slate-300 leading-relaxed">
+                           احتفظ بنسخة احتياطية من كافة البيانات المحلية الحالية في ملف JSON أو استعادتها لاحقاً.
+                        </p>
+                        <div className="grid grid-cols-2 gap-4">
+                           <button 
+                             onClick={async () => {
+                               const data = await dataStore.exportAllLocalData();
+                               const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                               const url = URL.createObjectURL(blob);
+                               const a = document.createElement('a');
+                               a.href = url;
+                               a.download = `medcenter_backup_${new Date().toISOString().split('T')[0]}.json`;
+                               a.click();
+                             }}
+                             className="py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-all border border-white/5"
+                           >
+                              تصدير نسخة احتياطية
+                           </button>
+                           <button 
+                             onClick={() => {
+                               const input = document.createElement('input');
+                               input.type = 'file';
+                               input.accept = 'application/json';
+                               input.onchange = async (e: any) => {
+                                 const file = e.target.files?.[0];
+                                 if (!file) return;
+                                 const reader = new FileReader();
+                                 reader.onload = async (event: any) => {
+                                   try {
+                                     const data = JSON.parse(event.target.result);
+                                     await dataStore.importAllLocalData(data);
+                                     alert('تم استعادة البيانات بنجاح! سيتم إعادة تحميل الصفحة.');
+                                     window.location.reload();
+                                   } catch (err) {
+                                     alert('فشل في استعادة البيانات: ملف غير صالح.');
+                                   }
+                                 };
+                                 reader.readAsText(file);
+                               };
+                               input.click();
+                             }}
+                             className="py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all"
+                           >
+                              استيراد نسخة احتياطية
+                           </button>
+                        </div>
+                    </div>
+
+                    <div className="bg-sky-500/10 border border-sky-500/20 p-6 rounded-3xl space-y-4">
+                        <h4 className="text-sky-400 font-bold flex items-center gap-2">
+                           <Database size={18} />
+                           زرع البيانات الأولية المهنية
+                        </h4>
+                        <p className="text-sm text-slate-300 leading-relaxed">
+                          تهيئة قاعدة البيانات السحابية بمجموعة كاملة من البيانات المرجعية (أدوية، خدمات، فحوصات، أطباء).
+                        </p>
+                        <button 
+                          onClick={seedDatabase}
+                          disabled={isSeeding}
+                          className="w-full py-4 bg-sky-600 hover:bg-sky-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-sky-600/20 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                          {isSeeding ? (
+                            <>
+                              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              <span>جاري المزامنة...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Database size={20} />
+                              <span>تزويد السحابة بالبيانات المرجعية</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -442,7 +573,6 @@ export default function SettingsPage() {
                       <option value="operation" className="bg-slate-900">دليل العمليات</option>
                       <option value="lab_test" className="bg-slate-900">دليل المختبر</option>
                       <option value="medicine" className="bg-slate-900">دليل الصيدلية</option>
-                      <option value="user" className="bg-slate-900">بيانات المستخدمين / الموظفين</option>
                     </select>
                   </div>
                 </div>

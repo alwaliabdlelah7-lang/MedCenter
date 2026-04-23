@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, FlaskConical, Beaker, FileText, Trash2, CheckCircle, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LabTest, Doctor, MasterLabItem } from '../types';
+import { LabTest, Doctor, MasterLabItem, Patient } from '../types';
 import { YEMEN_LAB_TESTS } from '../data/seedData';
 import { dataStore } from '../services/dataService';
 
@@ -9,19 +9,22 @@ export default function Laboratory() {
   const [tests, setTests] = useState<LabTest[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [masterTests, setMasterTests] = useState<MasterLabItem[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [testsData, doctorsData, masterData] = await Promise.all([
+        const [testsData, doctorsData, masterData, patientsData] = await Promise.all([
           dataStore.getAll<LabTest>('lab_tests'),
           dataStore.getAll<Doctor>('doctors'),
-          dataStore.getAll<MasterLabItem>('master_lab_tests')
+          dataStore.getAll<MasterLabItem>('master_lab_tests'),
+          dataStore.getAll<Patient>('patients')
         ]);
         setTests(testsData);
         setDoctors(doctorsData);
         setMasterTests(masterData.length > 0 ? masterData : YEMEN_LAB_TESTS);
+        setPatients(patientsData);
       } catch (error) {
         console.error("Failed to load lab data", error);
       } finally {
@@ -37,6 +40,7 @@ export default function Laboratory() {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [newTest, setNewTest] = useState<Partial<LabTest>>({
+    patientId: '',
     patientName: '',
     testType: '',
     testId: '',
@@ -58,13 +62,15 @@ export default function Laboratory() {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTest.patientName || !newTest.testType) return;
+    if (!newTest.patientId || !newTest.testType) return;
     
+    const patient = patients.find(p => p.id === newTest.patientId);
     const master = masterTests.find((m: any) => m.name === newTest.testType);
     
     const test: LabTest = {
       id: `LAB-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
-      patientName: newTest.patientName!,
+      patientId: newTest.patientId!,
+      patientName: patient?.name || 'Unknown',
       testType: newTest.testType!,
       testId: master?.id,
       doctorId: newTest.doctorId || doctors[0]?.id || '',
@@ -233,8 +239,21 @@ export default function Laboratory() {
                <h3 className="text-xl font-bold mb-6 text-white text-right border-r-4 border-indigo-500 pr-4">طلب فحص مخبري جديد</h3>
                <form onSubmit={handleAdd} className="space-y-4 text-right">
                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 italic block">اسم المريض</label>
-                    <input required className="w-full px-4 py-3 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 direction-rtl" value={newTest.patientName} onChange={(e) => setNewTest({...newTest, patientName: e.target.value})} />
+                    <label className="text-xs font-bold text-slate-500 italic block">اختيار المريض من النظام</label>
+                    <select 
+                      required 
+                      className="w-full px-4 py-3 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 font-bold" 
+                      value={newTest.patientId} 
+                      onChange={(e) => {
+                        const p = patients.find(p => p.id === e.target.value);
+                        setNewTest({...newTest, patientId: e.target.value, patientName: p?.name || ''});
+                      }}
+                    >
+                      <option value="" className="bg-slate-900 text-slate-500 italic">-- اختر مريض --</option>
+                      {patients.map(p => (
+                        <option key={p.id} value={p.id} className="bg-slate-900">{p.name} - #{p.id}</option>
+                      ))}
+                    </select>
                  </div>
                  <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 italic block">نوع الفحص</label>

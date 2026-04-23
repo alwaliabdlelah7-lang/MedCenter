@@ -99,23 +99,58 @@ export default function Appointments() {
   };
 
   const updateStatus = async (id: string, status: Appointment['status']) => {
-    await dataStore.updateItem<Appointment>('appointments', id, { status });
-    setAppointments(appointments.map(a => {
-      if (a.id === id) {
-        const updated = { ...a, status };
-        // If completed, automatically check for free return
-        if (status === 'completed') {
-          const doctor = doctors.find(d => d.id === a.doctorId);
-          if (doctor && doctor.returnDays > 0) {
-            const returnDate = new Date();
-            returnDate.setDate(returnDate.getDate() + doctor.returnDays);
-            updated.returnDate = returnDate.toISOString().split('T')[0];
-          }
+    const appointment = appointments.find(a => a.id === id);
+    if (!appointment) return;
+
+    const updates: Partial<Appointment> = { status };
+    const doctor = doctors.find(d => d.id === appointment.doctorId);
+
+    // 1. Logic for COMPLETED status
+    if (status === 'completed') {
+      // Auto-calculate cost based on type and fee if not set or incorrect
+      if (doctor) {
+        if (!appointment.cost || appointment.cost === 0) {
+          updates.cost = appointment.type === 'consultation' ? doctor.consultationFee : (appointment.type === 'followup' ? doctor.followupFee : 0);
         }
-        return updated;
+
+        // Auto-suggest free return appointment if doctor has returnDays
+        // This marks current appointment with a return date for tracking
+        if (doctor.returnDays > 0) {
+          const returnDate = new Date();
+          returnDate.setDate(returnDate.getDate() + doctor.returnDays);
+          updates.returnDate = returnDate.toISOString().split('T')[0];
+        }
       }
-      return a;
-    }));
+    }
+
+    // 2. Logic for WAITING (Patient Arrived)
+    if (status === 'waiting' && doctor) {
+      if (!appointment.isPaid && appointment.type !== 'visit') {
+        const cost = appointment.cost || (appointment.type === 'consultation' ? doctor.consultationFee : doctor.followupFee);
+        const receipt = {
+          id: `REC-${Date.now().toString().slice(-6)}`,
+          patientId: appointment.patientId,
+          patientName: appointment.patientName,
+          patientAge: 30,
+          serviceId: appointment.type === 'consultation' ? 'service-consult' : 'service-followup',
+          doctorId: appointment.doctorId,
+          amount: cost,
+          paymentMethod: 'cash',
+          date: new Date().toLocaleDateString('ar-YE'),
+          status: 'paid'
+        };
+        await dataStore.addItem('receipts', receipt);
+        updates.isPaid = true;
+        updates.cost = cost;
+      }
+    }
+
+    await dataStore.updateItem<Appointment>('appointments', id, updates);
+    
+    // Real-time notification logic would go here (e.g., socket.emit('updateQueue', { id, status }))
+    // For this implementation, we rely on state updates which would be synchronized in a real setup via dataStore
+    
+    setAppointments(appointments.map(a => a.id === id ? { ...a, ...updates } : a));
   };
 
   const filtered = appointments.filter(a => 

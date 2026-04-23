@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Building2, Trash2, Edit2, Stethoscope, Tag } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Department, Clinic, DynamicFieldDefinition } from '../../types';
-import { INITIAL_DEPARTMENTS, INITIAL_CLINICS } from '../../data/seedData';
-import { dataStore } from '../../services/dataService';
+import { Department, Clinic, DynamicFieldDefinition } from '../types';
+import { INITIAL_DEPARTMENTS, INITIAL_CLINICS } from '../data/seedData';
+import { dataStore } from '../services/dataService';
 
 export default function ClinicsDirectory() {
   const [departments, setDepartments] = useState<Department[]>([]);

@@ -8,6 +8,7 @@ export interface Patient {
   bloodType?: string;
   address?: string;
   medicalHistory: string[];
+  clinicId?: string;
   customFields?: Record<string, any>;
   createdAt: string;
 }
@@ -18,7 +19,7 @@ export interface DynamicFieldDefinition {
   type: 'text' | 'number' | 'date' | 'select' | 'boolean';
   options?: string[];
   required: boolean;
-  entity: 'patient' | 'doctor' | 'nurse' | 'visit' | 'service' | 'operation' | 'lab_test' | 'medicine' | 'clinic' | 'companion' | 'department' | 'user';
+  entity: 'patient' | 'doctor' | 'nurse' | 'visit' | 'service' | 'operation' | 'lab_test' | 'medicine' | 'clinic' | 'companion' | 'department';
   isActive: boolean;
 }
 
@@ -158,6 +159,7 @@ export interface MasterLabItem {
 
 export interface LabTest {
   id: string;
+  patientId: string;
   patientName: string;
   testType: string;
   testId?: string; // Reference to MasterLabItem
@@ -170,6 +172,7 @@ export interface LabTest {
 
 export interface RadiologyScan {
   id: string;
+  patientId: string;
   patientName: string;
   scanType: string;
   doctorId: string;
@@ -177,6 +180,42 @@ export interface RadiologyScan {
   status: 'pending' | 'completed';
   imageUrl?: string;
   report?: string;
+}
+
+export interface Prescription {
+  id: string;
+  patientId: string;
+  patientName: string;
+  doctorId: string;
+  date: string;
+  items: {
+    medicineId: string;
+    tradeName: string;
+    dosage: string;
+    duration: string;
+    instructions: string;
+  }[];
+  status: 'active' | 'dispensed' | 'void';
+}
+
+export interface ClinicalVisit {
+  id: string;
+  patientId: string;
+  patientName: string;
+  doctorId: string;
+  date: string;
+  reason: string;
+  vitals: {
+    temp: string;
+    bp: string;
+    hr: string;
+    weight?: string;
+  };
+  diagnosis: string;
+  treatmentPlan: string;
+  prescriptions: string[]; // Prescription IDs
+  labOrders: string[]; // LabTest IDs
+  radOrders: string[]; // RadiologyScan IDs
 }
 
 export type Permission = 'all' | 'read_only' | 'clinical' | 'pharmacy' | 'lab' | 'admin';
@@ -190,11 +229,11 @@ export interface User {
   permissions: Permission[];
   lastLogin?: string;
   status: 'active' | 'inactive';
-  customFields?: Record<string, any>;
 }
 
 export interface Receipt {
   id: string;
+  patientId: string;
   patientName: string;
   patientAge: number;
   serviceId: string;

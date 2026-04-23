@@ -1,4 +1,4 @@
-import { PharmacyItem, LabTest, Service, Doctor, Department, Clinic, Patient } from '../types';
+import { PharmacyItem, LabTest, Service, Doctor, Department, Clinic, Patient, Appointment } from '../types';
 
 export const YEMEN_LAB_TESTS = [
   { name: 'فحص دم شامل (CBC)', price: 3500 },
@@ -124,6 +124,74 @@ export const INITIAL_PATIENTS: Patient[] = [
     address: 'عدن - المنصورة',
     medicalHistory: ['ربو'],
     createdAt: new Date().toISOString()
+  },
+  {
+    id: 'p-3',
+    name: 'صالح علي عبده',
+    phone: '771223344',
+    age: 58,
+    gender: 'male',
+    bloodType: 'B+',
+    address: 'تعز - الحوبان',
+    medicalHistory: ['سكري النوع الثاني'],
+    createdAt: new Date().toISOString()
+  }
+];
+
+export const INITIAL_APPOINTMENTS: Appointment[] = [
+  {
+    id: 'APT-101',
+    patientId: 'p-1',
+    patientName: 'عبدالله محمد ناصر',
+    doctorId: 'd-1',
+    clinicId: 'c-1',
+    date: new Date().toISOString().split('T')[0],
+    time: '09:00',
+    status: 'scheduled',
+    type: 'consultation',
+    cost: 8000,
+    isPaid: true
+  },
+  {
+    id: 'APT-102',
+    patientId: 'p-2',
+    patientName: 'فاطمة أحمد حسين',
+    doctorId: 'd-2',
+    clinicId: 'c-2',
+    date: new Date().toISOString().split('T')[0],
+    time: '10:30',
+    status: 'waiting',
+    type: 'followup',
+    cost: 2500,
+    isPaid: true
+  },
+  {
+    id: 'APT-103',
+    patientId: 'p-3',
+    patientName: 'صالح علي عبده',
+    doctorId: 'd-1',
+    clinicId: 'c-1',
+    date: new Date().toISOString().split('T')[0],
+    time: '11:00',
+    status: 'completed',
+    type: 'consultation',
+    cost: 8000,
+    isPaid: true,
+    returnDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+  }
+];
+
+export const INITIAL_QUEUE = [
+  {
+    id: 'Q-1',
+    patientId: 'p-2',
+    patientName: 'فاطمة أحمد حسين',
+    doctorId: 'd-2',
+    clinicId: 'c-2',
+    visitType: 'followup',
+    status: 'waiting',
+    checkInTime: '10:15',
+    priority: 1
   }
 ];
 
@@ -155,4 +223,15 @@ export const INITIAL_USERS: any[] = [
     permissions: ['all'],
     status: 'active'
   }
+];
+
+export const INITIAL_NURSES = [
+  { id: 'n-1', name: 'هنادي صالح', phone: '770000001', departmentId: 'dept-1', gender: 'female' },
+  { id: 'n-2', name: 'محمد علي', phone: '770000002', departmentId: 'dept-3', gender: 'male' },
+];
+
+export const INITIAL_OPERATIONS = [
+  { id: 'op-1', name: 'استئصال الزائدة الدودية', price: 150000, category: 'جراحة عامة' },
+  { id: 'op-2', name: 'ولادة قيصرية', price: 200000, category: 'نساء وولادة' },
+  { id: 'op-3', name: 'عملية قسطرة قلبية', price: 500000, category: 'قلب' },
 ];

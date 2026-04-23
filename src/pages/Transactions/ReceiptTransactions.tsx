@@ -1,26 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Search, Receipt, User, Stethoscope, Activity as ActivityIcon, CreditCard, Printer, Trash2 } from 'lucide-react';
+import { Plus, Search, Receipt, User, Stethoscope, Activity as ActivityIcon, CreditCard, Printer, Trash2, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Receipt as ReceiptType, Doctor, Service } from '../../types';
+import { Receipt as ReceiptType, Doctor, Service, Patient } from '../../types';
 import { dataStore } from '../../services/dataService';
 
 export default function ReceiptTransactions() {
   const [receipts, setReceipts] = useState<ReceiptType[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [receiptsData, doctorsData, servicesData] = await Promise.all([
+        const [receiptsData, doctorsData, servicesData, patientsData] = await Promise.all([
           dataStore.getAll<ReceiptType>('receipts'),
           dataStore.getAll<Doctor>('doctors'),
-          dataStore.getAll<Service>('services')
+          dataStore.getAll<Service>('services'),
+          dataStore.getAll<Patient>('patients')
         ]);
         setReceipts(receiptsData);
         setDoctors(doctorsData);
         setServices(servicesData);
+        setPatients(patientsData);
       } catch (error) {
         console.error("Failed to load receipts data", error);
       } finally {
@@ -33,6 +36,7 @@ export default function ReceiptTransactions() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [newReceipt, setNewReceipt] = useState<Partial<ReceiptType>>({
+    patientId: '',
     patientName: '',
     patientAge: 25,
     serviceId: '',
@@ -40,18 +44,18 @@ export default function ReceiptTransactions() {
     paymentMethod: 'cash',
   });
 
-  const printRef = useRef<HTMLDivElement>(null);
-
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newReceipt.patientName || !newReceipt.serviceId || !newReceipt.doctorId) return;
+    if (!newReceipt.patientId || !newReceipt.serviceId || !newReceipt.doctorId) return;
     
     const service = services.find(s => s.id === newReceipt.serviceId);
+    const patient = patients.find(p => p.id === newReceipt.patientId);
     
     const receipt: ReceiptType = {
       id: `REC-${Date.now().toString().slice(-6)}`,
-      patientName: newReceipt.patientName!,
-      patientAge: newReceipt.patientAge!,
+      patientId: newReceipt.patientId!,
+      patientName: patient?.name || 'Unknown',
+      patientAge: patient?.age || newReceipt.patientAge || 25,
       serviceId: newReceipt.serviceId!,
       doctorId: newReceipt.doctorId!,
       amount: service?.price || 0,
@@ -61,9 +65,28 @@ export default function ReceiptTransactions() {
     };
     
     await dataStore.addItem('receipts', receipt);
+    
+    // INTEGRATION: If the service is a consultation/visit, add to clinical queue
+    const isClinicalService = service?.name.includes('معاينة') || service?.name.includes('كشف') || service?.id.includes('consult');
+    if (isClinicalService && receipt.doctorId) {
+      const doctor = doctors.find(d => d.id === receipt.doctorId);
+      const queueEntry = {
+        id: `Q-${Date.now().toString().slice(-6)}`,
+        patientId: receipt.patientId,
+        patientName: receipt.patientName,
+        doctorId: receipt.doctorId,
+        clinicId: `c-${doctor?.departmentId?.split('-')[1] || '1'}`, // Heuristic clinic link
+        visitType: 'consultation',
+        status: 'waiting',
+        checkInTime: new Date().toLocaleTimeString('ar-YE', { hour: '2-digit', minute: '2-digit' }),
+        priority: 1
+      };
+      await dataStore.addItem('queues', queueEntry);
+    }
+
     setReceipts([receipt, ...receipts]);
     setShowAddModal(false);
-    setNewReceipt({ patientName: '', patientAge: 25, serviceId: '', doctorId: '', paymentMethod: 'cash' });
+    setNewReceipt({ patientId: '', patientName: '', patientAge: 25, serviceId: '', doctorId: '', paymentMethod: 'cash' });
   };
 
   const handlePrint = (receipt: ReceiptType) => {
@@ -78,7 +101,8 @@ export default function ReceiptTransactions() {
         <head>
           <title>سند استعلامات - ${receipt.id}</title>
           <style>
-            body { font-family: 'Cairo', sans-serif; padding: 40px; }
+            @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+            body { font-family: 'Cairo', sans-serif; padding: 40px; direction: rtl; }
             .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 30px; }
             .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
             .label { font-weight: bold; }
@@ -89,12 +113,12 @@ export default function ReceiptTransactions() {
         <body>
           <div class="header">
             <h1>مستشفى إبداع التخصصي</h1>
-            <p>سند استعلامات طبي</p>
+            <p>سند استعلامات طبي رقم ${receipt.id}</p>
           </div>
           <div class="info-grid">
-            <div><span class="label">رقم السند:</span> ${receipt.id}</div>
-            <div><span class="label">التاريخ:</span> ${receipt.date}</div>
             <div><span class="label">اسم المريض:</span> ${receipt.patientName}</div>
+            <div><span class="label">التاريخ:</span> ${receipt.date}</div>
+            <div><span class="label">المعرف:</span> ${receipt.patientId}</div>
             <div><span class="label">العمر:</span> ${receipt.patientAge}</div>
             <div><span class="label">الخدمة:</span> ${service?.name}</div>
             <div><span class="label">الطبيب:</span> ${doctor?.name}</div>
@@ -114,11 +138,11 @@ export default function ReceiptTransactions() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-right">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">سندات الاستعلامات</h2>
-          <p className="text-sm text-slate-500">تسجيل زيارات المرضى والخدمات المقدمة</p>
+          <p className="text-sm text-slate-500">تسجيل زيارات المرضى والخدمات المقدمة والتحصيل المالي</p>
         </div>
         
         <div className="flex items-center gap-3">
@@ -142,38 +166,38 @@ export default function ReceiptTransactions() {
         </div>
       </div>
 
-      <div className="glass-card rounded-3xl overflow-hidden">
+      <div className="bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm">
         <table className="w-full text-right">
-          <thead className="bg-slate-50 text-slate-400 text-xs uppercase tracking-wider">
+          <thead className="bg-slate-50 text-slate-400 text-[10px] uppercase tracking-widest">
             <tr>
-              <th className="px-8 py-4 font-medium">رقم السند</th>
-              <th className="px-8 py-4 font-medium">المريض</th>
-              <th className="px-8 py-4 font-medium">الخدمة / الدكتور</th>
-              <th className="px-8 py-4 font-medium">المبلغ</th>
-              <th className="px-8 py-4 font-medium">التاريخ</th>
-              <th className="px-8 py-4 font-medium">الإجراءات</th>
+              <th className="px-8 py-4 font-bold">رقم السند</th>
+              <th className="px-8 py-4 font-bold">المريض</th>
+              <th className="px-8 py-4 font-bold">الخدمة / الدكتور</th>
+              <th className="px-8 py-4 font-bold">المبلغ</th>
+              <th className="px-8 py-4 font-bold">التاريخ</th>
+              <th className="px-8 py-4 font-bold text-center">الإجراءات</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 italic">
             {filteredReceipts.map((receipt) => (
               <tr key={receipt.id} className="hover:bg-slate-50/50 transition-colors">
-                <td className="px-8 py-5 font-bold text-slate-400 text-xs">#{receipt.id}</td>
+                <td className="px-8 py-5 font-bold text-slate-400 text-xs font-mono">#{receipt.id}</td>
                 <td className="px-8 py-5">
                   <div className="font-bold text-slate-800">{receipt.patientName}</div>
-                  <div className="text-[10px] text-slate-400">{receipt.patientAge} عام</div>
+                  <div className="text-[10px] text-slate-400 font-mono">UID: {receipt.patientId}</div>
                 </td>
                 <td className="px-8 py-5">
-                  <div className="text-xs font-semibold text-sky-600">{services.find(s => s.id === receipt.serviceId)?.name}</div>
-                  <div className="text-[10px] text-slate-500">د. {doctors.find(d => d.id === receipt.doctorId)?.name}</div>
+                  <div className="text-xs font-black text-sky-600 uppercase italic tracking-tighter">{services.find(s => s.id === receipt.serviceId)?.name}</div>
+                  <div className="text-[10px] text-slate-500 font-bold">د. {doctors.find(d => d.id === receipt.doctorId)?.name}</div>
                 </td>
-                <td className="px-8 py-5 font-black text-slate-800">{receipt.amount.toLocaleString()} <small className="text-[10px] text-slate-400">ر.ي</small></td>
-                <td className="px-8 py-5 text-slate-500 text-xs">{receipt.date}</td>
+                <td className="px-8 py-5 font-black text-slate-800 font-mono">{receipt.amount.toLocaleString()} <small className="text-[10px] text-slate-400">ر.ي</small></td>
+                <td className="px-8 py-5 text-slate-500 text-xs font-mono">{receipt.date}</td>
                 <td className="px-8 py-5">
-                   <div className="flex gap-2">
-                     <button onClick={() => handlePrint(receipt)} className="p-2 bg-sky-50 text-sky-600 rounded-lg hover:bg-sky-100 transition-colors">
+                   <div className="flex gap-2 justify-center">
+                     <button onClick={() => handlePrint(receipt)} className="p-2 bg-sky-50 text-sky-600 rounded-lg hover:bg-sky-500 hover:text-white transition-all">
                         <Printer size={16} />
                      </button>
-                     <button onClick={() => setReceipts(receipts.filter(r => r.id !== receipt.id))} className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors">
+                     <button onClick={() => dataStore.deleteItem('receipts', receipt.id).then(() => setReceipts(receipts.filter(r => r.id !== receipt.id)))} className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all">
                         <Trash2 size={16} />
                      </button>
                    </div>
@@ -183,72 +207,102 @@ export default function ReceiptTransactions() {
           </tbody>
         </table>
         {filteredReceipts.length === 0 && (
-          <div className="py-20 text-center text-slate-400">لا توجد سندات مسجلة بهذا الاسم</div>
+          <div className="py-20 text-center text-slate-400 italic">لا توجد سجلات مالية مطابقة</div>
         )}
       </div>
 
       <AnimatePresence>
         {showAddModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowAddModal(false)} />
-            <motion.div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl p-10">
-              <h3 className="text-2xl font-bold mb-8">إصدار سند استعلامات جديد</h3>
+            <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-md" onClick={() => setShowAddModal(false)} />
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative w-full max-w-2xl bg-white rounded-[40px] shadow-2xl p-12 border border-white/10">
+              <h3 className="text-2xl font-black mb-10 text-slate-900 border-r-8 border-sky-500 pr-6 uppercase tracking-tighter">Issue New Financial Receipt</h3>
               <form onSubmit={handleAdd} className="space-y-6">
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                      <User size={14} /> اسم المريض
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 italic">
+                       Patient Identification
                     </label>
-                    <input required type="text" className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-sky-500/10" value={newReceipt.patientName} onChange={(e) => setNewReceipt({...newReceipt, patientName: e.target.value})} />
+                    <select 
+                      required 
+                      className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-sky-500/10 font-bold" 
+                      value={newReceipt.patientId} 
+                      onChange={(e) => {
+                        const p = patients.find(p => p.id === e.target.value);
+                        setNewReceipt({
+                          ...newReceipt, 
+                          patientId: e.target.value,
+                          patientName: p?.name || '',
+                          patientAge: p?.age || 25
+                        });
+                      }}
+                    >
+                      <option value="">Choose Patient...</option>
+                      {patients.map(p => <option key={p.id} value={p.id}>{p.name} - #{p.id}</option>)}
+                    </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">العمر</label>
-                    <input required type="number" className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-sky-500/10" value={newReceipt.patientAge} onChange={(e) => setNewReceipt({...newReceipt, patientAge: parseInt(e.target.value)})} />
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Patient Name (Editable)</label>
+                    <input 
+                      type="text"
+                      required
+                      className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-sky-500/10 font-bold"
+                      value={newReceipt.patientName}
+                      onChange={(e) => setNewReceipt({...newReceipt, patientName: e.target.value})}
+                    />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                      <ActivityIcon size={14} /> الخدمة المطلوبة
-                    </label>
-                    <select required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-sky-500/10 appearance-none" value={newReceipt.serviceId} onChange={(e) => setNewReceipt({...newReceipt, serviceId: e.target.value})}>
-                      <option value="">اختر الخدمة...</option>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Patient Age</label>
+                    <input 
+                      type="number"
+                      required
+                      className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-sky-500/10 font-bold font-mono"
+                      value={newReceipt.patientAge}
+                      onChange={(e) => setNewReceipt({...newReceipt, patientAge: parseInt(e.target.value)})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Service Selection</label>
+                    <select required className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-sky-500/10 font-bold" value={newReceipt.serviceId} onChange={(e) => setNewReceipt({...newReceipt, serviceId: e.target.value})}>
+                      <option value="">Select Service...</option>
                       {services.map(s => <option key={s.id} value={s.id}>{s.name} ({s.price} ر.ي)</option>)}
                     </select>
                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                      <Stethoscope size={14} /> الطبيب المختص
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 italic">
+                       Attending Physician
                     </label>
-                    <select required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-sky-500/10 appearance-none" value={newReceipt.doctorId} onChange={(e) => setNewReceipt({...newReceipt, doctorId: e.target.value})}>
-                      <option value="">اختر الطبيب...</option>
+                    <select required className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-sky-500/10 font-bold" value={newReceipt.doctorId} onChange={(e) => setNewReceipt({...newReceipt, doctorId: e.target.value})}>
+                      <option value="">Select Doctor...</option>
                       {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Payment Gateway</label>
+                    <div className="flex gap-4">
+                       {['cash', 'credit'].map(method => (
+                         <button
+                           key={method}
+                           type="button"
+                           onClick={() => setNewReceipt({...newReceipt, paymentMethod: method as any})}
+                           className={`flex-1 py-5 rounded-2xl font-black border-2 transition-all text-[10px] uppercase tracking-widest ${newReceipt.paymentMethod === method ? 'bg-sky-50 border-sky-500 text-sky-600 shadow-lg shadow-sky-500/10' : 'bg-slate-50 border-transparent text-slate-400'}`}
+                         >
+                           {method === 'cash' ? 'Cash Basis' : 'Insurance / Credit'}
+                         </button>
+                       ))}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                   <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                      <CreditCard size={14} /> طريقة الدفع
-                   </label>
-                   <div className="flex gap-4">
-                      {['cash', 'credit'].map(method => (
-                        <button
-                          key={method}
-                          type="button"
-                          onClick={() => setNewReceipt({...newReceipt, paymentMethod: method as any})}
-                          className={`flex-1 py-4 rounded-2xl font-bold border-2 transition-all ${newReceipt.paymentMethod === method ? 'bg-sky-50 bordersky-500 text-sky-600' : 'bg-slate-50 border-transparent text-slate-400'}`}
-                        >
-                          {method === 'cash' ? 'نقداً' : 'آجل / تأمين'}
-                        </button>
-                      ))}
-                   </div>
-                </div>
-
-                <div className="flex gap-4 pt-8">
-                  <button type="submit" className="flex-1 bg-sky-500 text-white py-5 rounded-3xl font-bold shadow-xl shadow-sky-200 hover:bg-sky-600 transition-all hover:-translate-y-1">حفظ وإصدار السند</button>
-                  <button type="button" onClick={() => setShowAddModal(false)} className="px-8 py-5 bg-slate-100 text-slate-600 rounded-3xl font-bold hover:bg-slate-200 transition-all">إلغاء</button>
+                <div className="flex gap-4 pt-10">
+                  <button type="submit" className="flex-1 bg-sky-600 text-white py-6 rounded-[30px] font-black shadow-2xl shadow-sky-600/30 hover:bg-sky-500 transition-all uppercase tracking-widest text-xs">Execute Transaction</button>
+                  <button type="button" onClick={() => setShowAddModal(false)} className="px-10 py-6 bg-slate-100 text-slate-500 rounded-[30px] font-black hover:bg-slate-200 transition-all uppercase tracking-widest text-xs">Terminate</button>
                 </div>
               </form>
             </motion.div>
