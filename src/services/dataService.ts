@@ -43,8 +43,21 @@ class DataService {
   public async getAll<T>(key: string): Promise<T[]> {
     if (this._useCloud) {
       try {
-        const response = await fetch(`${this.baseUrl}/api/${key}`);
-        if (!response.ok) throw new Error('Cloud API unavailable');
+        const url = `${this.baseUrl}/api/${key}`;
+        const response = await fetch(url);
+        if (!response.ok) {
+           const text = await response.text();
+           console.error(`Cloud API error for ${key} (${response.status}):`, text);
+           throw new Error(`Cloud API unavailable: ${response.status}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await response.text();
+          console.error(`Invalid content type for ${key}: ${contentType}. Content:`, text.substring(0, 500));
+          throw new Error('Expected JSON response but received something else');
+        }
+
         return await response.json();
       } catch (error) {
         console.warn(`Cloud error for ${key}:`, error);
@@ -64,7 +77,18 @@ class DataService {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(item),
         });
-        if (!response.ok) throw new Error('Failed to save to cloud');
+        if (!response.ok) {
+          const text = await response.text();
+          console.error(`Cloud Add Error for ${key} (${response.status}):`, text);
+          throw new Error('Failed to save to cloud');
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await response.text();
+          console.error(`Invalid content type for POST ${key}: ${contentType}. Content:`, text.substring(0, 500));
+          throw new Error('Expected JSON response');
+        }
       } catch (error) {
         console.error('Cloud Save Error:', error);
         const current = this.getLocalAll<T>(key);
@@ -85,7 +109,18 @@ class DataService {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updates),
         });
-        if (!response.ok) throw new Error('Update failed');
+        if (!response.ok) {
+          const text = await response.text();
+          console.error(`Cloud Update Error for ${key}/${id} (${response.status}):`, text);
+          throw new Error('Update failed');
+        }
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await response.text();
+          console.error(`Invalid content type for PUT ${key}: ${contentType}. Content:`, text.substring(0, 500));
+          throw new Error('Expected JSON response');
+        }
       } catch (error) {
         console.error('Cloud Update Error:', error);
          const current = this.getLocalAll<T>(key);

@@ -36,9 +36,29 @@ async function startServer() {
     });
   });
 
+  // Performance/API logging
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      console.log(`[API Request] ${req.method} ${req.path}`);
+    }
+    next();
+  });
+
   app.use(express.json());
 
-  // Initialize Firebase Admin
+  // Define API Router
+  const apiRouter = express.Router();
+
+  // Health check
+  apiRouter.get("/health", (req, res) => {
+    res.json({ 
+      status: "ok", 
+      firebase: !!db, 
+      timestamp: new Date().toISOString(),
+      dbType: db ? "initialized" : "null"
+    });
+  });
+
   const serviceAccountVar = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!serviceAccountVar) {
     console.error("CRITICAL: FIREBASE_SERVICE_ACCOUNT environment variable is NOT defined.");
@@ -103,11 +123,11 @@ async function startServer() {
       } = await import("./src/data/seedData.ts");
 
       const seedTask = async (collection: string, data: any[]) => {
-        const colRef = db.collection(collection);
+        const colRef = db!.collection(collection);
         const snapshot = await colRef.limit(1).get();
         if (snapshot.empty) {
           console.log(`Seeding ${collection}...`);
-          const batch = db.batch();
+          const batch = db!.batch();
           data.forEach(item => {
             const docRef = item.id ? colRef.doc(item.id) : colRef.doc();
             batch.set(docRef, { ...item, createdAt: admin.firestore.FieldValue.serverTimestamp() });
@@ -143,7 +163,7 @@ async function startServer() {
   }
 
   // Admin Seed Route (keeping for manual trigger)
-  app.post("/api/admin/seed", async (req, res) => {
+  apiRouter.post("/admin/seed", async (req, res) => {
     const result = await performSeeding();
     if (result.success) {
       res.json({ success: true, message: "Database seeded with initial clinical data" });
@@ -153,36 +173,45 @@ async function startServer() {
   });
 
   // Generic API routes for the Healthcare System
-  app.get("/api/:collection", async (req, res) => {
-    if (!db) return res.status(503).json({ error: "Firebase not initialized" });
+  apiRouter.get("/:collection", async (req, res) => {
+    const { collection } = req.params;
+    console.log(`[API] GET collection: ${collection}`);
+    if (!db) {
+      return res.status(503).json({ error: "Firebase not initialized" });
+    }
     try {
-      const { collection } = req.params;
       const snapshot = await db.collection(collection).get();
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       res.json(data);
     } catch (error) {
+      console.error(`Error fetching ${collection}:`, error);
       res.status(500).json({ error: (error as Error).message });
     }
   });
 
-  app.post("/api/:collection", async (req, res) => {
-    if (!db) return res.status(503).json({ error: "Firebase not initialized" });
+  apiRouter.post("/:collection", async (req, res) => {
+    const { collection } = req.params;
+    console.log(`[API] POST collection: ${collection}`);
+    if (!db) {
+      return res.status(503).json({ error: "Firebase not initialized" });
+    }
     try {
-      const { collection } = req.params;
       const docRef = await db.collection(collection).add({
         ...req.body,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
       res.json({ id: docRef.id });
     } catch (error) {
+      console.error(`Error creating in ${collection}:`, error);
       res.status(500).json({ error: (error as Error).message });
     }
   });
 
-  app.put("/api/:collection/:id", async (req, res) => {
+  apiRouter.put("/:collection/:id", async (req, res) => {
+    const { collection, id } = req.params;
+    console.log(`[API] PUT ${collection}/${id}`);
     if (!db) return res.status(503).json({ error: "Firebase not initialized" });
     try {
-      const { collection, id } = req.params;
       const data = { ...req.body };
       delete data.id;
       delete data.createdAt;
@@ -193,25 +222,32 @@ async function startServer() {
       });
       res.json({ success: true });
     } catch (error) {
+      console.error(`Error updating ${collection}/${id}:`, error);
       res.status(500).json({ error: (error as Error).message });
     }
   });
 
-  app.delete("/api/:collection/:id", async (req, res) => {
+  apiRouter.delete("/:collection/:id", async (req, res) => {
+    const { collection, id } = req.params;
+    console.log(`[API] DELETE ${collection}/${id}`);
     if (!db) return res.status(503).json({ error: "Firebase not initialized" });
     try {
-      const { collection, id } = req.params;
       await db.collection(collection).doc(id).delete();
       res.json({ success: true });
     } catch (error) {
+      console.error(`Error deleting ${collection}/${id}:`, error);
       res.status(500).json({ error: (error as Error).message });
     }
   });
 
-  // Health check
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", firebase: !!db });
+  // API Catch-all to prevent falling through to Vite/SPA index.html
+  apiRouter.all("*", (req, res) => {
+    console.warn(`[API] Unhandled route inside router: ${req.method} ${req.path}`);
+    res.status(404).json({ error: `API endpoint not found: ${req.method} ${req.path}` });
   });
+
+  // Mount API router
+  app.use("/api", apiRouter);
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
