@@ -1,0 +1,55 @@
+name: Auto Fix Gradle Wrapper
+
+on:
+  workflow_run:
+    workflows: ["Multi-Platform Build CI"]
+    types:
+      - completed
+
+jobs:
+  fix-gradle-wrapper:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: Check CI logs for corrupt jarfile error
+        id: check_log
+        run: |
+          # Download CI logs
+          gh run download ${{ github.event.workflow_run.id }} --dir logs
+          if grep -r "Invalid or corrupt jarfile" logs; then
+            echo "CORRUPT=true" >> $GITHUB_ENV
+          else
+            echo "CORRUPT=false" >> $GITHUB_ENV
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Regenerate Gradle Wrapper (if needed)
+        if: env.CORRUPT == 'true'
+        run: |
+          cd android
+          ./gradlew wrapper --gradle-version 7.5
+
+      - name: Commit and push fix
+        if: env.CORRUPT == 'true'
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git checkout -b fix/gradle-wrapper-auto || git checkout fix/gradle-wrapper-auto
+          git add android/gradle/wrapper/gradle-wrapper.jar android/gradle/wrapper/gradle-wrapper.properties
+          git commit -m "chore: auto-fix gradle-wrapper.jar"
+          git push origin fix/gradle-wrapper-auto --force
+
+      - name: Create Pull Request
+        if: env.CORRUPT == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: fix/gradle-wrapper-auto
+          title: "chore: auto-fix gradle-wrapper.jar"
+          body: "This PR was created automatically to fix a corrupt gradle-wrapper.jar detected in CI."
