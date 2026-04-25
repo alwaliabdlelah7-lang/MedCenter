@@ -173,6 +173,36 @@ async function startServer() {
   });
 
   // Generic API routes for the Healthcare System
+  apiRouter.post("/admin/import/:collection", async (req, res) => {
+    const { collection } = req.params;
+    const items = req.body;
+    
+    if (!db) return res.status(503).json({ error: "Firebase not initialized" });
+    if (!Array.isArray(items)) return res.status(400).json({ error: "Body must be an array of objects" });
+
+    console.log(`[API] Bulk importing ${items.length} items into ${collection}`);
+    
+    try {
+      const batch = db.batch();
+      const colRef = db.collection(collection);
+      
+      items.forEach(item => {
+        const docRef = item.id ? colRef.doc(item.id) : colRef.doc();
+        batch.set(docRef, {
+          ...item,
+          importedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      
+      await batch.commit();
+      res.json({ success: true, count: items.length });
+    } catch (error) {
+      console.error(`Error importing to ${collection}:`, error);
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
   apiRouter.get("/:collection", async (req, res) => {
     const { collection } = req.params;
     console.log(`[API] GET collection: ${collection}`);

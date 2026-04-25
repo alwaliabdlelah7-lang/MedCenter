@@ -47,8 +47,13 @@ jobs:
         run: npm run build
       - name: Capacitor Sync
         run: npx cap sync android
-      - name: Make Gradlew Executable
-        run: chmod +x android/gradlew
+      - name: Fix Gradle Wrapper
+        run: |
+          cd android
+          rm gradle/wrapper/gradle-wrapper.jar
+          # Download a fresh wrapper jar if corrupt (common in git sync issues)
+          curl -L https://raw.githubusercontent.com/gradle/gradle/master/gradle/wrapper/gradle-wrapper.jar -o gradle/wrapper/gradle-wrapper.jar
+          chmod +x gradlew
       - name: Build Android APK
         run: |
           cd android && ./gradlew assembleDebug
@@ -70,10 +75,10 @@ jobs:
           cache: 'npm'
       - name: Install Dependencies
         run: npm install
-      - name: Build Web for Windows (PWA/Desktop)
-        run: npm run build
+      - name: Build Windows Executable
+        run: npm run desktop:build:win
       - name: Upload Windows Build
         uses: actions/upload-artifact@v4
         with:
-          name: windows-executables
-          path: dist/
+          name: windows-application
+          path: dist_desktop/

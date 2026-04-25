@@ -113,6 +113,61 @@
         "paymentMethod": { "type": "string", "enum": ["cash", "card", "insurance"] }
       },
       "required": ["id", "patientName", "date", "serviceId", "doctorId", "amount", "paymentMethod"]
+    },
+    "patient": {
+      "title": "Patient",
+      "description": "Electronic Medical Record (EMR) for a patient",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fileNumber": { "type": "string" },
+        "name": { "type": "string" },
+        "dob": { "type": "string" },
+        "bloodGroup": { "type": "string" },
+        "phone": { "type": "string" },
+        "medicalHistory": { "type": "string" }
+      },
+      "required": ["id", "name", "fileNumber"]
+    },
+    "appointment": {
+      "title": "Appointment",
+      "description": "Scheduled medical visit",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "patientId": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "status": { "type": "string", "enum": ["scheduled", "confirmed", "cancelled", "completed"] }
+      },
+      "required": ["id", "patientId", "doctorId", "date", "time", "status"]
+    },
+    "pharmacy_item": {
+      "title": "Pharmacy Item",
+      "description": "Medicine or supply in the pharmacy inventory",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "brandName": { "type": "string" },
+        "genericName": { "type": "string" },
+        "quantity": { "type": "integer" },
+        "expiryDate": { "type": "string" },
+        "price": { "type": "number" }
+      },
+      "required": ["id", "brandName", "quantity", "price"]
+    },
+    "app_user": {
+      "title": "App User",
+      "description": "System user with role-based access",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "doctor", "nurse", "receptionist", "pharmacist"] }
+      },
+      "required": ["uid", "email", "role"]
     }
   },
   "firestore": {
@@ -124,6 +179,10 @@
     "/operations/{operationId}": { "schema": "operation", "description": "Surgical operations" },
     "/companions/{companionId}": { "schema": "companion", "description": "Registered companions" },
     "/inpatients/{inpatientId}": { "schema": "inpatient", "description": "Current and past inpatient admissions" },
-    "/receipts/{receiptId}": { "schema": "receipt", "description": "Patient transaction receipts" }
+    "/receipts/{receiptId}": { "schema": "receipt", "description": "Patient transaction receipts" },
+    "/patients/{patientId}": { "schema": "patient", "description": "Patient medical records" },
+    "/appointments/{appointmentId}": { "schema": "appointment", "description": "Patient appointments" },
+    "/pharmacy_items/{itemId}": { "schema": "pharmacy_item", "description": "Pharmacy inventory" },
+    "/users/{userId}": { "schema": "app_user", "description": "System users and their roles" }
   }
 }

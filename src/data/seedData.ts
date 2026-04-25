@@ -198,6 +198,7 @@ export const INITIAL_QUEUE = [
 export const INITIAL_USERS: any[] = [
   {
     id: 'u-1',
+    email: 'admin@medcenter.com',
     username: 'admin',
     password: '123',
     name: 'مدير النظام',
@@ -207,6 +208,7 @@ export const INITIAL_USERS: any[] = [
   },
   {
     id: 'u-admin-2',
+    email: 'Abdlelahalwali6@medcenter.com',
     username: 'Abdlelahalwali6',
     password: '159632Asd',
     name: 'Abdlelah Alwali',
@@ -216,6 +218,7 @@ export const INITIAL_USERS: any[] = [
   },
   {
     id: 'u-admin-3',
+    email: 'alwaliabdlelah7@gmail.com',
     username: 'alwaliabdlelah7@gmail.com',
     password: '159632Asd',
     name: 'Alwali Abdlelah',
