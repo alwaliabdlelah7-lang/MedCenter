@@ -18,6 +18,7 @@ import {
   Printer
 } from 'lucide-react';
 import { Receipt, Doctor, Patient } from '../types';
+import { motion } from 'motion/react';
 import { dataStore } from '../services/dataService';
 import { exportToCSV, printReport } from '../lib/exportUtils';
 import { cn } from '../lib/utils';

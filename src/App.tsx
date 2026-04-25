@@ -14,6 +14,7 @@ import Login from './pages/Login.tsx';
 import NursesDirectory from './pages/Directories/NursesDirectory.tsx';
 import StructureDirectory from './pages/Directories/StructureDirectory.tsx';
 import ServicesDirectory from './pages/Directories/ServicesDirectory.tsx';
+import ReceiptTransactions from './pages/Transactions/ReceiptTransactions.tsx';
 import DeferredPayments from './pages/Transactions/DeferredPayments.tsx';
 import ReturnedReceipts from './pages/Transactions/ReturnedReceipts.tsx';
 import DoctorCommissions from './pages/Reports/DoctorCommissions.tsx';

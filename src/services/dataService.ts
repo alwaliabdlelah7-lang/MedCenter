@@ -56,6 +56,10 @@ class DataService {
   }
 
   // Generic Get All
+  public async getItems<T>(key: string): Promise<T[]> {
+    return this.getAll<T>(key);
+  }
+
   public async getAll<T>(key: string): Promise<T[]> {
     if (this._useCloud) {
       try {
