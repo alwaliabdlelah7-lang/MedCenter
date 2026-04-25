@@ -191,6 +191,37 @@
       },
       "required": ["id", "patientId", "doctorId"]
     },
+    "fhir_patient": {
+      "title": "FHIR Patient",
+      "description": "FHIR R4 Compliant Patient Resource",
+      "type": "object",
+      "properties": {
+        "resourceType": { "type": "string", "enum": ["Patient"] },
+        "id": { "type": "string" },
+        "active": { "type": "boolean" },
+        "name": { "type": "array", "items": { "type": "object" } },
+        "telecom": { "type": "array", "items": { "type": "object" } },
+        "gender": { "type": "string", "enum": ["male", "female", "other", "unknown"] },
+        "birthDate": { "type": "string", "format": "date" }
+      },
+      "required": ["resourceType", "id", "name"]
+    },
+    "fhir_observation": {
+      "title": "FHIR Observation",
+      "description": "FHIR R4 Compliant Observation Resource (Vitals, Labs)",
+      "type": "object",
+      "properties": {
+        "resourceType": { "type": "string", "enum": ["Observation"] },
+        "id": { "type": "string" },
+        "status": { "type": "string" },
+        "category": { "type": "array", "items": { "type": "object" } },
+        "code": { "type": "object" },
+        "subject": { "type": "object" },
+        "effectiveDateTime": { "type": "string", "format": "date-time" },
+        "valueQuantity": { "type": "object" }
+      },
+      "required": ["resourceType", "id", "status", "code", "subject"]
+    },
     "app_user": {
       "title": "App User",
       "description": "System user with role-based access",
@@ -226,6 +257,8 @@
     "/prescriptions/{prescriptionId}": { "schema": "prescription", "description": "Patient prescriptions" },
     "/lab_tests/{testId}": { "schema": "lab_test", "description": "Laboratory orders and results" },
     "/clinical_visits/{visitId}": { "schema": "clinical_visit", "description": "Medical consultation records" },
-    "/users/{userId}": { "schema": "app_user", "description": "System users and their roles" }
+    "/users/{userId}": { "schema": "app_user", "description": "System users and their roles" },
+    "/fhir_patients/{id}": { "schema": "fhir_patient", "description": "FHIR Patient resources" },
+    "/fhir_observations/{id}": { "schema": "fhir_observation", "description": "FHIR Observation resources" }
   }
 }

@@ -1,8 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Image as ImageIcon, FileText, Trash2, Camera, User, Clock, CheckCircle2 } from 'lucide-react';
+import { 
+  Plus, 
+  Search, 
+  Image as ImageIcon, 
+  FileText, 
+  Trash2, 
+  Camera, 
+  User, 
+  Clock, 
+  CheckCircle2, 
+  Download, 
+  Printer, 
+  TrendingUp, 
+  BarChart3,
+  X,
+  AlertCircle
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { RadiologyScan, Doctor, Patient } from '../types';
 import { dataStore } from '../services/dataService';
+import { exportToCSV, printReport } from '../lib/exportUtils';
+import { cn } from '../lib/utils';
 
 export default function Radiology() {
   const [scans, setScans] = useState<RadiologyScan[]>([]);
@@ -79,6 +97,25 @@ export default function Radiology() {
     setScans(scans.filter(s => s.id !== id));
   };
 
+  const handleExportCSV = () => {
+    const data = filtered.map(s => ({
+      'المعرف': s.id,
+      'المريض': s.patientName,
+      'نوع الأشعة': s.scanType,
+      'الطبيب': doctors.find(d => d.id === s.doctorId)?.name || 'غير محدد',
+      'الحالة': s.status === 'pending' ? 'بالانتظار' : 'مكتمل',
+      'التاريخ': s.date
+    }));
+    exportToCSV(data, 'radiology_reports');
+  };
+
+  const stats = {
+    total: scans.length,
+    pending: scans.filter(s => s.status === 'pending').length,
+    completed: scans.filter(s => s.status === 'completed').length,
+    today: scans.filter(s => s.date === new Date().toISOString().split('T')[0]).length
+  };
+
   const filtered = scans.filter(s => 
     s.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     s.scanType.toLowerCase().includes(searchQuery.toLowerCase())
@@ -86,34 +123,58 @@ export default function Radiology() {
 
   return (
     <div className="space-y-6 lg:p-4 text-right">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className="text-2xl font-bold text-white">الأشعة والتصوير الطبي</h2>
-          <p className="text-sm text-sky-300/70 italic border-r-2 border-sky-500 pr-2 font-medium">إدارة فحوصات الأشعة، التقارير الصورية، والتشخيص الإشعاعي</p>
+          <h2 className="text-3xl font-black text-white tracking-tight">الأشعة والتصوير الطبي الرقمي</h2>
+          <p className="text-sm text-sky-400/70 border-r-4 border-sky-600 pr-4 mt-2 font-bold italic">إدارة فحوصات الأشعة، التقارير الصورية، والتشخيص الإشعاعي المتقدم</p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 no-print">
           <div className="relative group">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-sky-400 transition-colors" size={18} />
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-sky-400 transition-colors" size={18} />
             <input 
               type="text" 
               placeholder="البحث باسم المريض أو الفحص..." 
-              className="pr-10 pl-4 py-2 glass bg-white/5 text-white border border-white/10 rounded-xl focus:border-sky-500 outline-none w-64 transition-all"
+              className="pr-10 pl-4 py-2.5 glass bg-white/5 text-white border border-white/10 rounded-xl focus:border-sky-400 outline-none w-64 lg:w-72 transition-all font-bold font-mono tracking-tighter"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+
+          <button 
+            onClick={handleExportCSV}
+            className="p-2.5 glass bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl hover:bg-emerald-500/20 transition-all shadow-lg"
+            title="تصدير تقارير الأشعة"
+          >
+            <Download size={20} />
+          </button>
+          
+          <button 
+            onClick={() => printReport('تقرير الأشعة الموحد', 'radiology-scans-list-print')}
+            className="p-2.5 glass bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-xl hover:bg-indigo-500/20 transition-all shadow-lg"
+            title="طباعة التقرير"
+          >
+            <Printer size={20} />
+          </button>
+
           <button 
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 bg-sky-600 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-sky-600/30 hover:bg-sky-500 transition-all active:scale-95"
+            className="flex items-center gap-2 bg-sky-600 text-white px-6 py-2.5 rounded-xl font-black shadow-xl shadow-sky-600/20 hover:bg-sky-500 transition-all active:scale-95 uppercase tracking-widest text-[10px]"
           >
-            <Plus size={20} />
+            <Plus size={18} />
             <span>طلب أشعة جديد</span>
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 no-print">
+         <MiniStat icon={ImageIcon} label="إجمالي الفحوصات" value={stats.total} color="sky" />
+         <MiniStat icon={Clock} label="قيد التصوير" value={stats.pending} color="amber" />
+         <MiniStat icon={CheckCircle2} label="مكتملة" value={stats.completed} color="emerald" />
+         <MiniStat icon={TrendingUp} label="فحوصات اليوم" value={stats.today} color="indigo" />
+      </div>
+
+      <div id="radiology-scans-list-print" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {filtered.length > 0 ? (
           filtered.map((scan) => (
             <motion.div
@@ -258,6 +319,27 @@ export default function Radiology() {
           </div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function MiniStat({ icon: Icon, label, value, color }: any) {
+  const colors: any = {
+    sky: "bg-sky-500/10 text-sky-400 border-sky-500/20",
+    indigo: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+    emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    amber: "bg-amber-500/10 text-amber-400 border-amber-500/20"
+  };
+
+  return (
+    <div className="glass p-5 rounded-[24px] border border-white/5 flex items-center gap-4 group hover:bg-white/5 transition-all">
+      <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border shadow-inner group-hover:scale-110 transition-transform", colors[color])}>
+        <Icon size={24} />
+      </div>
+      <div>
+        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</p>
+        <p className="text-xl font-black text-white mt-0.5">{value}</p>
+      </div>
     </div>
   );
 }

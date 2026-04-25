@@ -23,13 +23,19 @@ import {
   ChevronRight,
   ChevronLeft,
   CalendarDays,
-  LayoutGrid
+  LayoutGrid,
+  Download,
+  Printer,
+  BarChart3,
+  TrendingUp,
+  Receipt
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Appointment, Doctor, Clinic, Patient } from '../types';
 import { cn } from '../lib/utils';
 import { INITIAL_PATIENTS } from '../data/seedData';
 import { dataStore } from '../services/dataService';
+import { exportToCSV, printReport } from '../lib/exportUtils';
 import { 
   format, 
   startOfMonth, 
@@ -196,6 +202,28 @@ export default function Appointments() {
     setShowRescheduleModal(null);
   };
 
+  const handleExportCSV = () => {
+    const data = filtered.map(a => ({
+      'المعرف': a.id,
+      'المريض': a.patientName,
+      'الطبيب': doctors.find(d => d.id === a.doctorId)?.name || 'غير محدد',
+      'العيادة': clinics.find(c => c.id === a.clinicId)?.name || 'غير محدد',
+      'التاريخ': a.date,
+      'الوقت': a.time,
+      'الحالة': a.status,
+      'النوع': a.type,
+      'المبلغ': a.cost
+    }));
+    exportToCSV(data, 'appointments_report');
+  };
+
+  const stats = {
+    total: appointments.length,
+    today: appointments.filter(a => isSameDay(parseISO(a.date), new Date())).length,
+    waiting: appointments.filter(a => a.status === 'waiting').length,
+    completed: appointments.filter(a => a.status === 'completed').length,
+  };
+
   const filtered = appointments.filter(a => 
     (activeTab === 'all' || a.status === activeTab) &&
     (a.patientName.toLowerCase().includes(searchQuery.toLowerCase()) || a.id.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -237,47 +265,71 @@ export default function Appointments() {
     <div className="space-y-6 lg:p-4 text-right">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className="text-2xl font-bold text-white">إدارة الحجوزات المتقدمة</h2>
-          <p className="text-sm text-sky-300/70 border-r-4 border-sky-500 pr-3 font-medium">جدولة المواعيد، تتبع الحالات، وإرسال التنبيهات</p>
+          <h2 className="text-3xl font-black text-white tracking-tight">إدارة الحجوزات المتقدمة</h2>
+          <p className="text-sm text-sky-400/70 border-r-4 border-sky-600 pr-4 mt-2 font-bold italic">جدولة المواعيد، تتبع الحالات، وإرسال التنبيهات الذكية</p>
         </div>
         
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10 mr-2">
+        <div className="flex flex-wrap items-center gap-3 no-print">
+          <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10">
             <button 
               onClick={() => setViewMode('grid')}
               className={cn("p-2 rounded-lg transition-all", viewMode === 'grid' ? "bg-sky-600 text-white" : "text-slate-400 hover:text-white")}
             >
-              <LayoutGrid size={20} />
+              <LayoutGrid size={18} />
             </button>
             <button 
               onClick={() => setViewMode('calendar')}
               className={cn("p-2 rounded-lg transition-all", viewMode === 'calendar' ? "bg-sky-600 text-white" : "text-slate-400 hover:text-white")}
             >
-              <CalendarDays size={20} />
+              <CalendarDays size={18} />
             </button>
           </div>
 
           <div className="relative group">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-sky-400 transition-colors" size={18} />
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-sky-400 transition-colors" size={18} />
             <input 
               type="text" 
               placeholder="البحث برقم الحجز أو الاسم..." 
-              className="pr-10 pl-4 py-2.5 glass bg-white/5 text-white border border-white/10 rounded-xl focus:border-sky-500 outline-none w-72 transition-all"
+              className="pr-10 pl-4 py-2.5 glass bg-white/5 text-white border border-white/10 rounded-xl focus:border-sky-400 outline-none w-64 transition-all font-bold font-mono tracking-tighter"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+
+          <button 
+            onClick={handleExportCSV}
+            className="p-2.5 glass bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl hover:bg-emerald-500/20 transition-all shadow-lg"
+            title="تصدير المواعيد"
+          >
+            <Download size={20} />
+          </button>
+          
+          <button 
+            onClick={() => printReport('تقرير مواعيد المراجعين', 'appointments-list-print')}
+            className="p-2.5 glass bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-xl hover:bg-indigo-500/20 transition-all shadow-lg"
+            title="طباعة التقرير"
+          >
+            <Printer size={20} />
+          </button>
+
           <button 
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 bg-sky-600 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-sky-600/30 hover:bg-sky-500 transition-all active:scale-95"
+            className="flex items-center gap-2 bg-sky-600 text-white px-6 py-2.5 rounded-xl font-black shadow-xl shadow-sky-600/20 hover:bg-sky-500 transition-all active:scale-95 uppercase tracking-widest text-[10px]"
           >
-            <Plus size={20} />
+            <Plus size={18} />
             <span>حجز موعد جديد</span>
           </button>
         </div>
       </div>
 
-      <div className="flex items-center gap-4 bg-white/5 p-2 rounded-2xl border border-white/5 w-fit">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 no-print">
+         <MiniStat icon={CalendarIcon} label="إجمالي المواعيد" value={stats.total} color="sky" />
+         <MiniStat icon={TrendingUp} label="مواعيد اليوم" value={stats.today} color="emerald" />
+         <MiniStat icon={RefreshCw} label="في الانتظار" value={stats.waiting} color="amber" />
+         <MiniStat icon={CheckCircle2} label="تم إكمالها" value={stats.completed} color="indigo" />
+      </div>
+
+      <div className="flex items-center gap-4 bg-white/5 p-2 rounded-2xl border border-white/5 w-fit no-print">
         {[
           { id: 'all', name: 'الكل' },
           { id: 'scheduled', name: 'مجدول' },
@@ -300,7 +352,7 @@ export default function Appointments() {
       </div>
 
       {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div id="appointments-list-print" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence mode="popLayout">
             {filtered.map((apt) => (
               <motion.div
@@ -707,6 +759,27 @@ export default function Appointments() {
           </div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function MiniStat({ icon: Icon, label, value, color }: any) {
+  const colors: any = {
+    sky: "bg-sky-500/10 text-sky-400 border-sky-500/20",
+    indigo: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+    emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    amber: "bg-amber-500/10 text-amber-400 border-amber-500/20"
+  };
+
+  return (
+    <div className="glass p-5 rounded-[24px] border border-white/5 flex items-center gap-4 group hover:bg-white/5 transition-all">
+      <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border shadow-inner group-hover:scale-110 transition-transform", colors[color])}>
+        <Icon size={24} />
+      </div>
+      <div>
+        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</p>
+        <p className="text-xl font-black text-white mt-0.5">{value}</p>
+      </div>
     </div>
   );
 }

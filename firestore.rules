@@ -117,5 +117,19 @@ service cloud.firestore {
       allow read: if isSignedIn() && hasAnyPermission(['billing', 'read_only', 'admin']);
       allow write: if hasPermission('billing') || isAdmin();
     }
+
+    // FHIR Patient Resources
+    match /fhir_patients/{id} {
+      allow read: if isSignedIn() && hasAnyPermission(['clinical', 'read_only', 'registration']);
+      allow create, update: if isSignedIn() && hasAnyPermission(['clinical', 'registration', 'admin']);
+      allow delete: if isAdmin();
+    }
+
+    // FHIR Observation Resources
+    match /fhir_observations/{id} {
+      allow read: if isSignedIn() && hasAnyPermission(['clinical', 'read_only', 'lab']);
+      allow create, update: if isSignedIn() && hasAnyPermission(['clinical', 'lab', 'admin']);
+      allow delete: if isAdmin();
+    }
   }
 }

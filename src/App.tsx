@@ -14,7 +14,9 @@ import Login from './pages/Login.tsx';
 import NursesDirectory from './pages/Directories/NursesDirectory.tsx';
 import StructureDirectory from './pages/Directories/StructureDirectory.tsx';
 import ServicesDirectory from './pages/Directories/ServicesDirectory.tsx';
-import ReceiptTransactions from './pages/Transactions/ReceiptTransactions.tsx';
+import DeferredPayments from './pages/Transactions/DeferredPayments.tsx';
+import ReturnedReceipts from './pages/Transactions/ReturnedReceipts.tsx';
+import DoctorCommissions from './pages/Reports/DoctorCommissions.tsx';
 import Reports from './pages/Reports.tsx';
 import InpatientManagement from './pages/InpatientManagement.tsx';
 import CompanionsDirectory from './pages/Directories/CompanionsDirectory.tsx';
@@ -103,11 +105,11 @@ export default function App() {
               
               {/* Transactions Section */}
               <Route path="transactions/receipts" element={<ProtectedRoute permission="all"><ReceiptTransactions /></ProtectedRoute>} />
-              <Route path="transactions/deferred" element={<ProtectedRoute permission="all"><PlaceholderPage title="تحصيل السندات الآجلة" /></ProtectedRoute>} />
-              <Route path="transactions/returns" element={<ProtectedRoute permission="all"><PlaceholderPage title="مرتجع سندات الاستعلامات" /></ProtectedRoute>} />
+              <Route path="transactions/deferred" element={<ProtectedRoute permission="all"><DeferredPayments /></ProtectedRoute>} />
+              <Route path="transactions/returns" element={<ProtectedRoute permission="all"><ReturnedReceipts /></ProtectedRoute>} />
               
               {/* Other Sections */}
-              <Route path="reports/doctor-commissions" element={<ProtectedRoute permission="admin"><PlaceholderPage title="نسب الأطباء من الخدمات" /></ProtectedRoute>} />
+              <Route path="reports/doctor-commissions" element={<ProtectedRoute permission="admin"><DoctorCommissions /></ProtectedRoute>} />
               <Route path="reports" element={<ProtectedRoute permission="admin"><Reports /></ProtectedRoute>} />
               <Route path="settings" element={<ProtectedRoute permission="admin"><SettingsPage /></ProtectedRoute>} />
             </Route>
