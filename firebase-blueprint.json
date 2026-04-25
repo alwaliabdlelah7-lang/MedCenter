@@ -157,17 +157,57 @@
       },
       "required": ["id", "brandName", "quantity", "price"]
     },
+    "prescription": {
+      "title": "Prescription",
+      "description": "Doctor's medication order",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "patientId": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "dispensed", "void"] }
+      },
+      "required": ["id", "patientId", "doctorId", "status"]
+    },
+    "lab_test": {
+      "title": "Lab Test",
+      "description": "Laboratory investigation order and result",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "patientId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "completed"] }
+      },
+      "required": ["id", "patientId", "status"]
+    },
+    "clinical_visit": {
+      "title": "Clinical Visit",
+      "description": "Record of a medical consultation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "patientId": { "type": "string" },
+        "doctorId": { "type": "string" }
+      },
+      "required": ["id", "patientId", "doctorId"]
+    },
     "app_user": {
       "title": "App User",
       "description": "System user with role-based access",
       "type": "object",
       "properties": {
-        "uid": { "type": "string" },
+        "id": { "type": "string" },
         "email": { "type": "string" },
         "name": { "type": "string" },
-        "role": { "type": "string", "enum": ["admin", "doctor", "nurse", "receptionist", "pharmacist"] }
+        "username": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "doctor", "nurse", "receptionist", "pharmacist", "lab_tech"] },
+        "permissions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "status": { "type": "string", "enum": ["active", "inactive"] }
       },
-      "required": ["uid", "email", "role"]
+      "required": ["id", "username", "role", "permissions", "status"]
     }
   },
   "firestore": {
@@ -183,6 +223,9 @@
     "/patients/{patientId}": { "schema": "patient", "description": "Patient medical records" },
     "/appointments/{appointmentId}": { "schema": "appointment", "description": "Patient appointments" },
     "/pharmacy_items/{itemId}": { "schema": "pharmacy_item", "description": "Pharmacy inventory" },
+    "/prescriptions/{prescriptionId}": { "schema": "prescription", "description": "Patient prescriptions" },
+    "/lab_tests/{testId}": { "schema": "lab_test", "description": "Laboratory orders and results" },
+    "/clinical_visits/{visitId}": { "schema": "clinical_visit", "description": "Medical consultation records" },
     "/users/{userId}": { "schema": "app_user", "description": "System users and their roles" }
   }
 }

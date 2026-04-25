@@ -39,12 +39,30 @@ class DataService {
     this.notify();
   }
 
+  private getHeaders(): Record<string, string> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const savedUser = localStorage.getItem('hospital_current_user');
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        if (user.id) {
+          headers['x-user-id'] = user.id;
+        }
+      } catch (e) {
+        console.error("Error parsing user for headers", e);
+      }
+    }
+    return headers;
+  }
+
   // Generic Get All
   public async getAll<T>(key: string): Promise<T[]> {
     if (this._useCloud) {
       try {
         const url = `${this.baseUrl}/api/${key}`;
-        const response = await fetch(url);
+        const response = await fetch(url, {
+          headers: this.getHeaders()
+        });
         if (!response.ok) {
            const text = await response.text();
            console.error(`Cloud API error for ${key} (${response.status}):`, text);
@@ -74,7 +92,7 @@ class DataService {
        try {
         const response = await fetch(`${this.baseUrl}/api/${key}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getHeaders(),
           body: JSON.stringify(item),
         });
         if (!response.ok) {
@@ -106,7 +124,7 @@ class DataService {
       try {
         const response = await fetch(`${this.baseUrl}/api/${key}/${id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: this.getHeaders(),
           body: JSON.stringify(updates),
         });
         if (!response.ok) {
@@ -136,7 +154,10 @@ class DataService {
   public async deleteItem<T extends { id?: string }>(key: string, id: string): Promise<void> {
     if (this._useCloud) {
       try {
-        const response = await fetch(`${this.baseUrl}/api/${key}/${id}`, { method: 'DELETE' });
+        const response = await fetch(`${this.baseUrl}/api/${key}/${id}`, { 
+          method: 'DELETE',
+          headers: this.getHeaders()
+        });
         if (!response.ok) throw new Error('Delete failed');
       } catch (error) {
         console.error('Cloud Delete Error:', error);

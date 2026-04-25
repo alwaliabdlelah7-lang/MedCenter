@@ -42,11 +42,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import CommandSearch from './CommandSearch';
 
-const sidebarItems: { icon?: any, label: string, path?: string, type?: 'header', permission?: Permission }[] = [
+const sidebarItems: { icon?: any, label: string, path?: string, type?: 'header', permission?: Permission | Permission[] }[] = [
   { icon: LayoutDashboard, label: 'لوحة التحكم', path: '/', permission: 'all' },
-  { icon: FileHeart, label: 'إدارة المرضى (EMR)', path: '/patients', permission: 'clinical' },
-  { icon: Calendar, label: 'المواعيد والحجوزات', path: '/appointments', permission: 'clinical' },
-  { icon: ListOrdered, label: 'قائمة الانتظار الذكية', path: '/queue', permission: 'clinical' },
+  { icon: FileHeart, label: 'إدارة المرضى (EMR)', path: '/patients', permission: ['clinical', 'registration'] as Permission[] },
+  { icon: Calendar, label: 'المواعيد والحجوزات', path: '/appointments', permission: ['clinical', 'registration'] as Permission[] },
+  { icon: ListOrdered, label: 'قائمة الانتظار الذكية', path: '/queue', permission: ['clinical', 'registration'] as Permission[] },
   { icon: MessageSquare, label: 'محادثات الموظفين', path: '/chat', permission: 'all' },
   
   { label: 'الأدلة والنظام', type: 'header', permission: 'admin' },
@@ -60,16 +60,16 @@ const sidebarItems: { icon?: any, label: string, path?: string, type?: 'header',
   { icon: Pill, label: 'دليل أصناف الصيدلية', path: '/directories/pharmacy', permission: 'admin' },
   { icon: Users, label: 'دليل المرافقين', path: '/directories/companions', permission: 'admin' },
   
-  { label: 'العمليات السريرية', type: 'header', permission: 'clinical' },
+  { label: 'العمليات السريرية', type: 'header', permission: ['clinical', 'pharmacy', 'lab'] as Permission[] },
   { icon: Pill, label: 'الصيدلية والمخزن', path: '/pharmacy', permission: 'pharmacy' },
   { icon: FlaskConical, label: 'المختبرات والتحاليل', path: '/laboratory', permission: 'lab' },
   { icon: ImageIcon, label: 'الأشعة والتصوير', path: '/radiology', permission: 'clinical' },
   { icon: Bed, label: 'إدارة الرقود', path: '/inpatient', permission: 'clinical' },
   
   { label: 'الإدارة والتقارير', type: 'header', permission: 'all' },
-  { icon: ClipboardList, label: 'سندات الاستعلامات', path: '/transactions/receipts', permission: 'all' },
-  { icon: Receipt, label: 'تحصيل السندات الآجلة', path: '/transactions/deferred', permission: 'all' },
-  { icon: HistoryIcon, label: 'مرتجع سندات الاستعلامات', path: '/transactions/returns', permission: 'all' },
+  { icon: ClipboardList, label: 'سندات الاستعلامات', path: '/transactions/receipts', permission: ['billing', 'admin'] as Permission[] },
+  { icon: Receipt, label: 'تحصيل السندات الآجلة', path: '/transactions/deferred', permission: ['billing', 'admin'] as Permission[] },
+  { icon: HistoryIcon, label: 'مرتجع سندات الاستعلامات', path: '/transactions/returns', permission: ['billing', 'admin'] as Permission[] },
   { icon: BarChart3, label: 'نسب الأطباء من الخدمات', path: '/reports/doctor-commissions', permission: 'admin' },
   { icon: UsersRound, label: 'المستخدمين والصلاحيات', path: '/users', permission: 'admin' },
   { icon: Receipt, label: 'التقارير المالية', path: '/reports', permission: 'admin' },

@@ -6,7 +6,7 @@ interface AuthContextType {
   user: User | null;
   login: (username: string, password?: string) => Promise<boolean>;
   logout: () => void;
-  hasPermission: (permission: Permission) => boolean;
+  hasPermission: (permission: Permission | Permission[]) => boolean;
   isLoading: boolean;
 }
 
@@ -63,9 +63,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('hospital_current_user');
   };
 
-  const hasPermission = (permission: Permission): boolean => {
+  const hasPermission = (permission: Permission | Permission[]): boolean => {
     if (!user) return false;
     if (user.permissions.includes('all' as Permission)) return true;
+    
+    if (Array.isArray(permission)) {
+      return permission.some(p => user.permissions.includes(p));
+    }
+    
     return user.permissions.includes(permission);
   };
 

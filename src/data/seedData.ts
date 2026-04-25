@@ -207,6 +207,56 @@ export const INITIAL_USERS: any[] = [
     status: 'active'
   },
   {
+    id: 'u-doctor-1',
+    email: 'doctor@medcenter.com',
+    username: 'doctor',
+    password: '123',
+    name: 'د. أحمد الوالي',
+    role: 'doctor',
+    permissions: ['clinical', 'read_only'],
+    status: 'active'
+  },
+  {
+    id: 'u-nurse-1',
+    email: 'nurse@medcenter.com',
+    username: 'nurse',
+    password: '123',
+    name: 'هنادي صالح',
+    role: 'nurse',
+    permissions: ['clinical'],
+    status: 'active'
+  },
+  {
+    id: 'u-ph-1',
+    email: 'pharmacy@medcenter.com',
+    username: 'pharmacy',
+    password: '123',
+    name: 'صيدلي المناوبة',
+    role: 'pharmacist',
+    permissions: ['pharmacy'],
+    status: 'active'
+  },
+  {
+    id: 'u-lab-1',
+    email: 'lab@medcenter.com',
+    username: 'lab',
+    password: '123',
+    name: 'فني المختبر',
+    role: 'lab_tech',
+    permissions: ['lab'],
+    status: 'active'
+  },
+  {
+    id: 'u-rec-1',
+    email: 'reception@medcenter.com',
+    username: 'reception',
+    password: '123',
+    name: 'موظف الاستقبال',
+    role: 'receptionist',
+    permissions: ['read_only'],
+    status: 'active'
+  },
+  {
     id: 'u-admin-2',
     email: 'Abdlelahalwali6@medcenter.com',
     username: 'Abdlelahalwali6',

@@ -218,7 +218,7 @@ export interface ClinicalVisit {
   radOrders: string[]; // RadiologyScan IDs
 }
 
-export type Permission = 'all' | 'read_only' | 'clinical' | 'pharmacy' | 'lab' | 'admin';
+export type Permission = 'all' | 'read_only' | 'clinical' | 'pharmacy' | 'lab' | 'admin' | 'registration' | 'billing';
 
 export interface User {
   id: string;

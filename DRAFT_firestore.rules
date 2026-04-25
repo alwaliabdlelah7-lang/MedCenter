@@ -32,10 +32,6 @@ service cloud.firestore {
       return isSignedIn() && (getAuthUserData().permissions.hasAny([p]) || isAdmin());
     }
 
-    function hasAnyPermission(ps) {
-      return isSignedIn() && (getAuthUserData().permissions.hasAny(ps) || isAdmin());
-    }
-
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
@@ -51,6 +47,13 @@ service cloud.firestore {
         && data.status in ['active', 'inactive'];
     }
 
+    function isValidPatient(data) {
+      return data.keys().hasAll(['id', 'name'])
+        && data.id is string
+        && data.name is string
+        && data.name.size() <= 200;
+    }
+
     // --- Rules for Collections ---
 
     // USERS: Only admins or owner (read)
@@ -58,15 +61,15 @@ service cloud.firestore {
       allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow list: if isAdmin();
       allow create: if isAdmin() && isValidUser(request.resource.data);
-      allow update: if (isAdmin() || request.auth.uid == userId) && isValidUser(request.resource.data);
+      allow update: if isAdmin() && isValidUser(request.resource.data);
       allow delete: if isAdmin();
     }
 
-    // PATIENTS: Clinical, Admin, Receptionists (Registration)
+    // PATIENTS: Clinical, Admin, Receptionist
     match /patients/{patientId} {
-      allow read: if isSignedIn() && hasAnyPermission(['clinical', 'read_only', 'registration']);
-      allow create: if isSignedIn() && hasAnyPermission(['registration', 'admin']);
-      allow update: if isSignedIn() && hasAnyPermission(['clinical', 'registration', 'admin']);
+      allow read: if isSignedIn() && (hasPermission('clinical') || hasPermission('read_only') || isAdmin());
+      allow create: if isSignedIn() && (hasPermission('read_only') || isAdmin());
+      allow update: if isSignedIn() && (hasPermission('clinical') || hasPermission('read_only') || isAdmin());
       allow delete: if isAdmin();
     }
 
@@ -79,20 +82,20 @@ service cloud.firestore {
     }
 
     match /prescriptions/{prescriptionId} {
-      allow read: if isSignedIn() && hasAnyPermission(['clinical', 'pharmacy', 'admin']);
-      allow create: if isSignedIn() && hasAnyPermission(['clinical', 'admin']);
-      allow update: if isSignedIn() && hasAnyPermission(['clinical', 'pharmacy', 'admin']);
+      allow read: if isSignedIn() && (hasPermission('clinical') || hasPermission('pharmacy') || isAdmin());
+      allow create: if isSignedIn() && (hasPermission('clinical') || isAdmin());
+      allow update: if isSignedIn() && (hasPermission('clinical') || hasPermission('pharmacy') || isAdmin());
       allow delete: if isAdmin();
     }
 
     match /lab_tests/{testId} {
-      allow read: if isSignedIn() && hasAnyPermission(['clinical', 'lab', 'admin']);
-      allow create: if isSignedIn() && hasAnyPermission(['clinical', 'admin']);
-      allow update: if isSignedIn() && hasAnyPermission(['clinical', 'lab', 'admin']);
+      allow read: if isSignedIn() && (hasPermission('clinical') || hasPermission('lab') || isAdmin());
+      allow create: if isSignedIn() && (hasPermission('clinical') || isAdmin());
+      allow update: if isSignedIn() && (hasPermission('clinical') || hasPermission('lab') || isAdmin());
       allow delete: if isAdmin();
     }
 
-    // MASTER DATA: Read for all signed in, Write for Admin
+    // MASTER DATA (Specializations, Departments, etc): Read for all signed in, Write for Admin
     match /departments/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
     match /clinics/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
     match /doctors/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
@@ -102,20 +105,20 @@ service cloud.firestore {
 
     // PHARMACY
     match /pharmacy_items/{itemId} {
-      allow read: if isSignedIn() && hasAnyPermission(['pharmacy', 'clinical', 'admin']);
+      allow read: if isSignedIn() && (hasPermission('pharmacy') || hasPermission('clinical') || isAdmin());
       allow write: if hasPermission('pharmacy') || isAdmin();
     }
 
     // APPOINTMENTS
     match /appointments/{appointmentId} {
       allow read: if isSignedIn();
-      allow write: if hasAnyPermission(['registration', 'clinical', 'admin']);
+      allow write: if hasPermission('read_only') || hasPermission('clinical') || isAdmin();
     }
 
     // RECEIPTS
     match /receipts/{receiptId} {
-      allow read: if isSignedIn() && hasAnyPermission(['billing', 'read_only', 'admin']);
-      allow write: if hasPermission('billing') || isAdmin();
+      allow read: if isSignedIn() && (hasPermission('read_only') || isAdmin());
+      allow write: if hasPermission('read_only') || isAdmin();
     }
   }
 }
