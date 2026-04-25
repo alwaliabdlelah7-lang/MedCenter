@@ -15,8 +15,7 @@ import NursesDirectory from './pages/Directories/NursesDirectory.tsx';
 import StructureDirectory from './pages/Directories/StructureDirectory.tsx';
 import ServicesDirectory from './pages/Directories/ServicesDirectory.tsx';
 import ReceiptTransactions from './pages/Transactions/ReceiptTransactions.tsx';
-import DeferredPayments from './pages/Transactions/DeferredPayments.tsx';
-import ReturnedReceipts from './pages/Transactions/ReturnedReceipts.tsx';
+import DeferredReceipts from './pages/Transactions/DeferredReceipts.tsx';
 import DoctorCommissions from './pages/Reports/DoctorCommissions.tsx';
 import Reports from './pages/Reports.tsx';
 import InpatientManagement from './pages/InpatientManagement.tsx';
@@ -33,6 +32,7 @@ import ClinicsDirectory from './pages/ClinicsDirectory.tsx';
 import OperationsDirectory from './pages/Directories/OperationsDirectory.tsx';
 import UsersManagement from './pages/UsersManagement.tsx';
 import PatientManagement from './pages/PatientManagement.tsx';
+import AIDiagnosisAssistant from './pages/Clinical/AIDiagnosisAssistant.tsx';
 import QueueManagement from './pages/QueueManagement.tsx';
 import StaffChat from './pages/StaffChat.tsx';
 import DoctorManagement from './pages/DoctorManagement.tsx';
@@ -82,6 +82,7 @@ export default function App() {
               <Route path="patients" element={<ProtectedRoute permission="clinical"><PatientManagement /></ProtectedRoute>} />
               <Route path="appointments" element={<ProtectedRoute permission="clinical"><Appointments /></ProtectedRoute>} />
               <Route path="queue" element={<ProtectedRoute><QueueManagement /></ProtectedRoute>} />
+              <Route path="diagnosis-assistant" element={<ProtectedRoute permission="clinical"><AIDiagnosisAssistant /></ProtectedRoute>} />
               <Route path="chat" element={<ProtectedRoute><StaffChat /></ProtectedRoute>} />
               
               {/* Directories Section */}
@@ -106,8 +107,8 @@ export default function App() {
               
               {/* Transactions Section */}
               <Route path="transactions/receipts" element={<ProtectedRoute permission="all"><ReceiptTransactions /></ProtectedRoute>} />
-              <Route path="transactions/deferred" element={<ProtectedRoute permission="all"><DeferredPayments /></ProtectedRoute>} />
-              <Route path="transactions/returns" element={<ProtectedRoute permission="all"><ReturnedReceipts /></ProtectedRoute>} />
+              <Route path="transactions/deferred" element={<ProtectedRoute permission="all"><DeferredReceipts /></ProtectedRoute>} />
+              <Route path="transactions/returns" element={<ProtectedRoute permission="all"><PlaceholderPage title="مرتجع سندات الاستعلامات" /></ProtectedRoute>} />
               
               {/* Other Sections */}
               <Route path="reports/doctor-commissions" element={<ProtectedRoute permission="admin"><DoctorCommissions /></ProtectedRoute>} />

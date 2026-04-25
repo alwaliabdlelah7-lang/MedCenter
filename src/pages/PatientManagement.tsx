@@ -22,12 +22,7 @@ import {
   Tag,
   Plus,
   Receipt,
-  Shield,
-  Printer,
-  BarChart3,
-  Stethoscope,
-  ChevronRight,
-  TrendingDown
+  Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Patient, Appointment, LabTest, PharmacyItem, DynamicFieldDefinition, ClinicalVisit, Prescription, RadiologyScan, Clinic } from '../types';
@@ -35,7 +30,6 @@ import { cn } from '../lib/utils';
 import { useSearchParams } from 'react-router-dom';
 import { INITIAL_PATIENTS } from '../data/seedData';
 import { dataStore } from '../services/dataService';
-import { exportToCSV, printReport } from '../lib/exportUtils';
 
 export default function PatientManagement() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -155,26 +149,6 @@ export default function PatientManagement() {
     if (selectedPatient?.id === id) setSelectedPatient(null);
   };
 
-  const stats = {
-    total: patients.length,
-    males: patients.filter(p => p.gender === 'male').length,
-    females: patients.filter(p => p.gender === 'female').length,
-    recent: patients.filter(p => new Date(p.createdAt || '').getTime() > Date.now() - 30 * 24 * 60 * 60 * 1000).length
-  };
-
-  const handleExportCSV = () => {
-    const data = patients.map(p => ({
-      'المعرف': p.id,
-      'الاسم': p.name,
-      'الهاتف': p.phone,
-      'العمر': p.age,
-      'الجنس': p.gender === 'male' ? 'ذكر' : 'أنثى',
-      'فصيلة الدم': p.bloodType,
-      'تارية التسجيل': p.createdAt
-    }));
-    exportToCSV(data, 'patients_master_list');
-  };
-
   const [newVisit, setNewVisit] = useState({
     reason: '',
     vitals: { temp: '', bp: '', hr: '', weight: '' },
@@ -205,72 +179,47 @@ export default function PatientManagement() {
 
   return (
     <div className="space-y-6 lg:p-4 text-right h-full">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-black text-white tracking-tight">إدارة المرضى والسجل الطبي الرقمي</h2>
-          <p className="text-sm text-sky-400/70 border-r-4 border-sky-600 pr-4 mt-2 font-bold italic">مركز MedCenter: نظام إدارة البيانات الصحية الموحد والشامل</p>
+          <h2 className="text-2xl font-bold text-white tracking-tight">إدارة المرضى والسجل الطبي الرقمي</h2>
+          <p className="text-sm text-sky-400 border-r-4 border-sky-500 pr-3 font-medium mt-1">مركز MedCenter: نظام إدارة البيانات الصحية الموحد</p>
         </div>
         
-        <div className="flex flex-wrap items-center gap-3 no-print">
+        <div className="flex items-center gap-3">
           <div className="relative group">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-sky-400 transition-colors" size={18} />
             <input 
               type="text" 
-              placeholder="البحث الذكي بالاسم أو الهاتف..." 
-              className="pr-10 pl-4 py-2.5 glass bg-white/5 text-white border border-white/10 rounded-xl focus:border-sky-400 outline-none w-64 lg:w-72 transition-all font-bold font-mono tracking-tighter"
+              placeholder="البحث بالاسم، الهاتف، أو المعرف..." 
+              className="pr-10 pl-4 py-3 glass bg-white/5 text-white border border-white/10 rounded-2xl focus:border-sky-400 outline-none w-72 transition-all shadow-xl"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          
-          <button 
-            onClick={handleExportCSV}
-            className="p-2.5 glass bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl hover:bg-emerald-500/20 transition-all shadow-lg"
-            title="تصدير قائمة المرضى"
-          >
-            <Download size={20} />
-          </button>
-          
-          <button 
-            onClick={() => printReport('تقرير سجلات المراجعين', 'patient-master-list-print')}
-            className="p-2.5 glass bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-xl hover:bg-indigo-500/20 transition-all shadow-lg"
-            title="طباعة التقرير"
-          >
-            <Printer size={20} />
-          </button>
-
           <button 
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 bg-sky-600 text-white px-6 py-2.5 rounded-xl font-black shadow-xl shadow-sky-600/20 hover:bg-sky-500 transition-all active:scale-95 uppercase tracking-widest text-[10px]"
+            className="flex items-center gap-2 bg-sky-600 text-white px-6 py-3 rounded-2xl font-black shadow-xl shadow-sky-600/20 hover:bg-sky-500 transition-all active:scale-95 uppercase tracking-widest text-xs"
           >
             <UserPlus size={18} />
-            <span>تسجيل حالة جديدة</span>
+            <span>تسجيل مريض</span>
           </button>
         </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 no-print">
-         <MiniStat icon={Users} label="إجمالي المرضى" value={stats.total} color="sky" />
-         <MiniStat icon={Shield} label="ذكور / إناث" value={`${stats.males} / ${stats.females}`} color="indigo" />
-         <MiniStat icon={BarChart3} label="انضموا مؤخراً" value={stats.recent} color="emerald" />
-         <MiniStat icon={Stethoscope} label="نشطين حالياً" value={patients.filter(p => p.clinicId).length} color="amber" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full min-h-[700px]">
         {/* Patient List Section */}
         <div className="lg:col-span-4 glass rounded-[40px] overflow-hidden flex flex-col border border-white/10 shadow-2xl relative">
-           <div className="p-6 border-b border-white/5 bg-white/5 flex items-center justify-between no-print">
+           <div className="p-6 border-b border-white/5 bg-white/5 flex items-center justify-between">
               <h3 className="text-white font-black text-sm flex items-center gap-2 uppercase tracking-widest">
                  <Users size={18} className="text-sky-400" /> قائمة المراجعين
               </h3>
               <div className="flex items-center gap-1">
                  <button className="p-2 text-slate-500 hover:text-white glass rounded-xl transition-colors"><Filter size={16} /></button>
-                 <button onClick={handleExportCSV} className="p-2 text-slate-500 hover:text-white glass rounded-xl transition-colors"><Download size={16} /></button>
+                 <button className="p-2 text-slate-500 hover:text-white glass rounded-xl transition-colors"><Download size={16} /></button>
               </div>
            </div>
            
-           <div id="patient-master-list-print" className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
+           <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
               {filtered.map(patient => (
                 <button
                   key={patient.id}
@@ -319,7 +268,7 @@ export default function PatientManagement() {
                animate={{ opacity: 1, x: 0 }}
                className="h-full flex flex-col space-y-6"
              >
-                <div id="patient-profile-detail" className="glass rounded-[40px] p-8 border border-white/10 relative overflow-hidden flex-1 flex flex-col shadow-2xl">
+                <div className="glass rounded-[40px] p-8 border border-white/10 relative overflow-hidden flex-1 flex flex-col shadow-2xl">
                    <div className="absolute top-0 right-0 w-64 h-64 bg-sky-500/10 blur-[120px] rounded-full translate-x-20 -translate-y-20" />
                    
                    {/* Header Row */}
@@ -339,32 +288,25 @@ export default function PatientManagement() {
                          </div>
                       </div>
                       
-                      <div className="flex items-center gap-3 no-print">
+                      <div className="flex items-center gap-3">
                          <button 
                            onClick={() => setShowVisitModal(true)}
-                           className="flex items-center gap-2 px-6 py-3 bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 rounded-2xl hover:bg-emerald-600 hover:text-white transition-all font-black text-xs shadow-xl shadow-emerald-500/5 uppercase tracking-widest"
+                           className="flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-500 transition-all font-black text-xs shadow-xl shadow-emerald-600/20 uppercase tracking-widest"
                          >
                             <Plus size={18}/> زيارة طبية
-                         </button>
-                         <button 
-                           onClick={() => printReport(`السجل الطبي - ${selectedPatient.name}`, 'patient-profile-detail')}
-                           className="p-3 glass bg-indigo-500/10 text-indigo-400 rounded-2xl hover:bg-indigo-500/20 transition-all border border-indigo-500/20"
-                           title="طباعة الملف الطبي"
-                         >
-                            <Printer size={20}/>
                          </button>
                          <button 
                            onClick={() => {
                              setEditPatientData(selectedPatient);
                              setShowEditModal(true);
                            }}
-                           className="p-3 glass bg-sky-500/10 text-sky-400 rounded-2xl hover:bg-sky-500 transition-all border border-sky-500/20"
+                           className="p-3 glass bg-white/5 text-slate-400 rounded-2xl hover:bg-white/10 transition-all"
                          >
                             <Edit2 size={20}/>
                          </button>
                          <button 
                            onClick={() => handleDeletePatient(selectedPatient.id)}
-                           className="p-3 glass bg-rose-500/10 text-rose-400 rounded-2xl hover:bg-rose-500/20 transition-all border border-rose-500/20"
+                           className="p-3 glass bg-rose-500/10 text-rose-400 rounded-2xl hover:bg-rose-500/20 transition-all"
                          >
                             <Trash2 size={20}/>
                          </button>
@@ -892,24 +834,3 @@ const DetailItem: React.FC<DetailItemProps> = ({ icon: Icon, label, value }) => 
     </div>
   );
 };
-
-function MiniStat({ icon: Icon, label, value, color }: any) {
-  const colors: any = {
-    sky: "bg-sky-500/10 text-sky-400 border-sky-500/20",
-    indigo: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
-    emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    amber: "bg-amber-500/10 text-amber-400 border-amber-500/20"
-  };
-
-  return (
-    <div className="glass p-5 rounded-[24px] border border-white/5 flex items-center gap-4 group hover:bg-white/5 transition-all">
-      <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border shadow-inner group-hover:scale-110 transition-transform", colors[color])}>
-        <Icon size={24} />
-      </div>
-      <div>
-        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</p>
-        <p className="text-xl font-black text-white mt-0.5">{value}</p>
-      </div>
-    </div>
-  );
-}

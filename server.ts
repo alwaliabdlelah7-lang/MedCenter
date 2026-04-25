@@ -44,7 +44,8 @@ async function startServer() {
   // Performance/API logging
   app.use((req, res, next) => {
     if (req.path.startsWith('/api')) {
-      console.log(`[API Request] ${req.method} ${req.path}`);
+      console.log(`[API Request] ${new Date().toISOString()} ${req.method} ${req.path}`);
+      console.log(`[Headers] x-user-id: ${req.headers['x-user-id']}`);
     }
     next();
   });
@@ -102,6 +103,11 @@ async function startServer() {
 
   // Mount API router
   app.use("/api", createApiRouter(db));
+
+  // Catch unmatched /api calls before SPA fallback
+  app.all("/api/*", (req, res) => {
+    res.status(404).json({ error: `API route not found: ${req.method} ${req.path}` });
+  });
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

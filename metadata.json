@@ -1,6 +1,8 @@
 {
-  "name": "نظام إيداع الطبي (MedCenter-HIS)",
-  "description": "نظام متكامل لإدارة المستشفيات يشمل إدارة العرض الطبي مع دعم معايير FHIR لتبادل البيانات الصحية، إدارة المواعيد، والسندات المالية.",
-  "requestFramePermissions": [],
-  "majorCapabilities": []
+  "name": "MedCenter HIS - Hospital Information System",
+  "description": "A comprehensive hospital information system for managing patients, clinical visits, pharmacy inventory, laboratory tests, and financial receipts. Supports role-based access control and real-time collaboration.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
 }

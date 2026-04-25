@@ -60,6 +60,31 @@
       },
       "required": ["id", "name", "price"]
     },
+    "master_medicine": {
+      "title": "Master Medicine",
+      "description": "Medicine catalog entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "tradeName": { "type": "string" },
+        "scientificName": { "type": "string" },
+        "category": { "type": "string" },
+        "price": { "type": "number" }
+      },
+      "required": ["name", "scientificName"]
+    },
+    "master_lab_test": {
+      "title": "Master Lab Test",
+      "description": "Laboratory test catalog entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" }
+      },
+      "required": ["name", "price"]
+    },
     "operation": {
       "title": "Surgical Operation",
       "description": "Surgical procedure with associated cost",
@@ -191,6 +216,29 @@
       },
       "required": ["id", "patientId", "doctorId"]
     },
+    "dynamic_field": {
+      "title": "Dynamic Field",
+      "description": "Custom field definition for patients",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["text", "number", "date", "select"] },
+        "required": { "type": "boolean" }
+      },
+      "required": ["id", "name", "type"]
+    },
+    "radiology_scan": {
+      "title": "Radiology Scan",
+      "description": "Imaging order and result",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "patientId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "completed"] }
+      },
+      "required": ["id", "patientId", "status"]
+    },
     "fhir_patient": {
       "title": "FHIR Patient",
       "description": "FHIR R4 Compliant Patient Resource",
@@ -247,6 +295,8 @@
     "/departments/{departmentId}": { "schema": "department", "description": "Hospital departments" },
     "/clinics/{clinicId}": { "schema": "clinic", "description": "Hospital clinics" },
     "/services/{serviceId}": { "schema": "medical_service", "description": "Medical services available" },
+    "/master_medicines/{id}": { "schema": "master_medicine", "description": "Global medicine catalog" },
+    "/master_lab_tests/{id}": { "schema": "master_lab_test", "description": "Global lab test catalog" },
     "/operations/{operationId}": { "schema": "operation", "description": "Surgical operations" },
     "/companions/{companionId}": { "schema": "companion", "description": "Registered companions" },
     "/inpatients/{inpatientId}": { "schema": "inpatient", "description": "Current and past inpatient admissions" },
@@ -256,6 +306,8 @@
     "/pharmacy_items/{itemId}": { "schema": "pharmacy_item", "description": "Pharmacy inventory" },
     "/prescriptions/{prescriptionId}": { "schema": "prescription", "description": "Patient prescriptions" },
     "/lab_tests/{testId}": { "schema": "lab_test", "description": "Laboratory orders and results" },
+    "/radiology_scans/{scanId}": { "schema": "radiology_scan", "description": "Radiology orders and results" },
+    "/dynamic_fields/{fieldId}": { "schema": "dynamic_field", "description": "Custom patient field definitions" },
     "/clinical_visits/{visitId}": { "schema": "clinical_visit", "description": "Medical consultation records" },
     "/users/{userId}": { "schema": "app_user", "description": "System users and their roles" },
     "/fhir_patients/{id}": { "schema": "fhir_patient", "description": "FHIR Patient resources" },

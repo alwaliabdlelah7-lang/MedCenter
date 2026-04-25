@@ -7,20 +7,46 @@ export function createApiRouter(db: any) {
 
   // RBAC Middleware
   const checkAuth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    // Skip auth for specific routes
+    const publicPaths = ['/health', '/api-test', '/login', '/auth/login'];
+    if (publicPaths.includes(req.path)) return next();
+
     const userId = req.headers['x-user-id'] as string;
     
-    // For health check or if user hits test routes, we might allow it
-    if (req.path === '/health') return next();
-
     if (!userId) {
+      console.warn(`[Auth] Missing x-user-id header for ${req.path}`);
       return res.status(401).json({ error: "Unauthorized: Missing X-User-Id header" });
     }
 
-    if (!db) return res.status(503).json({ error: "Firebase not initialized" });
+    if (!db) {
+      console.error(`[Auth] Database not initialized for ${req.path}`);
+      return res.status(503).json({ error: "Firebase not initialized" });
+    }
 
     try {
-      const userDoc = await db.collection('users').doc(userId).get();
+      console.log(`[Auth] Checking userId: ${userId} for path: ${req.path}`);
+      let userDoc = await db.collection('users').doc(userId).get();
+      
+      // Fallback: If u-1 and database is empty, allow it and potentially create it
+      if (!userDoc.exists && userId === 'u-1') {
+        const allUsers = await db.collection('users').limit(1).get();
+        if (allUsers.empty) {
+          console.info("[Auth] Empty database detected, allowing u-1 access");
+          (req as any).user = {
+            id: 'u-1',
+            username: 'admin',
+            role: 'admin',
+            permissions: ['all'],
+            status: 'active'
+          };
+          return next();
+        } else {
+           console.log(`[Auth] Database not empty, but u-1 not found. First user exists? ${!allUsers.empty}`);
+        }
+      }
+
       if (!userDoc.exists) {
+        console.warn(`[Auth] User ${userId} not found in database for path ${req.path}`);
         return res.status(403).json({ error: "Forbidden: User record not found" });
       }
 
@@ -28,7 +54,7 @@ export function createApiRouter(db: any) {
       (req as any).user = userData;
       next();
     } catch (error) {
-      console.error("RBAC Middleware Error:", error);
+      console.error(`[Auth] Error checking user ${userId}:`, error);
       res.status(500).json({ error: "Internal server error during auth check" });
     }
   };
@@ -45,13 +71,72 @@ export function createApiRouter(db: any) {
     };
   };
 
+  // Login Route
+  router.post("/login", async (req, res) => {
+    const { username, password } = req.body;
+    if (!db) return res.status(503).json({ error: "Firebase not initialized" });
+    
+    try {
+      const usersSnapshot = await db.collection('users')
+        .where('username', '==', username)
+        .where('status', '==', 'active')
+        .limit(1)
+        .get();
+        
+      if (usersSnapshot.empty) {
+        // Fallback for initial admin
+        if (username === 'admin') {
+          const allUsers = await db.collection('users').limit(1).get();
+          if (allUsers.empty && (!password || password === '123')) {
+            const adminData = {
+               username: 'admin',
+               name: 'مدير النظام',
+               role: 'admin',
+               permissions: ['all'],
+               status: 'active'
+            };
+            // Create user in DB so checkAuth succeeds later
+            await db.collection('users').doc('u-1').set({
+              ...adminData,
+              createdAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            return res.json({
+               id: 'u-1',
+               ...adminData
+            });
+          }
+        }
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      const userData = usersSnapshot.docs[0].data();
+      const user = { id: usersSnapshot.docs[0].id, ...userData };
+
+      if (user.password && user.password !== password) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      res.json(user);
+    } catch (error) {
+      console.error("Login Error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   router.use(checkAuth);
 
   // Health check
-  router.get("/health", (req, res) => {
+  router.get("/health", async (req, res) => {
+    let userCount = 0;
+    if (db) {
+      const users = await db.collection('users').get();
+      userCount = users.size;
+    }
     res.json({ 
       status: "ok", 
       firebase: !!db, 
+      userCount,
       timestamp: new Date().toISOString(),
       dbType: db ? "initialized" : "null"
     });

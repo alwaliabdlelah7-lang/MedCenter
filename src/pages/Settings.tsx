@@ -28,16 +28,31 @@ export default function SettingsPage() {
   const [migrationStatus, setMigrationStatus] = useState<string | null>(null);
 
   const seedDatabase = async () => {
-    if (!confirm('هل أنت متأكد من زرع البيانات الأولية في قاعدة البيانات السحابية؟ سيتم إضافة البيانات فقط إذا كانت المجموعات فارغة.')) return;
+    if (!confirm('هل أنت متأكد من زرع البيانات الأولية في قاعدة البيانات السحابية Supabase؟ سيتم إضافة البيانات المرجعية الأساسية لبدء العمل.')) return;
     setIsSeeding(true);
     try {
-      const response = await fetch('/api/admin/seed', { method: 'POST' });
-      const data = await response.json();
-      if (response.ok) {
-        alert('تم زرع البيانات بنجاح: ' + data.message);
-      } else {
-        throw new Error(data.error);
+      // Import seed data manually here to avoid complex imports if needed, 
+      // but assuming we can import from seedData.ts
+      const { INITIAL_SEED_DATA } = await import('../data/seedData');
+      
+      const collections = Object.keys(INITIAL_SEED_DATA);
+      let successCount = 0;
+
+      for (const col of collections) {
+        const items = (INITIAL_SEED_DATA as any)[col];
+        if (Array.isArray(items)) {
+          for (const item of items) {
+             try {
+               await dataStore.addItem(col, item);
+               successCount++;
+             } catch (e) {
+               console.error(`Error seeding item in ${col}:`, e);
+             }
+          }
+        }
       }
+
+      alert(`تم زرع ${successCount} سجل مرجعي في Supabase بنجاح!`);
     } catch (error) {
       alert('فشل في زرع البيانات: ' + (error as Error).message);
     } finally {
@@ -50,37 +65,56 @@ export default function SettingsPage() {
       'departments', 'clinics', 'doctors', 'patients', 'users', 'services', 
       'master_lab_tests', 'master_medicines', 'lab_tests', 'radiology_scans', 
       'receipts', 'appointments', 'queues', 'clinical_visits', 
-      'pharmacy_prescriptions', 'nurses', 'companions', 'operations'
+      'prescriptions', 'nurses', 'companions', 'operations'
     ];
     
-    if (!confirm('هل تريد ترحيل كافة البيانات المحلية الحالية إلى قاعدة البيانات السحابية؟ قد يستغرق هذا وقتاً طويلاً.')) return;
+    if (!confirm('هل تريد ترحيل كافة البيانات المحلية الحالية إلى Supabase؟ قد يستغرق هذا وقتاً طويلاً.')) return;
     
     setIsMigrating(true);
     setMigrationStatus('جاري التحليل والترحيل...');
     
-    const result = await dataStore.migrateLocalToCloud(collections);
+    let totalMigrated = 0;
+    const migrations: Record<string, number> = {};
+
+    for (const col of collections) {
+      const localData = (dataStore as any).getLocalAll(col);
+      if (localData.length === 0) continue;
+      
+      let colCount = 0;
+      for (const item of localData) {
+        try {
+          await dataStore.addItem(col, item);
+          colCount++;
+          totalMigrated++;
+        } catch (e) {
+          console.error(`Migration error for ${col}:`, e);
+        }
+      }
+      migrations[col] = colCount;
+    }
     
-    if (result.success) {
+    if (totalMigrated > 0) {
       setMigrationStatus('تم الترحيل بنجاح!');
-      const summary = Object.entries(result.migrated)
+      const summary = Object.entries(migrations)
         .map(([col, count]) => `${col}: ${count}`)
         .join('\n');
-      alert('تم ترحيل البيانات بنجاح:\n' + summary);
+      alert(`تم ترحيل البيانات بنجاح!\nالإجمالي: ${totalMigrated} سجل.\n\nالتفاصيل:\n${summary}`);
     } else {
-      setMigrationStatus('فشل الترحيل');
-      alert('حدث خطأ أثناء ترحيل البيانات. يرجى التحقق من اتصال السيرفر.');
+      setMigrationStatus('لا توجد بيانات للترحيل');
+      alert('لا توجد سجلات محلية حالياً للترحيل.');
     }
     setIsMigrating(false);
   };
 
   const toggleStorageSource = (source: 'local' | 'cloud') => {
     if (source === 'cloud' && !isRealtimeEnabled) {
-      if (!confirm('سيتم تفعيل الربط السحابي واستخدام قاعدة بيانات Firebase. يتطلب هذا اتصالاً بالإنترنت لمزامنة البيانات بين الأجهزة.')) return;
+      if (!confirm('سيتم تفعيل الربط السحابي واستخدام قاعدة بيانات Supabase. يتطلب هذا اتصالاً بالإنترنت لمزامنة البيانات بين الأجهزة.')) return;
     }
     if (source === 'local' && isRealtimeEnabled) {
       if (!confirm('هل أنت متأكد من العودة لوضع العمل المحلي؟ سيتم حفظ البيانات في هذا المتصفح فقط ولن يراها الآخرون.')) return;
     }
-    dataStore.setStorageSource(source);
+    (dataStore as any)._useCloud = (source === 'cloud');
+    localStorage.setItem('hospital_storage_source', source);
     setIsRealtimeEnabled(source === 'cloud');
   };
 
@@ -183,7 +217,7 @@ export default function SettingsPage() {
           onClick={() => setActiveTab('cloud')}
           className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'cloud' ? 'bg-white/10 text-sky-400 shadow-xl' : 'text-slate-500 hover:text-slate-300'}`}
         >
-          البيانات السحابية (Firebase)
+          البيانات السحابية (Supabase)
         </button>
       </div>
 
@@ -195,7 +229,7 @@ export default function SettingsPage() {
                 <div className="glass p-8 rounded-[40px] space-y-8 border border-white/5">
                   <div className="flex items-center gap-3 mb-4">
                     <Cloud className="text-sky-400" size={20} />
-                    <h3 className="text-white font-black italic uppercase tracking-widest text-sm">Cloud Data Management</h3>
+                    <h3 className="text-white font-black italic uppercase tracking-widest text-sm">Supabase Cloud Management</h3>
                   </div>
 
                   {/* Storage Source Toggle */}
@@ -216,8 +250,8 @@ export default function SettingsPage() {
                     >
                       <Cloud size={32} className={isRealtimeEnabled ? 'text-sky-400' : ''} />
                       <div>
-                        <span className="text-sm font-black block mb-1">وضع الربط الشبكي (Cloud)</span>
-                        <span className="text-[10px] opacity-70 leading-relaxed italic block">مزامنة لحظية بين جميع أجهزة وسيرفرات العيادات (Firebase). يسمح بالعمل الجماعي ومشاركة التقارير.</span>
+                        <span className="text-sm font-black block mb-1">وضع الربط السحابي (Supabase)</span>
+                        <span className="text-[10px] opacity-70 leading-relaxed italic block">مزامنة لحظية بين جميع أجهزة وسيرفرات العيادات (Supabase). يسمح بالعمل الجماعي ومشاركة التقارير بشكل آمن.</span>
                       </div>
                     </button>
                   </div>

@@ -128,7 +128,7 @@ export default function QueueManagement() {
     }
 
     if (visit.prescriptions && visit.prescriptions.length > 0) {
-      await dataStore.addItem('pharmacy_prescriptions', {
+      await dataStore.addItem('prescriptions', {
         id: `RX-${Date.now().toString().slice(-6)}`,
         patientId: visit.patientId,
         doctorId: visit.doctorId,

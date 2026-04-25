@@ -36,18 +36,19 @@ import {
   FileHeart,
   History as HistoryIcon,
   Cloud,
-  Database
+  Database,
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import CommandSearch from './CommandSearch';
 
-const sidebarItems: { icon?: any, label: string, path?: string, type?: 'header', badge?: string | number, badgeColor?: string, permission?: Permission | Permission[] }[] = [
+const sidebarItems: { icon?: any, label: string, path?: string, type?: 'header', permission?: Permission | Permission[] }[] = [
   { icon: LayoutDashboard, label: 'لوحة التحكم', path: '/', permission: 'all' },
   { icon: FileHeart, label: 'إدارة المرضى (EMR)', path: '/patients', permission: ['clinical', 'registration'] as Permission[] },
   { icon: Calendar, label: 'المواعيد والحجوزات', path: '/appointments', permission: ['clinical', 'registration'] as Permission[] },
   { icon: ListOrdered, label: 'قائمة الانتظار الذكية', path: '/queue', permission: ['clinical', 'registration'] as Permission[] },
-  { icon: MessageSquare, label: 'محادثات الموظفين', path: '/chat', permission: 'all', badge: 3, badgeColor: 'sky' },
+  { icon: MessageSquare, label: 'محادثات الموظفين', path: '/chat', permission: 'all' },
   
   { label: 'الأدلة والنظام', type: 'header', permission: 'admin' },
   { icon: Stethoscope, label: 'دليل الأطباء', path: '/directories/doctors', permission: 'admin' },
@@ -61,9 +62,10 @@ const sidebarItems: { icon?: any, label: string, path?: string, type?: 'header',
   { icon: Users, label: 'دليل المرافقين', path: '/directories/companions', permission: 'admin' },
   
   { label: 'العمليات السريرية', type: 'header', permission: ['clinical', 'pharmacy', 'lab'] as Permission[] },
+  { icon: Sparkles, label: 'مساعد التشخيص الذكي', path: '/diagnosis-assistant', permission: 'clinical' },
   { icon: Pill, label: 'الصيدلية والمخزن', path: '/pharmacy', permission: 'pharmacy' },
   { icon: FlaskConical, label: 'المختبرات والتحاليل', path: '/laboratory', permission: 'lab' },
-  { icon: ImageIcon, label: 'الأشعة والتصوير', path: '/radiology', permission: 'clinical', badge: 'LIVE', badgeColor: 'emerald' },
+  { icon: ImageIcon, label: 'الأشعة والتصوير', path: '/radiology', permission: 'clinical' },
   { icon: Bed, label: 'إدارة الرقود', path: '/inpatient', permission: 'clinical' },
   
   { label: 'الإدارة والتقارير', type: 'header', permission: 'all' },
@@ -84,32 +86,10 @@ export default function Layout() {
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
   const [hospitalName, setHospitalName] = React.useState('إبداع الطبي');
   const [isCloudMode, setIsCloudMode] = React.useState(dataStore.isCloudEnabled());
-  const [counts, setCounts] = React.useState({
-    patients: 0,
-    appointments: 0,
-    receipts: 0,
-    returns: 1
-  });
 
   React.useEffect(() => {
-    const updateStats = async () => {
-      const [ps, as, rs] = await Promise.all([
-        dataStore.getItems('patients'),
-        dataStore.getItems('appointments'),
-        dataStore.getItems('receipts')
-      ]);
-      setCounts({
-        patients: ps.length,
-        appointments: as.filter((a: any) => a.date === new Date().toISOString().split('T')[0]).length,
-        receipts: rs.length,
-        returns: 1
-      });
-    };
-    updateStats();
-
     const unsubscribe = dataStore.subscribe(() => {
       setIsCloudMode(dataStore.isCloudEnabled());
-      updateStats();
     });
 
     const saved = localStorage.getItem('hospital_settings');
@@ -143,14 +123,6 @@ export default function Layout() {
     };
   }, [isSearchOpen]);
 
-  const dynamicSidebarItems = React.useMemo(() => sidebarItems.map(item => {
-    if (item.path === '/patients') return { ...item, badge: counts.patients, badgeColor: 'sky' };
-    if (item.path === '/appointments') return { ...item, badge: counts.appointments > 0 ? counts.appointments : undefined, badgeColor: 'sky' };
-    if (item.path === '/transactions/receipts') return { ...item, badge: counts.receipts, badgeColor: 'emerald' };
-    if (item.path === '/transactions/returns') return { ...item, badge: counts.returns, badgeColor: 'rose' };
-    return item;
-  }), [counts]);
-
   return (
     <div className="flex min-h-screen font-sans p-4 gap-4 overflow-hidden relative">
       <div className="mesh-bg" />
@@ -183,7 +155,7 @@ export default function Layout() {
         </button>
 
         <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto custom-scrollbar overflow-x-hidden">
-          {dynamicSidebarItems.filter(item => !item.permission || hasPermission(item.permission)).map((item, idx) => {
+          {sidebarItems.filter(item => !item.permission || hasPermission(item.permission)).map((item, idx) => {
             if (item.type === 'header') {
               return !isCollapsed ? (
                 <div key={idx} className="text-slate-500 text-[9px] font-black uppercase tracking-[2px] px-4 mt-8 mb-2 italic">
@@ -208,29 +180,7 @@ export default function Layout() {
                 }
               >
                 <item.icon size={20} className={cn("transition-transform group-hover:scale-110", isCollapsed ? "m-0" : "")} />
-                {!isCollapsed && (
-                  <div className="flex-1 flex items-center justify-between min-w-0">
-                    <span className="font-medium whitespace-nowrap truncate">{item.label}</span>
-                    {item.badge && (
-                      <span className={cn(
-                        "text-[8px] font-black px-1.5 py-0.5 rounded-full border shadow-sm animate-pulse",
-                        item.badgeColor === 'sky' ? "bg-sky-500/10 text-sky-400 border-sky-500/20" : "",
-                        item.badgeColor === 'emerald' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "",
-                        item.badgeColor === 'rose' ? "bg-rose-500/10 text-rose-400 border-rose-500/20" : ""
-                      )}>
-                        {item.badge}
-                      </span>
-                    )}
-                  </div>
-                )}
-                {isCollapsed && item.badge && (
-                  <div className={cn(
-                    "absolute top-0 right-0 w-2 h-2 rounded-full border border-white/20",
-                    item.badgeColor === 'sky' ? "bg-sky-500" : "",
-                    item.badgeColor === 'emerald' ? "bg-emerald-500" : "",
-                    item.badgeColor === 'rose' ? "bg-rose-500" : ""
-                  )} />
-                )}
+                {!isCollapsed && <span className="font-medium whitespace-nowrap">{item.label}</span>}
               </NavLink>
             );
           })}

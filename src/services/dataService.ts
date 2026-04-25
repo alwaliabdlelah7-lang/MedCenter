@@ -1,15 +1,18 @@
+import { supabase } from '../lib/supabase';
+
 /**
  * Unified Data Service for Hospital Management System
- * Handles data persistence using Backend APIs with Firestore.
+ * Handles data persistence using Supabase.
  */
 
 class DataService {
   private static instance: DataService;
-  private baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-  private _useCloud: boolean = localStorage.getItem('hospital_storage_source') === 'cloud';
+  private _useCloud: boolean = true;
   private listeners: (() => void)[] = [];
   
-  private constructor() {}
+  private constructor() {
+    this._useCloud = !!import.meta.env.VITE_SUPABASE_URL;
+  }
 
   public static getInstance(): DataService {
     if (!DataService.instance) {
@@ -33,54 +36,23 @@ class DataService {
     return this._useCloud;
   }
 
-  public setStorageSource(source: 'local' | 'cloud') {
-    this._useCloud = source === 'cloud';
-    localStorage.setItem('hospital_storage_source', source);
-    this.notify();
-  }
-
-  private getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    const savedUser = localStorage.getItem('hospital_current_user');
-    if (savedUser) {
-      try {
-        const user = JSON.parse(savedUser);
-        if (user.id) {
-          headers['x-user-id'] = user.id;
-        }
-      } catch (e) {
-        console.error("Error parsing user for headers", e);
-      }
-    }
-    return headers;
-  }
-
   // Generic Get All
-  public async getItems<T>(key: string): Promise<T[]> {
-    return this.getAll<T>(key);
-  }
-
   public async getAll<T>(key: string): Promise<T[]> {
-    if (this._useCloud) {
+    if (this._useCloud && supabase) {
       try {
-        const url = `${this.baseUrl}/api/${key}`;
-        const response = await fetch(url, {
-          headers: this.getHeaders()
-        });
-        if (!response.ok) {
-           const text = await response.text();
-           console.error(`Cloud API error for ${key} (${response.status}):`, text);
-           throw new Error(`Cloud API unavailable: ${response.status}`);
+        const { data, error } = await supabase
+          .from(key)
+          .select('*')
+          .order('id', { ascending: true });
+        
+        if (error) {
+          console.warn(`Supabase Fetch Error for ${key}:`, error);
+          return this.getLocalAll<T>(key);
         }
         
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          const text = await response.text();
-          console.error(`Invalid content type for ${key}: ${contentType}. Content:`, text.substring(0, 500));
-          throw new Error('Expected JSON response but received something else');
-        }
-
-        return await response.json();
+        const items = (data as T[]) || [];
+        this.saveLocalAll(key, items);
+        return items;
       } catch (error) {
         console.warn(`Cloud error for ${key}:`, error);
         return this.getLocalAll<T>(key);
@@ -90,118 +62,89 @@ class DataService {
     }
   }
 
+  // Generic Search
+  public async find<T>(key: string, query: Partial<Record<keyof T, any>>): Promise<T[]> {
+    if (this._useCloud && supabase) {
+      try {
+        let supabaseQuery = supabase.from(key).select('*');
+        
+        Object.entries(query).forEach(([field, value]) => {
+          supabaseQuery = supabaseQuery.eq(field, value);
+        });
+
+        const { data, error } = await supabaseQuery;
+        if (error) throw error;
+        return (data as T[]) || [];
+      } catch (error) {
+        console.error(`Supabase Find Error for ${key}:`, error);
+        return [];
+      }
+    }
+    return [];
+  }
+
   // Generic Add Item
   public async addItem<T>(key: string, item: any): Promise<void> {
-    if (this._useCloud) {
+    if (this._useCloud && supabase) {
        try {
-        const response = await fetch(`${this.baseUrl}/api/${key}`, {
-          method: 'POST',
-          headers: this.getHeaders(),
-          body: JSON.stringify(item),
-        });
-        if (!response.ok) {
-          const text = await response.text();
-          console.error(`Cloud Add Error for ${key} (${response.status}):`, text);
-          throw new Error('Failed to save to cloud');
-        }
+        const { error } = await supabase
+          .from(key)
+          .insert(item);
         
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          const text = await response.text();
-          console.error(`Invalid content type for POST ${key}: ${contentType}. Content:`, text.substring(0, 500));
-          throw new Error('Expected JSON response');
+        if (error) {
+           console.warn(`[DataService] Supabase Add failed for ${key}:`, error);
         }
       } catch (error) {
-        console.error('Cloud Save Error:', error);
-        const current = this.getLocalAll<T>(key);
-        this.saveLocalAll(key, [...current, item]);
+        console.warn(`[DataService] Cloud Save Error for ${key}:`, error);
       }
-    } else {
-      const current = this.getLocalAll<T>(key);
-      this.saveLocalAll(key, [...current, item]);
     }
+    const current = this.getLocalAll<T>(key);
+    this.saveLocalAll(key, [...current, item]);
+    this.notify();
   }
 
   // Generic Update Item
-  public async updateItem<T extends { id?: string }>(key: string, id: string, updates: Partial<T>): Promise<void> {
-    if (this._useCloud) {
-      try {
-        const response = await fetch(`${this.baseUrl}/api/${key}/${id}`, {
-          method: 'PUT',
-          headers: this.getHeaders(),
-          body: JSON.stringify(updates),
-        });
-        if (!response.ok) {
-          const text = await response.text();
-          console.error(`Cloud Update Error for ${key}/${id} (${response.status}):`, text);
-          throw new Error('Update failed');
-        }
-
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          const text = await response.text();
-          console.error(`Invalid content type for PUT ${key}: ${contentType}. Content:`, text.substring(0, 500));
-          throw new Error('Expected JSON response');
+  public async updateItem<T>(key: string, id: string, updates: Partial<T>): Promise<void> {
+    if (this._useCloud && supabase) {
+       try {
+        const { error } = await supabase
+          .from(key)
+          .update(updates)
+          .eq('id', id);
+        
+        if (error) {
+           console.warn(`[DataService] Supabase Update failed for ${key}/${id}:`, error);
         }
       } catch (error) {
-        console.error('Cloud Update Error:', error);
-         const current = this.getLocalAll<T>(key);
-         this.saveLocalAll(key, current.map(item => item.id === id ? { ...item, ...updates } : item));
+        console.warn(`[DataService] Cloud Update Error for ${key}/${id}:`, error);
       }
-    } else {
-      const current = this.getLocalAll<T>(key);
-      this.saveLocalAll(key, current.map(item => item.id === id ? { ...item, ...updates } : item));
     }
+    const current = this.getLocalAll<any>(key);
+    this.saveLocalAll(key, current.map((item: any) => 
+      (item.id === id) ? { ...item, ...updates } : item
+    ));
+    this.notify();
   }
 
   // Generic Delete Item
-  public async deleteItem<T extends { id?: string }>(key: string, id: string): Promise<void> {
-    if (this._useCloud) {
+  public async deleteItem<T>(key: string, id: string): Promise<void> {
+    if (this._useCloud && supabase) {
       try {
-        const response = await fetch(`${this.baseUrl}/api/${key}/${id}`, { 
-          method: 'DELETE',
-          headers: this.getHeaders()
-        });
-        if (!response.ok) throw new Error('Delete failed');
-      } catch (error) {
-        console.error('Cloud Delete Error:', error);
-        const current = this.getLocalAll<T>(key);
-        this.saveLocalAll(key, current.filter(item => item.id !== id));
-      }
-    } else {
-      const current = this.getLocalAll<T>(key);
-      this.saveLocalAll(key, current.filter(item => item.id !== id));
-    }
-  }
-
-  // Migration logic
-  public async migrateLocalToCloud(collections: string[]): Promise<{success: boolean, migrated: Record<string, number>}> {
-    const results: Record<string, number> = {};
-    try {
-      for (const col of collections) {
-        const localData = this.getLocalAll<any>(col);
-        if (localData.length === 0) continue;
-
-        let count = 0;
-        for (const item of localData) {
-          try {
-            await fetch(`${this.baseUrl}/api/${col}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(item),
-            });
-            count++;
-          } catch (e) {
-            console.error(`Migration error for ${col} item:`, e);
-          }
+        const { error } = await supabase
+          .from(key)
+          .delete()
+          .eq('id', id);
+        
+        if (error) {
+           console.warn(`[DataService] Supabase Delete failed for ${key}/${id}:`, error);
         }
-        results[col] = count;
+      } catch (error) {
+        console.warn(`[DataService] Cloud Delete Error for ${key}/${id}:`, error);
       }
-      return { success: true, migrated: results };
-    } catch (error) {
-      console.error('Migration failed:', error);
-      return { success: false, migrated: results };
     }
+    const current = this.getLocalAll<any>(key);
+    this.saveLocalAll(key, current.filter(item => item.id !== id));
+    this.notify();
   }
 
   // Helpers for local fallback
@@ -217,20 +160,12 @@ class DataService {
   public async exportAllLocalData(): Promise<any> {
     const backup: Record<string, any> = {};
     for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith('hospital_')) {
-        backup[key] = localStorage.getItem(key);
-      }
+        const key = localStorage.key(i);
+        if (key?.startsWith('hospital_')) {
+          backup[key] = localStorage.getItem(key);
+        }
     }
     return backup;
-  }
-
-  public async importAllLocalData(backup: Record<string, string>): Promise<void> {
-    Object.entries(backup).forEach(([key, value]) => {
-      if (key.startsWith('hospital_')) {
-        localStorage.setItem(key, value);
-      }
-    });
   }
 }
 

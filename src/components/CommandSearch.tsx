@@ -13,7 +13,8 @@ import {
   Activity as ActivityIcon,
   History as HistoryIcon,
   CreditCard,
-  ClipboardList
+  ClipboardList,
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
@@ -87,6 +88,7 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
     { title: 'قائمة الانتظار', path: '/queue', icon: HistoryIcon },
     { title: 'الصيدلية', path: '/pharmacy', icon: Pill },
     { title: 'المختبرات', path: '/laboratory', icon: FlaskConical },
+    { title: 'مساعد التشخيص الذكي', path: '/diagnosis-assistant', icon: Sparkles },
   ], []);
 
   const performSearch = useCallback((q: string) => {

@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [ main, master ]
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   build-web:
     runs-on: ubuntu-latest
@@ -50,13 +47,16 @@ jobs:
         run: npm run build
       - name: Capacitor Sync
         run: npx cap sync android
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-      - name: Build Android APK
+      - name: Fix Gradle Wrapper
         run: |
           cd android
+          rm gradle/wrapper/gradle-wrapper.jar
+          # Download a fresh wrapper jar if corrupt (common in git sync issues)
+          curl -L https://raw.githubusercontent.com/gradle/gradle/master/gradle/wrapper/gradle-wrapper.jar -o gradle/wrapper/gradle-wrapper.jar
           chmod +x gradlew
-          ./gradlew assembleDebug
+      - name: Build Android APK
+        run: |
+          cd android && ./gradlew assembleDebug
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:

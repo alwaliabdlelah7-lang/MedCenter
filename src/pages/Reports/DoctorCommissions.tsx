@@ -1,226 +1,126 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  BarChart3, 
-  Search, 
-  Printer, 
-  Download, 
-  Stethoscope, 
-  TrendingUp, 
-  DollarSign, 
-  Calendar,
-  Filter,
-  User,
-  ArrowUpRight,
-  ArrowDownRight,
-  Calculator
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Receipt, Doctor, Service } from '../../types';
+import { User, DollarSign, Calculator, Download, Printer, Filter, Calendar } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Receipt, Doctor } from '../../types';
 import { dataStore } from '../../services/dataService';
-import { exportToCSV, printReport } from '../../lib/exportUtils';
+import { exportToCSV } from '../../lib/exportUtils';
 import { cn } from '../../lib/utils';
 
 export default function DoctorCommissions() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDoctor, setSelectedDoctor] = useState<string>('all');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
   useEffect(() => {
     const loadData = async () => {
-      const [r, d, s] = await Promise.all([
-        dataStore.getItems<Receipt>('receipts'),
-        dataStore.getItems<Doctor>('doctors'),
-        dataStore.getItems<Service>('services')
+      const [r, d] = await Promise.all([
+        dataStore.getAll<Receipt>('receipts'),
+        dataStore.getAll<Doctor>('doctors')
       ]);
       setReceipts(r);
       setDoctors(d);
-      setServices(s);
+      setLoading(false);
     };
     loadData();
   }, []);
 
-  const calculateCommissions = () => {
-    const list: any[] = [];
-    
-    const filteredDoctors = selectedDoctor === 'all' 
-      ? doctors 
-      : doctors.filter(d => d.id === selectedDoctor);
+  const commissionData = doctors.map(doc => {
+    const doctorReceipts = receipts.filter(r => r.doctorId === doc.id);
+    const totalRevenue = doctorReceipts.reduce((acc, curr) => acc + curr.amount, 0);
+    const commissionAmount = (totalRevenue * (doc.percentage / 100));
+    return {
+      ...doc,
+      totalRevenue,
+      commissionAmount,
+      patientCount: doctorReceipts.length
+    };
+  }).filter(d => d.totalRevenue > 0);
 
-    filteredDoctors.forEach(doc => {
-      const docReceipts = receipts.filter(r => r.doctorId === doc.id);
-      
-      // Calculate total work
-      const totalVolume = docReceipts.reduce((sum, r) => sum + r.amount, 0);
-      
-      // Calculate commission (Assuming a 20% default if not specified, 
-      // though ideally it should come from the service or doctor profile)
-      // For this demo, we'll use a rule-based approach: 30% for consultations, 15% for surgeries
-      const totalCommission = docReceipts.reduce((sum, r) => {
-        const service = services.find(s => s.id === r.serviceId);
-        const rate = service?.name.includes('كشف') || service?.name.includes('استشارة') ? 0.35 : 0.15;
-        return sum + (r.amount * rate);
-      }, 0);
-
-      if (totalVolume > 0) {
-        list.push({
-          id: doc.id,
-          name: doc.name,
-          specialty: doc.specialty,
-          count: docReceipts.length,
-          volume: totalVolume,
-          commission: Math.round(totalCommission),
-          efficiency: Math.round((totalCommission / totalVolume) * 100)
-        });
-      }
-    });
-
-    return list.sort((a, b) => b.commission - a.commission);
-  };
-
-  const commissions = calculateCommissions().filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const stats = {
-    totalVolume: commissions.reduce((sum, c) => sum + c.volume, 0),
-    totalCommission: commissions.reduce((sum, c) => sum + c.commission, 0),
-    topDoctor: commissions[0],
-    avgCommission: commissions.length > 0 ? Math.round(commissions.reduce((sum, c) => sum + c.commission, 0) / commissions.length) : 0
+  const handleExport = () => {
+    const data = commissionData.map(d => ({
+      'اسم الطبيب': d.name,
+      'التخصص': d.specialization,
+      'النسبة (%)': d.percentage,
+      'عدد الحالات': d.patientCount,
+      'إجمالي الإيرادات': d.totalRevenue,
+      'مستحقات الطبيب': d.commissionAmount
+    }));
+    exportToCSV(data, 'doctor_commissions');
   };
 
   return (
-    <div className="space-y-6 lg:p-4 text-right">
+    <div className="space-y-6 text-right">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className="text-3xl font-black text-white tracking-tight">نسب الأطباء وعوائد العيادات</h2>
-          <p className="text-sm text-sky-400/70 border-r-4 border-sky-600 pr-4 mt-2 font-bold italic">تحليل مالي دقيق لمستحقات الكادر الطبي والأرباح التشغيلية</p>
+          <h2 className="text-3xl font-black text-white tracking-tight">تقرير عمولات ومستحقات الأطباء</h2>
+          <p className="text-sm text-sky-400/70 border-r-4 border-sky-600 pr-4 mt-2 font-bold italic">حساب العمولات بناءً على النسب المئوية المتفق عليها لكل طبيب</p>
         </div>
         
-        <div className="flex flex-wrap items-center gap-3 no-print">
-          <div className="relative group">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-sky-400 transition-colors" size={18} />
-            <input 
-              type="text" 
-              placeholder="البحث باسم الطبيب..." 
-              className="pr-10 pl-4 py-2.5 glass bg-white/5 text-white border border-white/10 rounded-xl focus:border-sky-400 outline-none w-64 transition-all font-bold font-mono tracking-tighter"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <button 
-            onClick={() => exportToCSV(commissions, 'doctor_commissions_report')}
-            className="p-2.5 glass bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl hover:bg-emerald-500/20 transition-all shadow-lg"
-          >
+        <div className="flex gap-3">
+          <button onClick={handleExport} className="p-3 glass bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-2xl hover:bg-emerald-500/20 transition-all">
             <Download size={20} />
           </button>
-          
-          <button 
-            onClick={() => printReport('تقرير مستحقات الأطباء', 'commissions-report-print')}
-            className="p-2.5 glass bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-xl hover:bg-indigo-500/20 transition-all shadow-lg"
-          >
+          <button className="p-3 glass bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-2xl hover:bg-indigo-500/20 transition-all">
             <Printer size={20} />
           </button>
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 no-print">
-         <MiniStat icon={Calculator} label="إجمالي الدخل" value={`${stats.totalVolume.toLocaleString()} ر.ي`} color="sky" />
-         <MiniStat icon={DollarSign} label="مستحقات الأطباء" value={`${stats.totalCommission.toLocaleString()} ر.ي`} color="emerald" />
-         <MiniStat icon={TrendingUp} label="صافي الربح" value={`${(stats.totalVolume - stats.totalCommission).toLocaleString()} ر.ي`} color="indigo" />
-         <MiniStat icon={BarChart3} label="الأعلى دخلاً" value={stats.topDoctor?.name || '---'} color="amber" />
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+         {commissionData.map((doc) => (
+           <motion.div 
+             initial={{ opacity: 0, y: 20 }}
+             animate={{ opacity: 1, y: 0 }}
+             key={doc.id} 
+             className="glass p-8 rounded-[40px] border border-white/5 relative overflow-hidden group"
+           >
+              <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 blur-3xl -translate-x-8 -translate-y-8" />
+              
+              <div className="flex items-center gap-4 mb-6 relative z-10">
+                 <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
+                    <User size={28} />
+                 </div>
+                 <div>
+                    <h3 className="font-black text-white">{doc.name}</h3>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase italic mt-1">{doc.specialization}</p>
+                 </div>
+              </div>
 
-      <div className="glass rounded-[40px] overflow-hidden border border-white/5 shadow-2xl relative">
-        <div id="commissions-report-print" className="overflow-x-auto">
-          <table className="w-full text-right">
-            <thead className="bg-white/5 text-slate-500 text-[10px] uppercase tracking-[3px]">
-              <tr>
-                <th className="px-8 py-6 border-b border-white/5">الطبيب المختص</th>
-                <th className="px-8 py-6 border-b border-white/5">عدد الحالات</th>
-                <th className="px-8 py-6 border-b border-white/5">حجم العمل</th>
-                <th className="px-8 py-6 border-b border-white/5">النسبة (%)</th>
-                <th className="px-8 py-6 border-b border-white/5 text-emerald-400">المستحقات</th>
-                <th className="px-8 py-6 border-b border-white/5 text-center no-print">أدوات التحليل</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5 italic">
-              {commissions.map((item) => (
-                <tr key={item.id} className="hover:bg-white/5 transition-colors group">
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-sky-500/10 flex items-center justify-center text-sky-400 border border-sky-500/20 font-black">
-                        {item.name.split(' ').map((n: string) => n[0]).join('')}
-                      </div>
-                      <div>
-                        <div className="font-black text-white group-hover:text-sky-400 transition-colors uppercase tracking-tighter">{item.name}</div>
-                        <div className="text-[10px] text-slate-500 font-bold uppercase">{item.specialty}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-8 py-5 text-white font-mono">{item.count} حالة</td>
-                  <td className="px-8 py-5 text-slate-300 font-mono tracking-tighter">{item.volume.toLocaleString()} <small className="text-[10px]">ر.ي</small></td>
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-2">
-                       <div className="flex-1 h-1.5 w-16 bg-white/5 rounded-full overflow-hidden border border-white/10">
-                          <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${item.efficiency}%` }} />
-                       </div>
-                       <span className="text-[10px] font-black text-indigo-400">{item.efficiency}%</span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-5">
-                    <span className="text-emerald-400 font-black font-mono bg-emerald-500/5 px-3 py-1 rounded-lg border border-emerald-500/10">
-                      {item.commission.toLocaleString()} <small className="text-[10px] text-slate-500">ر.ي</small>
+              <div className="space-y-4 relative z-10">
+                 <div className="flex justify-between items-center text-sm">
+                    <span className="text-slate-500 font-bold">نسبة الطبيب:</span>
+                    <span className="text-indigo-400 font-black font-mono italic">{doc.percentage}%</span>
+                 </div>
+                 <div className="flex justify-between items-center text-sm">
+                    <span className="text-slate-500 font-bold">إجمالي الإيراد:</span>
+                    <span className="text-white font-black font-mono">{doc.totalRevenue.toLocaleString()} <small className="text-[10px] opacity-50">ر.ي</small></span>
+                 </div>
+                 <div className="pt-4 border-t border-white/5 flex justify-between items-center">
+                    <span className="text-emerald-400 font-black text-xs flex items-center gap-2">
+                       <DollarSign size={14} /> صافي المستحقات
                     </span>
-                  </td>
-                  <td className="px-8 py-5 no-print">
-                     <div className="flex gap-2 justify-center">
-                       <button className="p-2.5 glass bg-sky-500/10 text-sky-400 rounded-xl hover:bg-sky-500 hover:text-white transition-all shadow-lg">
-                          <BarChart3 size={16} />
-                       </button>
-                       <button className="p-2.5 glass bg-indigo-500/10 text-indigo-400 rounded-xl hover:bg-indigo-500 hover:text-white transition-all shadow-lg">
-                          <Printer size={16} />
-                       </button>
-                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {commissions.length === 0 && (
-            <div className="py-24 text-center opacity-20 flex flex-col items-center">
-               <Stethoscope size={64} className="mb-4" />
-               <p className="text-xl font-black uppercase tracking-[10px]">لا توجد بيانات للأطباء</p>
-            </div>
-          )}
+                    <span className="text-2xl font-black text-white font-mono tracking-tighter">
+                       {doc.commissionAmount.toLocaleString()}
+                    </span>
+                 </div>
+              </div>
+
+              <div className="mt-6 flex gap-2">
+                 <button className="flex-1 py-3 bg-white/5 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all">
+                    عرض الكشف التفصيلي
+                 </button>
+              </div>
+           </motion.div>
+         ))}
+      </div>
+
+      {commissionData.length === 0 && (
+        <div className="py-20 text-center glass rounded-[40px] border-2 border-dashed border-white/5 opacity-50">
+           <Calculator size={48} className="mx-auto mb-4 text-slate-600" />
+           <p className="text-lg font-bold text-slate-600 tracking-widest uppercase">لا توجد بيانات عمولات للفترة الحالية</p>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function MiniStat({ icon: Icon, label, value, color }: any) {
-  const colors: any = {
-    sky: "bg-sky-500/10 text-sky-400 border-sky-500/20",
-    indigo: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
-    emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    amber: "bg-amber-500/10 text-amber-400 border-amber-500/20"
-  };
-
-  return (
-    <div className="glass p-5 rounded-[24px] border border-white/5 flex items-center gap-4 group hover:bg-white/5 transition-all">
-      <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border shadow-inner group-hover:scale-110 transition-transform", colors[color])}>
-        <Icon size={24} />
-      </div>
-      <div>
-        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">{label}</p>
-        <p className="text-xl font-black text-white mt-0.5 tracking-tighter">{value}</p>
-      </div>
+      )}
     </div>
   );
 }

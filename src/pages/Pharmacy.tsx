@@ -21,9 +21,9 @@ export default function Pharmacy() {
     const loadData = async () => {
       try {
         const [invData, masterData, prescriptionsData] = await Promise.all([
-          dataStore.getAll<PharmacyItem>('pharmacy_inventory'),
+          dataStore.getAll<PharmacyItem>('pharmacy_items'),
           dataStore.getAll<MasterMedicine>('master_medicines'),
-          dataStore.getAll<Prescription>('pharmacy_prescriptions')
+          dataStore.getAll<Prescription>('prescriptions')
         ]);
         setInventory(invData);
         setMasterMedicines(masterData);
@@ -64,14 +64,14 @@ export default function Pharmacy() {
 
     if (editingItem) {
       const updated = { ...editingItem, ...itemData };
-      await dataStore.updateItem('pharmacy_inventory', editingItem.id, updated);
+      await dataStore.updateItem('pharmacy_items', editingItem.id, updated);
       setInventory(inventory.map(i => i.id === editingItem.id ? updated : i));
     } else {
       const newItem = {
         ...itemData,
         id: `PHM-${Math.random().toString(36).substr(2, 6).toUpperCase()}`
       };
-      await dataStore.addItem('pharmacy_inventory', newItem);
+      await dataStore.addItem('pharmacy_items', newItem);
       setInventory([...inventory, newItem]);
     }
     
@@ -81,7 +81,7 @@ export default function Pharmacy() {
 
   const handleDelete = async (id: string) => {
     if (confirm('هل أنت متأكد من حذف هذا الصنف من المخزن؟')) {
-      await dataStore.deleteItem('pharmacy_inventory', id);
+      await dataStore.deleteItem('pharmacy_items', id);
       setInventory(inventory.filter(i => i.id !== id));
     }
   };

@@ -1,28 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Plus, 
-  Search, 
-  User, 
-  Shield, 
-  Key, 
-  Trash2, 
-  Edit2, 
-  Check, 
-  X, 
-  ShieldCheck, 
-  Mail, 
-  Briefcase,
-  Download,
-  Printer,
-  TrendingUp,
-  Activity,
-  Users
-} from 'lucide-react';
+import { Plus, Search, User, Shield, Key, Trash2, Edit2, Check, X, ShieldCheck, Mail, Briefcase } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User as UserType, Permission } from '../types';
 import { cn } from '../lib/utils';
 import { dataStore } from '../services/dataService';
-import { exportToCSV, printReport } from '../lib/exportUtils';
 
 const ROLES: UserType['role'][] = ['admin', 'doctor', 'nurse', 'pharmacist', 'lab_tech', 'receptionist'];
 const PERMISSIONS: Permission[] = ['all', 'read_only', 'clinical', 'pharmacy', 'lab', 'admin'];
@@ -120,26 +101,6 @@ export default function UsersManagement() {
       admin: 'إدارة الإعدادات'
     };
     return labels[perm] || perm;
-  };
-
-  const handleExportCSV = () => {
-    const data = filtered.map(u => ({
-      'المعرف': u.id,
-      'الاسم': u.name,
-      'اسم المستخدم': u.username,
-      'الدور': getRoleLabel(u.role),
-      'الصلاحيات': u.permissions.map(p => getPermissionLabel(p)).join(', '),
-      'الحالة': u.status === 'active' ? 'نشط' : 'معطل',
-      'آخر دخول': u.lastLogin || '---'
-    }));
-    exportToCSV(data, 'users_report');
-  };
-
-  const stats = {
-    total: users.length,
-    active: users.filter(u => u.status === 'active').length,
-    admins: users.filter(u => u.role === 'admin').length,
-    doctors: users.filter(u => u.role === 'doctor').length,
   };
 
   const filtered = users.filter(u => 
@@ -313,27 +274,6 @@ export default function UsersManagement() {
           </div>
         )}
       </AnimatePresence>
-    </div>
-  );
-}
-
-function MiniStat({ icon: Icon, label, value, color }: any) {
-  const colors: any = {
-    sky: "bg-sky-500/10 text-sky-400 border-sky-500/20",
-    indigo: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
-    emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    amber: "bg-amber-500/10 text-amber-400 border-amber-500/20"
-  };
-
-  return (
-    <div className="glass p-5 rounded-[24px] border border-white/5 flex items-center gap-4 group hover:bg-white/5 transition-all">
-      <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border shadow-inner group-hover:scale-110 transition-transform", colors[color])}>
-        <Icon size={24} />
-      </div>
-      <div>
-        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</p>
-        <p className="text-xl font-black text-white mt-0.5">{value}</p>
-      </div>
     </div>
   );
 }
