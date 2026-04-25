@@ -50,16 +50,13 @@ jobs:
         run: npm run build
       - name: Capacitor Sync
         run: npx cap sync android
-      - name: Fix Gradle Wrapper
-        run: |
-          cd android
-          rm gradle/wrapper/gradle-wrapper.jar
-          # Download a fresh wrapper jar if corrupt (common in git sync issues)
-          curl -L https://raw.githubusercontent.com/gradle/gradle/master/gradle/wrapper/gradle-wrapper.jar -o gradle/wrapper/gradle-wrapper.jar
-          chmod +x gradlew
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
       - name: Build Android APK
         run: |
-          cd android && ./gradlew assembleDebug
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
