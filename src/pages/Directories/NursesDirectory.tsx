@@ -198,12 +198,12 @@ export default function NursesDirectory() {
 
       <div id="nurses-list" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredNurses.length > 0 ? (
-          filteredNurses.map((nurse) => (
+          filteredNurses.map((nurse, idx) => (
             <motion.div
               layout
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              key={nurse.id}
+              key={`${nurse.id}-${idx}`}
               className="glass p-8 rounded-[40px] relative group border border-white/5 hover:border-pink-500/30 hover:bg-white/5 transition-all overflow-hidden"
             >
               <div className="absolute top-0 left-0 w-24 h-24 bg-pink-500/5 blur-3xl rounded-full -translate-x-12 -translate-y-12" />

@@ -223,6 +223,7 @@ export type Permission = 'all' | 'read_only' | 'clinical' | 'pharmacy' | 'lab' |
 export interface User {
   id: string;
   username: string;
+  email?: string;
   password?: string;
   name: string;
   role: 'admin' | 'doctor' | 'nurse' | 'pharmacist' | 'lab_tech' | 'receptionist';

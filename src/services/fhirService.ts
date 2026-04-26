@@ -79,6 +79,7 @@ export const fhirService = {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
+    
     return fhirId;
   },
 

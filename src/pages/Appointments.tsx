@@ -302,13 +302,13 @@ export default function Appointments() {
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence mode="popLayout">
-            {filtered.map((apt) => (
+            {filtered.map((apt, idx) => (
               <motion.div
                 layout
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                key={apt.id}
+                key={`${apt.id}-${idx}`}
                 className={cn(
                   "glass p-6 rounded-[35px] relative group border border-white/5 overflow-hidden flex flex-col justify-between h-auto transition-all",
                   apt.status === 'cancelled' && "opacity-60 grayscale"
@@ -497,9 +497,9 @@ export default function Appointments() {
                   </div>
 
                   <div className="flex-1 space-y-1.5 overflow-y-auto custom-scrollbar pr-1">
-                    {dayAppts.slice(0, 3).map(apt => (
+                    {dayAppts.slice(0, 3).map((apt, idx) => (
                       <div 
-                        key={apt.id}
+                        key={`${apt.id}-${idx}`}
                         onClick={() => {
                            // Navigate or show details
                         }}
@@ -591,7 +591,7 @@ export default function Appointments() {
                             placeholder="ابحث عن مريض أو اكتب الاسم..." 
                           />
                           <datalist id="patients-list">
-                             {patients.map(p => <option key={p.id} value={p.name} />)}
+                             {patients.map((p, idx) => <option key={`${p.id}-${idx}`} value={p.name} />)}
                           </datalist>
                         </div>
                         <button type="button" className="glass bg-sky-500/10 text-sky-400 rounded-2xl flex items-center justify-center hover:bg-sky-500/20 transition-all border border-sky-500/20">

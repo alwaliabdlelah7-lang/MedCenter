@@ -86,8 +86,8 @@ export default function ServicesDirectory() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {services.map(service => (
-          <motion.div layout key={service.id} className="glass p-8 rounded-[40px] group border border-white/5 hover:bg-white/5 transition-all overflow-hidden relative">
+        {services.map((service, idx) => (
+          <motion.div layout key={`${service.id}-${idx}`} className="glass p-8 rounded-[40px] group border border-white/5 hover:bg-white/5 transition-all overflow-hidden relative">
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 blur-3xl -translate-x-12 -translate-y-12" />
             <div className="flex justify-between items-start mb-6 relative z-10">
               <div className="w-16 h-16 rounded-[22px] glass bg-emerald-500/10 flex items-center justify-center text-emerald-400 border border-emerald-500/20 shadow-xl">

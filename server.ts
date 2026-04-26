@@ -2,15 +2,25 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
-import admin from "firebase-admin";
 import { Server } from "socket.io";
 import { createServer } from "http";
-import fs from "fs";
 import "dotenv/config";
+import admin from "firebase-admin";
 import { createApiRouter } from "./src/api/routes.ts";
-import { performSeeding } from "./src/api/seeding.ts";
 
-import { getFirestore } from "firebase-admin/firestore";
+// Initialize Firebase Admin lazily/conditionally
+let adminApp: admin.app.App | null = null;
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    adminApp = admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    console.log("Firebase Admin initialized successfully");
+  } catch (error) {
+    console.warn("Failed to initialize Firebase Admin (check FIREBASE_SERVICE_ACCOUNT):", error.message);
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,26 +36,14 @@ async function startServer() {
   });
 
   io.on("connection", (socket) => {
-    console.log("A user connected:", socket.id);
-    
-    socket.on("join-chat", (chatId) => {
-      socket.join(chatId);
-    });
-
-    socket.on("send-message", (msg) => {
-      io.to(msg.chatId).emit("receive-message", msg);
-    });
-
-    socket.on("disconnect", () => {
-      console.log("User disconnected:", socket.id);
-    });
+    socket.on("join-chat", (chatId) => socket.join(chatId));
+    socket.on("send-message", (msg) => io.to(msg.chatId).emit("receive-message", msg));
   });
 
   // Performance/API logging
   app.use((req, res, next) => {
     if (req.path.startsWith('/api')) {
-      console.log(`[API Request] ${new Date().toISOString()} ${req.method} ${req.path}`);
-      console.log(`[Headers] x-user-id: ${req.headers['x-user-id']}`);
+      console.log(`[API Request] ${new Date().toISOString()} ${req.method} ${req.path} (x-user-id: ${req.headers['x-user-id']})`);
     }
     next();
   });
@@ -54,55 +52,11 @@ async function startServer() {
 
   // Test route on main app
   app.get("/api-test", (req, res) => {
-    console.log("[Direct] GET /api-test hit");
-    res.json({ message: "Direct API route works", dbInitialized: !!db });
+    res.json({ message: "API server is healthy", supabaseConfigured: !!process.env.VITE_SUPABASE_URL });
   });
 
-  const serviceAccountVar = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!serviceAccountVar) {
-    console.warn("[Firebase] FIREBASE_SERVICE_ACCOUNT env var missing. Cloud features may be limited.");
-  } else {
-    try {
-      const serviceAccount = JSON.parse(serviceAccountVar);
-      if (admin.apps.length === 0) {
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount)
-        });
-        console.log("[Firebase] Admin initialized.");
-      }
-    } catch (error) {
-      console.error("[Firebase] Initialization error:", error);
-    }
-  }
-
-  let db: admin.firestore.Firestore | null = null;
-  if (admin.apps.length > 0) {
-    try {
-      const configPath = path.join(process.cwd(), "firebase-applet-config.json");
-      if (fs.existsSync(configPath)) {
-        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        if (config.firestoreDatabaseId) {
-          db = getFirestore(admin.app(), config.firestoreDatabaseId) as any;
-        } else {
-          db = getFirestore() as any;
-        }
-      } else {
-        db = getFirestore() as any;
-      }
-    } catch (error) {
-      console.error("[Firebase] Firestore init error:", error);
-    }
-  }
-
-  // Auto-seed on startup
-  if (db) {
-    performSeeding(db).then(res => {
-      if (res.success) console.log("Automatic database seeding completed.");
-    });
-  }
-
   // Mount API router
-  app.use("/api", createApiRouter(db));
+  app.use("/api", createApiRouter(adminApp ? adminApp.firestore() : null));
 
   // Catch unmatched /api calls before SPA fallback
   app.all("/api/*", (req, res) => {

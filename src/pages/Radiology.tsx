@@ -115,12 +115,12 @@ export default function Radiology() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {filtered.length > 0 ? (
-          filtered.map((scan) => (
+          filtered.map((scan, idx) => (
             <motion.div
               layout
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              key={scan.id}
+              key={`${scan.id}-${idx}`}
               className="glass rounded-3xl overflow-hidden group border border-white/10 flex flex-col shadow-xl"
             >
               <div className="aspect-video bg-slate-950 relative overflow-hidden flex items-center justify-center p-4">

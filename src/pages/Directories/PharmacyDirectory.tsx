@@ -133,12 +133,12 @@ export default function PharmacyDirectory() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filtered.map((med) => (
+        {filtered.map((med, idx) => (
           <motion.div
             layout
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            key={med.id}
+            key={`${med.id}-${idx}`}
             className="glass p-6 rounded-3xl relative group flex flex-col justify-between overflow-hidden"
           >
             <div className={`absolute top-0 left-0 w-1 flex flex-col h-full ${med.totalQuantity <= med.reorderPoint ? 'bg-rose-500' : 'bg-emerald-500'}`} title={med.totalQuantity <= med.reorderPoint ? 'مخزون منخفض' : 'مخزون كافٍ'} />

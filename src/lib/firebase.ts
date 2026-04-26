@@ -1,13 +1,12 @@
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import firebaseConfig from "../../firebase-applet-config.json";
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
-// Initialize Firebase
+// In AI Studio, firebase-applet-config.json is served at the root
+// We can use a direct import or fetch it if needed, but import should work in Vite
+import firebaseConfig from '../../firebase-applet-config.json';
+
 const app = initializeApp(firebaseConfig);
-
-// Initialize Services
+export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
-
-export default app;
+auth.useDeviceLanguage(); // Set language to browser language (Arabic for user)

@@ -185,7 +185,7 @@ export default function Dashboard() {
               whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => navigate(action.path)}
-              key={i}
+              key={`${action.label}-${i}`}
               className="flex items-center gap-3 px-4 py-2.5 glass bg-white/5 border border-white/10 rounded-2xl text-white hover:bg-white/10 transition-all shadow-lg group"
             >
               <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg", action.color)}>

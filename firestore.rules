@@ -7,129 +7,89 @@ service cloud.firestore {
     }
 
     // --- Helper Functions ---
+    function isSignedIn() { return request.auth != null; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
     
-    function isSignedIn() {
-      return request.auth != null;
+    // Bootstrapped Admin logic
+    function isBootstrappedAdmin() {
+      return isSignedIn() && request.auth.token.email == 'alwaliabdlelah7@gmail.com' && request.auth.token.email_verified == true;
     }
 
     function getUserData(userId) {
       return get(/databases/$(database)/documents/users/$(userId)).data;
     }
 
-    function getAuthUserData() {
-      return getUserData(request.auth.uid);
-    }
-
-    function hasRole(role) {
-      return isSignedIn() && getAuthUserData().role == role;
-    }
-
     function isAdmin() {
-      return hasRole('admin');
+      return isBootstrappedAdmin() || (isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData(request.auth.uid).role == 'admin');
     }
 
     function hasPermission(p) {
-      return isSignedIn() && (getAuthUserData().permissions.hasAny([p]) || isAdmin());
+      return isAdmin() || (isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData(request.auth.uid).permissions.hasAny([p]));
     }
 
     function hasAnyPermission(ps) {
-      return isSignedIn() && (getAuthUserData().permissions.hasAny(ps) || isAdmin());
-    }
-
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+      return isAdmin() || (isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData(request.auth.uid).permissions.hasAny(ps));
     }
 
     // --- Entity Validations ---
-
     function isValidUser(data) {
       return data.keys().hasAll(['id', 'username', 'role', 'permissions', 'status'])
-        && data.id is string
-        && data.username is string
+        && data.id is string && data.id.size() <= 128
+        && data.username is string && data.username.size() <= 64
         && data.role in ['admin', 'doctor', 'nurse', 'receptionist', 'pharmacist', 'lab_tech']
         && data.permissions is list
         && data.status in ['active', 'inactive'];
     }
 
+    function isValidPatient(data) {
+      return data.keys().hasAll(['id', 'name', 'fileNumber'])
+        && data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 100
+        && data.fileNumber is string && data.fileNumber.size() <= 50;
+    }
+
     // --- Rules for Collections ---
 
-    // USERS: Only admins or owner (read)
     match /users/{userId} {
       allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow list: if isAdmin();
-      allow create: if isAdmin() && isValidUser(request.resource.data);
-      allow update: if (isAdmin() || request.auth.uid == userId) && isValidUser(request.resource.data);
+      allow list: if isAdmin(); 
+      allow create: if (isAdmin() || isBootstrappedAdmin()) && isValidUser(incoming());
+      allow update: if (isAdmin() || request.auth.uid == userId) && isValidUser(incoming())
+                       && incoming().id == existing().id 
+                       && (isAdmin() || incoming().role == existing().role);
       allow delete: if isAdmin();
     }
 
-    // PATIENTS: Clinical, Admin, Receptionists (Registration)
     match /patients/{patientId} {
-      allow read: if isSignedIn() && hasAnyPermission(['clinical', 'read_only', 'registration']);
-      allow create: if isSignedIn() && hasAnyPermission(['registration', 'admin']);
-      allow update: if isSignedIn() && hasAnyPermission(['clinical', 'registration', 'admin']);
+      allow get: if isSignedIn() && hasAnyPermission(['clinical', 'read_only', 'registration']);
+      allow list: if isSignedIn() && hasAnyPermission(['clinical', 'read_only', 'registration']);
+      allow create: if isSignedIn() && hasAnyPermission(['registration', 'admin']) && isValidPatient(incoming());
+      allow update: if isSignedIn() && hasAnyPermission(['clinical', 'registration', 'admin']) && isValidPatient(incoming());
       allow delete: if isAdmin();
     }
 
-    // CLINICAL DATA: clinical or Admin
-    match /clinical_visits/{visitId} {
-      allow read: if isSignedIn() && (hasPermission('clinical') || isAdmin());
-      allow create: if isSignedIn() && (hasPermission('clinical') || isAdmin());
-      allow update: if isSignedIn() && (hasPermission('clinical') || isAdmin());
-      allow delete: if isAdmin();
-    }
-
-    match /prescriptions/{prescriptionId} {
-      allow read: if isSignedIn() && hasAnyPermission(['clinical', 'pharmacy', 'admin']);
-      allow create: if isSignedIn() && hasAnyPermission(['clinical', 'admin']);
-      allow update: if isSignedIn() && hasAnyPermission(['clinical', 'pharmacy', 'admin']);
-      allow delete: if isAdmin();
-    }
-
-    match /lab_tests/{testId} {
-      allow read: if isSignedIn() && hasAnyPermission(['clinical', 'lab', 'admin']);
-      allow create: if isSignedIn() && hasAnyPermission(['clinical', 'admin']);
-      allow update: if isSignedIn() && hasAnyPermission(['clinical', 'lab', 'admin']);
-      allow delete: if isAdmin();
-    }
-
-    // MASTER DATA: Read for all signed in, Write for Admin
+    match /clinical_visits/{id} { allow read, write: if hasAnyPermission(['clinical', 'admin']); }
+    match /prescriptions/{id} { allow read, write: if hasAnyPermission(['clinical', 'pharmacy', 'admin']); }
+    match /lab_tests/{id} { allow read, write: if hasAnyPermission(['clinical', 'lab', 'admin']); }
+    match /radiology_scans/{id} { allow read, write: if hasAnyPermission(['clinical', 'lab', 'admin']); }
+    
     match /departments/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
     match /clinics/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
     match /doctors/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
     match /nurses/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
     match /services/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
     match /operations/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
-
-    // PHARMACY
-    match /pharmacy_items/{itemId} {
-      allow read: if isSignedIn() && hasAnyPermission(['pharmacy', 'clinical', 'admin']);
-      allow write: if hasPermission('pharmacy') || isAdmin();
-    }
-
-    // APPOINTMENTS
-    match /appointments/{appointmentId} {
-      allow read: if isSignedIn();
-      allow write: if hasAnyPermission(['registration', 'clinical', 'admin']);
-    }
-
-    // RECEIPTS
-    match /receipts/{receiptId} {
-      allow read: if isSignedIn() && hasAnyPermission(['billing', 'read_only', 'admin']);
-      allow write: if hasPermission('billing') || isAdmin();
-    }
-
-    // FHIR Patient Resources
-    match /fhir_patients/{id} {
-      allow read: if isSignedIn() && hasAnyPermission(['clinical', 'read_only', 'registration']);
-      allow create, update: if isSignedIn() && hasAnyPermission(['clinical', 'registration', 'admin']);
-      allow delete: if isAdmin();
-    }
-
-    // FHIR Observation Resources
-    match /fhir_observations/{id} {
-      allow read: if isSignedIn() && hasAnyPermission(['clinical', 'read_only', 'lab']);
-      allow create, update: if isSignedIn() && hasAnyPermission(['clinical', 'lab', 'admin']);
-      allow delete: if isAdmin();
-    }
+    match /master_medicines/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    match /master_lab_tests/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    
+    match /pharmacy_items/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['pharmacy', 'admin']); }
+    match /appointments/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['registration', 'clinical', 'admin']); }
+    match /receipts/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['billing', 'admin']); }
+    match /companions/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['registration', 'admin']); }
+    match /inpatients/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['registration', 'clinical', 'admin']); }
+    match /fhir_patients/{id} { allow read, write: if hasAnyPermission(['clinical', 'registration', 'admin']); }
+    match /fhir_observations/{id} { allow read, write: if hasAnyPermission(['clinical', 'lab', 'admin']); }
   }
 }

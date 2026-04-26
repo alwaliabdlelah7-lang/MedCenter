@@ -38,6 +38,7 @@ import StaffChat from './pages/StaffChat.tsx';
 import DoctorManagement from './pages/DoctorManagement.tsx';
 
 import { LanguageProvider } from './contexts/LanguageContext';
+import { dataStore } from './services/dataService';
 
 const ProtectedRoute = ({ children, permission }: { children: React.ReactNode, permission?: string }) => {
   const { user, isLoading, hasPermission } = useAuth();
@@ -64,13 +65,17 @@ const PlaceholderPage = ({ title }: { title: string }) => (
     <p className="text-slate-500">جاري العمل على برمجة هذه الصفحة لتشمل كافة التفاصيل...</p>
     <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
       {[1, 2, 3].map(i => (
-        <div key={i} className="p-6 border-2 border-dashed border-slate-200 rounded-2xl animate-pulse" />
+        <div key={`pulse-${i}`} className="p-6 border-2 border-dashed border-slate-200 rounded-2xl animate-pulse" />
       ))}
     </div>
   </div>
 );
 
 export default function App() {
+  React.useEffect(() => {
+    dataStore.autoSeedIfNeeded();
+  }, []);
+
   return (
     <LanguageProvider>
       <AuthProvider>

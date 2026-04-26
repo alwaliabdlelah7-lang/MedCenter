@@ -86,12 +86,12 @@ export default function CompanionsDirectory() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredCompanions.length > 0 ? (
-          filteredCompanions.map((comp) => (
+          filteredCompanions.map((comp, idx) => (
             <motion.div
               layout
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              key={comp.id}
+              key={`${comp.id}-${idx}`}
               className="glass p-6 rounded-3xl relative group"
             >
               <div className="flex justify-between items-start mb-6">

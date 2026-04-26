@@ -118,12 +118,12 @@ export default function StaffChat() {
          <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar flex flex-col-reverse">
             <div className="space-y-6">
                <AnimatePresence>
-                  {currentMessages.map((msg) => (
+                  {currentMessages.map((msg, idx) => (
                     <motion.div 
                       layout
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      key={msg.id} 
+                      key={`${msg.id}-${idx}`} 
                       className={cn(
                         "flex gap-4 max-w-[80%]",
                         msg.senderId === 'u-1' ? "mr-auto flex-row-reverse" : "ml-auto"

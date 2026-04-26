@@ -31,15 +31,36 @@ export default function SettingsPage() {
     if (!confirm('هل أنت متأكد من زرع البيانات الأولية في قاعدة البيانات السحابية Supabase؟ سيتم إضافة البيانات المرجعية الأساسية لبدء العمل.')) return;
     setIsSeeding(true);
     try {
-      // Import seed data manually here to avoid complex imports if needed, 
-      // but assuming we can import from seedData.ts
-      const { INITIAL_SEED_DATA } = await import('../data/seedData');
+      const seedData = await import('../data/seedData');
       
-      const collections = Object.keys(INITIAL_SEED_DATA);
+      const seedMap: Record<string, any[]> = {
+        users: seedData.INITIAL_USERS || [],
+        departments: seedData.INITIAL_DEPARTMENTS || [],
+        clinics: seedData.INITIAL_CLINICS || [],
+        doctors: seedData.INITIAL_DOCTORS || [],
+        patients: seedData.INITIAL_PATIENTS || [],
+        appointments: seedData.INITIAL_APPOINTMENTS || [],
+        services: seedData.YEMEN_SERVICES || [],
+        master_lab_tests: (seedData.YEMEN_LAB_TESTS || []).map((t: any, i: number) => ({
+          id: `LBT-${i + 1}`,
+          name: t.name,
+          price: t.price,
+          category: 'عام',
+          parameters: []
+        })),
+        master_medicines: (seedData.YEMEN_MEDICINES || []).map((m: any, i: number) => ({
+          id: `MED-${i + 1}`,
+          ...m,
+          unit: 'عبوة',
+          dosageForm: 'قرص',
+          totalQuantity: 100,
+          reorderPoint: 10
+        }))
+      };
+      
       let successCount = 0;
 
-      for (const col of collections) {
-        const items = (INITIAL_SEED_DATA as any)[col];
+      for (const [col, items] of Object.entries(seedMap)) {
         if (Array.isArray(items)) {
           for (const item of items) {
              try {

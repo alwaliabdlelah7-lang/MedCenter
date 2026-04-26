@@ -175,12 +175,12 @@ export default function Laboratory() {
 
       <div id="lab-tests-print-list" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filtered.length > 0 ? (
-          filtered.map((test) => (
+          filtered.map((test, idx) => (
             <motion.div
               layout
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              key={test.id}
+              key={`${test.id}-${idx}`}
               className="glass p-8 rounded-[40px] relative group border border-white/5 hover:border-indigo-500/30 hover:bg-white/5 transition-all overflow-hidden"
             >
               <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-3xl -translate-x-12 -translate-y-12" />
@@ -321,7 +321,7 @@ export default function Laboratory() {
                 <div className="space-y-2 text-right">
                    <label className="text-[10px] font-black text-slate-500 uppercase italic">حدد المريض</label>
                    <select name="patientId" required defaultValue={editingTest?.patientId} className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none font-bold">
-                     {patients.map(p => <option key={p.id} value={p.id} className="bg-slate-900">{p.name}</option>)}
+                     {patients.map((p, idx) => <option key={`${p.id}-${idx}`} value={p.id} className="bg-slate-900">{p.name}</option>)}
                    </select>
                 </div>
 
@@ -329,13 +329,13 @@ export default function Laboratory() {
                    <div className="space-y-2 text-right">
                       <label className="text-[10px] font-black text-slate-500 uppercase italic">نوع الفحص المطلوب</label>
                       <select name="testId" required defaultValue={editingTest?.testId} className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none font-bold text-right font-black">
-                        {masterTests.map(m => <option key={m.id} value={m.id} className="bg-slate-900">{m.name}</option>)}
+                        {masterTests.map((m, idx) => <option key={`${m.id}-${idx}`} value={m.id} className="bg-slate-900">{m.name}</option>)}
                       </select>
                    </div>
                    <div className="space-y-2 text-right">
                       <label className="text-[10px] font-black text-slate-500 uppercase italic">الطبيب المحيل</label>
                       <select name="doctorId" required defaultValue={editingTest?.doctorId} className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none font-bold">
-                        {doctors.map(d => <option key={d.id} value={d.id} className="bg-slate-900 font-black italic underline text-sky-400">د. {d.name}</option>)}
+                        {doctors.map((d, idx) => <option key={`${d.id}-${idx}`} value={d.id} className="bg-slate-900 font-black italic underline text-sky-400">د. {d.name}</option>)}
                       </select>
                    </div>
                 </div>

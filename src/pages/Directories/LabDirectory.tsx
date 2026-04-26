@@ -95,9 +95,15 @@ export default function LabDirectory() {
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('هل أنت متأكد من حذف هذا البند؟')) {
-      setTests(tests.filter(t => t.id !== id));
+  const handleDelete = async (id: string) => {
+    if (confirm('هل أنت متأكد من حذف هذا البند؟ سيتم حذفه من قاعدة البيانات.')) {
+      try {
+        await dataStore.deleteItem('master_lab_tests', id);
+        setTests(tests.filter(t => t.id !== id));
+      } catch (error) {
+        console.error("Failed to delete lab test", error);
+        alert("فشل في حذف البند. يرجى المحاولة مرة أخرى.");
+      }
     }
   };
 
@@ -163,12 +169,12 @@ export default function LabDirectory() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filtered.map((test) => (
+        {filtered.map((test, idx) => (
           <motion.div
             layout
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            key={test.id}
+            key={`${test.id}-${idx}`}
             className="glass p-6 rounded-3xl relative group flex flex-col justify-between"
           >
             <div className="flex justify-between items-start mb-4">
@@ -292,47 +298,55 @@ export default function LabDirectory() {
                    </div>
 
                    <div className="space-y-4">
-                      {newTest.parameters?.map((p, idx) => (
-                        <div key={p.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 glass bg-white/5 rounded-3xl border border-white/5 relative">
-                           <button 
-                             type="button"
-                             onClick={() => removeParameter(p.id)}
-                             className="absolute -top-2 -left-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center hover:bg-rose-600 transition-colors shadow-lg"
-                           >
-                              <X size={14} />
-                           </button>
-                           <div className="space-y-1">
-                              <label className="text-[9px] text-slate-500 font-bold uppercase">الاسم</label>
-                              <input 
-                                className="w-full px-3 py-2 glass bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-indigo-500 text-xs text-right"
-                                value={p.name}
-                                onChange={(e) => updateParameter(p.id, 'name', e.target.value)}
-                                placeholder="مثلاً: Glucose"
-                              />
-                           </div>
-                           <div className="space-y-1">
-                              <label className="text-[9px] text-slate-500 font-bold uppercase">الوحدة</label>
-                              <input 
-                                className="w-full px-3 py-2 glass bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-indigo-500 text-xs text-right"
-                                value={p.unit}
-                                onChange={(e) => updateParameter(p.id, 'unit', e.target.value)}
-                                placeholder="mg/dL"
-                              />
-                           </div>
-                           <div className="md:col-span-2 space-y-1">
-                              <label className="text-[9px] text-slate-500 font-bold uppercase">المجال الطبيعي (Normal Range)</label>
-                              <input 
-                                className="w-full px-3 py-2 glass bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-indigo-500 text-xs font-mono text-right"
-                                value={p.normalRange}
-                                onChange={(e) => updateParameter(p.id, 'normalRange', e.target.value)}
-                                placeholder="70 - 100"
-                              />
-                           </div>
-                        </div>
-                      ))}
+                      <AnimatePresence>
+                        {newTest.parameters?.map((p, idx) => (
+                          <motion.div 
+                            key={p.id}
+                            initial={{ opacity: 0, height: 0, mb: 0 }}
+                            animate={{ opacity: 1, height: 'auto', mb: 16 }}
+                            exit={{ opacity: 0, height: 0, mb: 0 }}
+                            className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 glass bg-white/5 rounded-3xl border border-white/5 relative overflow-hidden"
+                          >
+                             <button 
+                               type="button"
+                               onClick={() => removeParameter(p.id)}
+                               className="absolute -top-2 -left-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center hover:bg-rose-600 transition-all shadow-lg z-10"
+                             >
+                                <X size={14} />
+                             </button>
+                             <div className="space-y-1">
+                                <label className="text-[9px] text-slate-500 font-bold uppercase">اسم المكون</label>
+                                <input 
+                                  className="w-full px-3 py-2 glass bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-indigo-500 text-xs text-right"
+                                  value={p.name}
+                                  onChange={(e) => updateParameter(p.id, 'name', e.target.value)}
+                                  placeholder="مثلاً: Glucose"
+                                />
+                             </div>
+                             <div className="space-y-1">
+                                <label className="text-[9px] text-slate-500 font-bold uppercase">وحدة القياس</label>
+                                <input 
+                                  className="w-full px-3 py-2 glass bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-indigo-500 text-xs text-right"
+                                  value={p.unit}
+                                  onChange={(e) => updateParameter(p.id, 'unit', e.target.value)}
+                                  placeholder="mg/dL"
+                                />
+                             </div>
+                             <div className="md:col-span-2 space-y-1">
+                                <label className="text-[9px] text-slate-500 font-bold uppercase">المجال الطبيعي (Normal Range)</label>
+                                <input 
+                                  className="w-full px-3 py-2 glass bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-indigo-500 text-xs font-mono text-right"
+                                  value={p.normalRange}
+                                  onChange={(e) => updateParameter(p.id, 'normalRange', e.target.value)}
+                                  placeholder="70 - 100"
+                                />
+                             </div>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
                       {(!newTest.parameters || newTest.parameters.length === 0) && (
                         <div className="text-center py-8 border-2 border-dashed border-white/5 rounded-3xl text-slate-500 italic text-xs">
-                           لا توجد باراميترات محددة لهذا الفحص حالياً. اضغط "إضافة" لتعريف المكونات.
+                           لا توجد باراميترات محددة لهذا الفحص حالياً. اضغط "إضافة" لتعريف المكونات والمجالات الطبيعية.
                         </div>
                       )}
                    </div>
