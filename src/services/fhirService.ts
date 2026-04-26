@@ -1,5 +1,6 @@
 import { collection, doc, setDoc, getDoc, query, where, getDocs, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 
 export interface FHIRPatient {
   resourceType: 'Patient';
@@ -74,21 +75,30 @@ export const fhirService = {
       }]
     };
 
-    await setDoc(doc(db, 'fhir_patients', fhirId), {
-      ...fhirPatient,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
+    try {
+      await setDoc(doc(db, 'fhir_patients', fhirId), {
+        ...fhirPatient,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `fhir_patients/${fhirId}`);
+    }
     
     return fhirId;
   },
 
   async getPatient(id: string) {
-    const docSnap = await getDoc(doc(db, 'fhir_patients', id));
-    if (docSnap.exists()) {
-      return docSnap.data() as FHIRPatient;
+    try {
+      const docSnap = await getDoc(doc(db, 'fhir_patients', id));
+      if (docSnap.exists()) {
+        return docSnap.data() as FHIRPatient;
+      }
+      return null;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, `fhir_patients/${id}`);
+      return null;
     }
-    return null;
   },
 
   async addObservation(observation: Partial<FHIRObservation>) {
@@ -100,7 +110,11 @@ export const fhirService = {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
-    await setDoc(doc(db, 'fhir_observations', id), fullObs);
+    try {
+      await setDoc(doc(db, 'fhir_observations', id), fullObs);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `fhir_observations/${id}`);
+    }
     return id;
   },
 
@@ -109,7 +123,12 @@ export const fhirService = {
       collection(db, 'fhir_observations'),
       where('subject.reference', '==', `Patient/${patientId}`)
     );
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => doc.data() as FHIRObservation);
+    try {
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => doc.data() as FHIRObservation);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, `fhir_observations?patient=${patientId}`);
+      return [];
+    }
   }
 };

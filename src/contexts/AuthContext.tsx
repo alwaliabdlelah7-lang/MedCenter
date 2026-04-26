@@ -90,12 +90,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const errorMessage = error.message;
 
       if (errorCode === 'auth/internal-error' || errorMessage?.includes('internal-error')) {
+        const hostname = window.location.hostname;
+        const projectId = "ai-studio-applet-webapp-772b2";
+        const authSettingsUrl = `https://console.firebase.google.com/project/${projectId}/authentication/settings`;
+
         alert("تنبيه: فشل تسجيل الدخول (خطأ داخلي).\n\n" +
               "هذا الخطأ غالباً ما يكون سببه:\n" +
-              "1. حظر ملفات تعريف الارتباط للجهات الخارجية (Third-party cookies) في متصفحك.\n" +
-              "2. عدم إضافة النطاق " + window.location.hostname + " إلى 'Authorized Domains' في إعدادات Firebase.\n" +
-              "3. تشغيل التطبيق داخل إطار (iframe) - يرجى فتحه في نافذة جديدة.\n\n" +
-              "يرجى التأكد من السماح بملفات تعريف الارتباط وتجربة فتح الرابط في نافذة مستقلة.");
+              "1. حظر ملفات تعريف الارتباط للجهات الخارجية (Third-party cookies).\n" +
+              "2. عدم إضافة النطاق " + hostname + " إلى 'Authorized Domains' في إعدادات Firebase.\n" +
+              "3. تشغيل التطبيق داخل إطار (iframe).\n\n" +
+              "للإصلاح، يرجى:\n" +
+              "- فتح التطبيق في نافذة مستقلة (Open in new tab).\n" +
+              "- إضافة النطاق التالي إلى قائمة Authorized Domains:\n" +
+              "   " + hostname + "\n\n" +
+              "يمكنك الوصول للإعدادات من هنا:\n" + authSettingsUrl);
       } else if (errorCode === 'auth/popup-blocked') {
         alert("تنبيه: تم حظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة لهذا الموقع.");
       } else if (errorCode === 'auth/cancelled-popup-request') {

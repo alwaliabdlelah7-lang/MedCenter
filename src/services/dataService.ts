@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { db } from '../lib/firebase';
 import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, where, addDoc } from 'firebase/firestore';
+import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 
 /**
  * Unified Data Service for Hospital Management System
@@ -37,12 +38,13 @@ class DataService {
   public async getAll<T>(key: string): Promise<T[]> {
     try {
       const snapshot = await getDocs(collection(db, key));
-      if (!snapshot.empty) {
-        const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as T));
-        this.saveLocalAll(key, items);
-        return items;
+      const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as T));
+      this.saveLocalAll(key, items);
+      return items;
+    } catch (error: any) {
+      if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
+        handleFirestoreError(error, OperationType.LIST, key);
       }
-    } catch (error) {
       console.warn(`Firebase Fetch Error for ${key}:`, error);
     }
 
@@ -71,7 +73,10 @@ class DataService {
       });
       const snapshot = await getDocs(q);
       return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as T));
-    } catch (error) {
+    } catch (error: any) {
+      if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
+        handleFirestoreError(error, OperationType.GET, `${key} (query)`);
+      }
       console.error(`Firebase Find Error for ${key}:`, error);
     }
 
@@ -92,14 +97,18 @@ class DataService {
   // Generic Add Item
   public async addItem<T>(key: string, item: any): Promise<void> {
     const itemWithMeta = { ...item, createdAt: new Date().toISOString() };
+    const docId = item.id;
     
     try {
-      if (item.id) {
-        await setDoc(doc(db, key, item.id), itemWithMeta);
+      if (docId) {
+        await setDoc(doc(db, key, docId), itemWithMeta);
       } else {
         await addDoc(collection(db, key), itemWithMeta);
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
+        handleFirestoreError(error, OperationType.CREATE, `${key}/${docId || '(auto)'}`);
+      }
       console.warn(`Firebase Add Error for ${key}:`, error);
     }
 
@@ -120,7 +129,10 @@ class DataService {
     
     try {
       await updateDoc(doc(db, key, id), updatesWithMeta as any);
-    } catch (error) {
+    } catch (error: any) {
+      if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
+        handleFirestoreError(error, OperationType.UPDATE, `${key}/${id}`);
+      }
       console.warn(`Firebase Update Error for ${key}:`, error);
     }
 
@@ -141,7 +153,10 @@ class DataService {
   public async deleteItem<T>(key: string, id: string): Promise<void> {
     try {
       await deleteDoc(doc(db, key, id));
-    } catch (error) {
+    } catch (error: any) {
+      if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
+        handleFirestoreError(error, OperationType.DELETE, `${key}/${id}`);
+      }
       console.warn(`Firebase Delete Error for ${key}:`, error);
     }
 
@@ -194,10 +209,13 @@ class DataService {
         console.log('[DataService] Auto-seed completed successfully.');
       }
     } catch (error: any) {
-      if (error.code === 'permission-denied') {
+      if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
         console.warn('[DataService] Seeding skipped: Missing permissions. Please sign in as admin to initialize the database.');
+        // Don't throw here to avoid crashing the app on startup if the user isn't logged in yet
+      } else if (error.message?.includes('Could not reach Cloud Firestore backend') || error.code === 'unavailable') {
+         console.error('[DataService] Firestore unreachable during seeding:', error.message);
       } else {
-        console.error('[DataService] Auto-seed failed:', error);
+        console.error('[DataService] Auto-seed unexpected error:', error);
       }
     }
   }
