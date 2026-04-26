@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "664763080154",
+    "project_id": "ai-studio-applet-webapp-772b2",
+    "storage_bucket": "ai-studio-applet-webapp-772b2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:664763080154:android:fc6e3557b980e4d49234e3",
+        "android_client_info": {
+          "package_name": "Com.YEM.APP"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "664763080154-ltivq25btsn2atttn0obp4a4g7flk1er.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAvZz58T0VaiYxcxmhVQfYLScFlPxlJawA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "112820868520257034942",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

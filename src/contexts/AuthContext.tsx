@@ -1,7 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Permission } from '../types';
 import { auth, db } from '../lib/firebase';
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { 
+  onAuthStateChanged, 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signOut,
+  browserPopupRedirectResolver 
+} from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 interface AuthContextType {
@@ -73,12 +79,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
     try {
-      await signInWithPopup(auth, provider);
+      await signInWithPopup(auth, provider, browserPopupRedirectResolver);
     } catch (error: any) {
       console.error("Google login failed details:", error);
       if (error.code === 'auth/internal-error') {
-        alert("تنبيه: فشل تسجيل الدخول (Internal Error). تأكد من إضافة رابط التطبيق "+window.location.origin+" إلى Authorized Domains في Firebase Console.");
+        alert("تنبيه: فشل تسجيل الدخول (Internal Error).\n\nهذا الخطأ يحدث غالباً بسبب قيود الإطار (iframe). يرجى:\n1. فتح التطبيق في نافذة مستقلة.\n2. التأكد من إضافة رابط التطبيق إلى Authorized Domains في Firebase Console.\n3. التأكد من تفعيل موفر خدمة Google في الإعدادات.");
       } else if (error.code === 'auth/popup-blocked') {
         alert("تنبيه: تم حظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة لهذا الموقع.");
       } else {

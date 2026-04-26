@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.alwali.medcenter',
-  appName: 'med-center-his',
+  appId: 'Com.YEM.APP',
+  appName: 'MedCenter HIS',
   webDir: 'dist'
 };
 

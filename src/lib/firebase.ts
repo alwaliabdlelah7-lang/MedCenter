@@ -9,4 +9,6 @@ import firebaseConfig from '../../firebase-applet-config.json';
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
-auth.useDeviceLanguage(); // Set language to browser language (Arabic for user)
+auth.useDeviceLanguage();
+
+// Google OAuth Client ID provided by user: 664763080154-8saag8pb0nnl5cbnvmofstg9i8klsu7h.apps.googleusercontent.com

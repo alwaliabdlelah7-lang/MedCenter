@@ -27,5 +27,12 @@
     "types": [
       "vite/client"
     ]
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "dist_desktop",
+    "android",
+    "ios"
+  ]
 }
