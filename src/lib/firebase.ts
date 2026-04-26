@@ -1,14 +1,26 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAnalytics } from 'firebase/analytics';
+import { 
+  initializeAuth, 
+  indexedDBLocalPersistence, 
+  browserPopupRedirectResolver,
+  browserLocalPersistence
+} from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 // In AI Studio, firebase-applet-config.json is served at the root
-// We can use a direct import or fetch it if needed, but import should work in Vite
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
+// export const analytics = getAnalytics(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-export const auth = getAuth(app);
+
+// Enhanced Auth initialization for better behavior in frames/popups
+export const auth = initializeAuth(app, {
+  persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+  popupRedirectResolver: browserPopupRedirectResolver
+});
+
 auth.useDeviceLanguage();
 
-// Google OAuth Client ID provided by user: 664763080154-8saag8pb0nnl5cbnvmofstg9i8klsu7h.apps.googleusercontent.com
+// Google OAuth Client ID provided by user: 664763080154-ltivq25btsn2atttn0obp4a4g7flk1er.apps.googleusercontent.com

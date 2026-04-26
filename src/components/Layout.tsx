@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Permission } from '../types';
@@ -81,13 +81,13 @@ const sidebarItems: { icon?: any, label: string, path?: string, type?: 'header',
 export default function Layout() {
   const navigate = useNavigate();
   const { user, logout, hasPermission } = useAuth();
-  const [isCollapsed, setIsCollapsed] = React.useState(false);
-  const [showNotifications, setShowNotifications] = React.useState(false);
-  const [isSearchOpen, setIsSearchOpen] = React.useState(false);
-  const [hospitalName, setHospitalName] = React.useState('إبداع الطبي');
-  const [isCloudMode, setIsCloudMode] = React.useState(dataStore.isCloudEnabled());
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [hospitalName, setHospitalName] = useState('إبداع الطبي');
+  const [isCloudMode, setIsCloudMode] = useState(dataStore.isCloudEnabled());
 
-  React.useEffect(() => {
+  useEffect(() => {
     const unsubscribe = dataStore.subscribe(() => {
       setIsCloudMode(dataStore.isCloudEnabled());
     });

@@ -18,8 +18,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { User as UserProfile, Message } from '../types';
 import { cn } from '../lib/utils';
 import { io, Socket } from 'socket.io-client';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function StaffChat() {
+  const { user: authUser } = useAuth();
   const [activeChat, setActiveChat] = useState<string>('general');
   const [messageText, setMessageText] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -27,6 +29,12 @@ export default function StaffChat() {
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
+    const loadUsers = async () => {
+      const allUsers = await dataStore.getAll<UserProfile>('users');
+      setUsers(allUsers);
+    };
+    loadUsers();
+
     // Initialize socket
     socketRef.current = io();
 
@@ -55,7 +63,7 @@ export default function StaffChat() {
 
     const newMessage: Message = {
       id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-      senderId: 'u-admin', // Current user fallback
+      senderId: authUser?.id || 'u-admin',
       content: messageText,
       timestamp: new Date().toISOString(),
       chatId: activeChat
@@ -126,7 +134,7 @@ export default function StaffChat() {
                       key={`${msg.id}-${idx}`} 
                       className={cn(
                         "flex gap-4 max-w-[80%]",
-                        msg.senderId === 'u-1' ? "mr-auto flex-row-reverse" : "ml-auto"
+                        msg.senderId === authUser?.id ? "mr-auto flex-row-reverse" : "ml-auto"
                       )}
                     >
                        <div className="w-8 h-8 rounded-lg glass bg-white/10 shrink-0 border border-white/10 flex items-center justify-center text-slate-400 text-xs">

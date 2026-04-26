@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout.tsx';
@@ -36,6 +36,7 @@ import AIDiagnosisAssistant from './pages/Clinical/AIDiagnosisAssistant.tsx';
 import QueueManagement from './pages/QueueManagement.tsx';
 import StaffChat from './pages/StaffChat.tsx';
 import DoctorManagement from './pages/DoctorManagement.tsx';
+import Returns from './pages/Transactions/Returns.tsx';
 
 import { LanguageProvider } from './contexts/LanguageContext';
 import { dataStore } from './services/dataService';
@@ -72,7 +73,7 @@ const PlaceholderPage = ({ title }: { title: string }) => (
 );
 
 export default function App() {
-  React.useEffect(() => {
+  useEffect(() => {
     dataStore.autoSeedIfNeeded();
   }, []);
 
@@ -113,7 +114,7 @@ export default function App() {
               {/* Transactions Section */}
               <Route path="transactions/receipts" element={<ProtectedRoute permission="all"><ReceiptTransactions /></ProtectedRoute>} />
               <Route path="transactions/deferred" element={<ProtectedRoute permission="all"><DeferredReceipts /></ProtectedRoute>} />
-              <Route path="transactions/returns" element={<ProtectedRoute permission="all"><PlaceholderPage title="مرتجع سندات الاستعلامات" /></ProtectedRoute>} />
+              <Route path="transactions/returns" element={<ProtectedRoute permission="all"><Returns /></ProtectedRoute>} />
               
               {/* Other Sections */}
               <Route path="reports/doctor-commissions" element={<ProtectedRoute permission="admin"><DoctorCommissions /></ProtectedRoute>} />

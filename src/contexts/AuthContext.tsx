@@ -81,15 +81,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
     try {
-      await signInWithPopup(auth, provider, browserPopupRedirectResolver);
+      // The resolver is now handled at the auth initialization in lib/firebase.ts
+      await signInWithPopup(auth, provider);
     } catch (error: any) {
       console.error("Google login failed details:", error);
-      if (error.code === 'auth/internal-error') {
-        alert("تنبيه: فشل تسجيل الدخول (Internal Error).\n\nهذا الخطأ يحدث غالباً بسبب قيود الإطار (iframe). يرجى:\n1. فتح التطبيق في نافذة مستقلة.\n2. التأكد من إضافة رابط التطبيق إلى Authorized Domains في Firebase Console.\n3. التأكد من تفعيل موفر خدمة Google في الإعدادات.");
+      
+      // Check if it's an internal error or possible iframe block
+      if (error.code === 'auth/internal-error' || error.message?.includes('internal-error')) {
+        const fullError = JSON.stringify(error, Object.getOwnPropertyNames(error));
+        console.log("Full Error Debug:", fullError);
+        
+        alert("تنبيه: فشل تسجيل الدخول.\n\n" +
+              "هذا الخطأ يحدث غالباً بسبب قيود المتصفح داخل الإطار (iframe).\n\n" +
+              "الحل المقترح:\n" +
+              "1. قم بفتح التطبيق في نافذة مستقلة (Open in new tab).\n" +
+              "2. تأكد من إضافة النطاق " + window.location.hostname + " إلى 'نطاقات معتمدة' (Authorized Domains) في إعدادات Firebase Authentication.\n" +
+              "3. تأكد من تفعيل موفر Google في لوحة تحكم Firebase.");
       } else if (error.code === 'auth/popup-blocked') {
-        alert("تنبيه: تم حظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة لهذا الموقع.");
+        alert("تنبيه: تم حظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة.");
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        // Ignored
       } else {
-        alert("فشل تسجيل الدخول: " + error.message);
+        alert("خطأ في تسجيل الدخول: " + (error.code || "Error") + "\n" + error.message);
       }
     }
   };

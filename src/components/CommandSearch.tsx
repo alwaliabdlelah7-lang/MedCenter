@@ -400,7 +400,10 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
                           "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
                           selectedIndex === idx ? "bg-white/20 text-white" : "glass bg-white/5 text-sky-400"
                         )}>
-                          {React.createElement(getIcon(result), { size: 20 })}
+                          {(() => {
+                            const Icon = getIcon(result);
+                            return <Icon size={20} />;
+                          })()}
                         </div>
                       </div>
                     </button>

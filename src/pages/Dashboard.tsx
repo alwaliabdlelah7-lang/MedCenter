@@ -37,7 +37,7 @@ import {
 } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
-import { Appointment, Patient, User, Doctor, PharmacyItem } from '../types';
+import { Appointment, Patient, User, Doctor, PharmacyItem, Receipt } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { dataStore } from '../services/dataService';
 import { INITIAL_PATIENTS, INITIAL_APPOINTMENTS } from '../data/seedData';
@@ -63,11 +63,16 @@ export default function Dashboard() {
   const [activeUsersCount] = useState(14);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [medicines, setMedicines] = useState<PharmacyItem[]>([]);
   const [isCloudMode, setIsCloudMode] = useState(dataStore.isCloudEnabled());
   const [loading, setLoading] = useState(true);
+
+  // Dynamic Chart Data
+  const [dashboardChartData, setDashboardChartData] = useState<any[]>([]);
+  const [patientTypeDistribution, setPatientTypeDistribution] = useState<any[]>([]);
 
   useEffect(() => {
     const unsubscribe = dataStore.subscribe(() => {
@@ -76,16 +81,58 @@ export default function Dashboard() {
 
     const loadData = async () => {
       try {
-        const [apptsData, patientsData, doctorsData, medsData] = await Promise.all([
+        const [apptsData, receiptsData, patientsData, doctorsData, medsData] = await Promise.all([
           dataStore.getAll<Appointment>('appointments'),
+          dataStore.getAll<Receipt>('receipts'),
           dataStore.getAll<Patient>('patients'),
           dataStore.getAll<Doctor>('doctors'),
           dataStore.getAll<PharmacyItem>('pharmacy_items')
         ]);
-        setAppointments(apptsData.length > 0 ? apptsData : INITIAL_APPOINTMENTS);
-        setPatients(patientsData.length > 0 ? patientsData : INITIAL_PATIENTS);
+
+        const currentAppts = apptsData.length > 0 ? apptsData : INITIAL_APPOINTMENTS;
+        const currentReceipts = receiptsData;
+        const currentPatients = patientsData.length > 0 ? patientsData : INITIAL_PATIENTS;
+
+        setAppointments(currentAppts);
+        setReceipts(currentReceipts);
+        setPatients(currentPatients);
         setDoctors(doctorsData);
         setMedicines(medsData);
+
+        // Calculate Weekly Chart Data
+        const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+        // Use receipts to calculate revenue per day for the last 7 days
+        const last7Days = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const dateStr = d.toLocaleDateString('ar-YE');
+          const dayName = days[d.getDay()];
+          const dayRevenue = currentReceipts
+            .filter(r => r.date === dateStr && r.status === 'paid')
+            .reduce((sum, r) => sum + r.amount, 0);
+          const dayAppts = currentAppts.filter(a => a.date === d.toISOString().split('T')[0]).length;
+          
+          return { name: dayName, revenue: dayRevenue, appointments: dayAppts, rawDate: d };
+        }).reverse();
+
+        setDashboardChartData(last7Days.length > 0 ? last7Days : chartData);
+
+        // Calculate Patient Type Distribution
+        const visitTypes = {
+          'consultation': { name: 'مرضى جدد', count: 0, color: '#0ea5e9' },
+          'followup': { name: 'متابعة', count: 0, color: '#8b5cf6' },
+          'return': { name: 'عودة مجانية', count: 0, color: '#f59e0b' }
+        };
+
+        currentAppts.forEach(a => {
+          if (visitTypes[a.type as keyof typeof visitTypes]) {
+            visitTypes[a.type as keyof typeof visitTypes].count++;
+          }
+        });
+
+        const dist = Object.values(visitTypes).map(t => ({ name: t.name, value: t.count || 5, color: t.color })); // Fallback to 5 for viz if empty
+        setPatientTypeDistribution(dist);
+
       } catch (error) {
         console.error("Dashboard data load failed", error);
       } finally {
@@ -110,6 +157,9 @@ export default function Dashboard() {
 
   const todayAppts = appointments.filter(a => a.date === currentTime.toISOString().split('T')[0]);
   const expectedRevenue = todayAppts.reduce((sum, a) => sum + (a.cost || 0), 0);
+  const actualRevenueToday = receipts
+    .filter(r => r.date === currentTime.toLocaleDateString('ar-YE') && r.status === 'paid')
+    .reduce((sum, r) => sum + r.amount, 0);
 
   const stats = [
     { 
@@ -121,17 +171,17 @@ export default function Dashboard() {
       color: 'sky' 
     },
     { 
-      label: 'دخل اليوم المتوقع', 
-      value: `${expectedRevenue.toLocaleString()} ر.ي`, 
-      trend: todayAppts.length.toString(), 
+      label: 'إيرادات اليوم (المحصلة)', 
+      value: `${actualRevenueToday.toLocaleString()} ر.ي`, 
+      trend: `${receipts.filter(r => r.date === currentTime.toLocaleDateString('ar-YE')).length} سند`, 
       trendUp: true, 
       icon: TrendingUp, 
       color: 'emerald' 
     },
     { 
-      label: 'مستخدمون نشطون عبر الأجهزة', 
-      value: activeUsersCount.toString(), 
-      trend: 'متصل', 
+      label: 'مستوعب المواعيد', 
+      value: todayAppts.length.toString(), 
+      trend: 'حجز اليوم', 
       trendUp: true, 
       icon: UserCheck, 
       color: 'indigo' 
@@ -293,7 +343,7 @@ export default function Dashboard() {
              </div>
              <div className="h-80 w-full font-mono">
                 <ResponsiveContainer width="100%" height="100%">
-                   <AreaChart data={chartData}>
+                   <AreaChart data={dashboardChartData}>
                       <defs>
                          <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
@@ -323,7 +373,7 @@ export default function Dashboard() {
                    <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                          <Pie
-                            data={patientTypeData}
+                            data={patientTypeDistribution}
                             cx="50%" cy="50%"
                             innerRadius={60}
                             outerRadius={80}
@@ -339,7 +389,7 @@ export default function Dashboard() {
                    </ResponsiveContainer>
                 </div>
                 <div className="flex justify-center gap-4 mt-4">
-                   {patientTypeData.map((t) => (
+                   {patientTypeDistribution.map((t) => (
                      <div key={t.name} className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: t.color }} />
                         <span className="text-[10px] text-slate-400 font-bold">{t.name}</span>
