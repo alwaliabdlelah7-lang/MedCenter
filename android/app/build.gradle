@@ -2,11 +2,11 @@ apply plugin: 'com.android.application'
 
 android {
     namespace = "Com.YEM.APP"
-    compileSdk = 35
+    compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "Com.YEM.APP"
         minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion 35
+        targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
