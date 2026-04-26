@@ -73,10 +73,6 @@ const PlaceholderPage = ({ title }: { title: string }) => (
 );
 
 export default function App() {
-  useEffect(() => {
-    dataStore.autoSeedIfNeeded();
-  }, []);
-
   return (
     <LanguageProvider>
       <AuthProvider>

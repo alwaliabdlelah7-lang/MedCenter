@@ -51,10 +51,9 @@ service cloud.firestore {
     }
 
     // --- Rules for Collections ---
-
     match /users/{userId} {
-      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
-      allow list: if isAdmin(); 
+      allow get: if isSignedIn();
+      allow list: if isSignedIn(); 
       allow create: if (isAdmin() || isBootstrappedAdmin()) && isValidUser(incoming());
       allow update: if (isAdmin() || request.auth.uid == userId) && isValidUser(incoming())
                        && incoming().id == existing().id 
@@ -63,17 +62,17 @@ service cloud.firestore {
     }
 
     match /patients/{patientId} {
-      allow get: if isSignedIn() && hasAnyPermission(['clinical', 'read_only', 'registration']);
-      allow list: if isSignedIn() && hasAnyPermission(['clinical', 'read_only', 'registration']);
-      allow create: if isSignedIn() && hasAnyPermission(['registration', 'admin']) && isValidPatient(incoming());
-      allow update: if isSignedIn() && hasAnyPermission(['clinical', 'registration', 'admin']) && isValidPatient(incoming());
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && (hasAnyPermission(['registration', 'admin']) || isBootstrappedAdmin()) && isValidPatient(incoming());
+      allow update: if isSignedIn() && (hasAnyPermission(['clinical', 'registration', 'admin']) || isBootstrappedAdmin()) && isValidPatient(incoming());
       allow delete: if isAdmin();
     }
 
-    match /clinical_visits/{id} { allow read, write: if hasAnyPermission(['clinical', 'admin']); }
-    match /prescriptions/{id} { allow read, write: if hasAnyPermission(['clinical', 'pharmacy', 'admin']); }
-    match /lab_tests/{id} { allow read, write: if hasAnyPermission(['clinical', 'lab', 'admin']); }
-    match /radiology_scans/{id} { allow read, write: if hasAnyPermission(['clinical', 'lab', 'admin']); }
+    match /clinical_visits/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['clinical', 'admin']); }
+    match /prescriptions/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['clinical', 'pharmacy', 'admin']); }
+    match /lab_tests/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['clinical', 'lab', 'admin']); }
+    match /radiology_scans/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['clinical', 'lab', 'admin']); }
     
     match /departments/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
     match /clinics/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
@@ -89,7 +88,8 @@ service cloud.firestore {
     match /receipts/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['billing', 'admin']); }
     match /companions/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['registration', 'admin']); }
     match /inpatients/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['registration', 'clinical', 'admin']); }
-    match /fhir_patients/{id} { allow read, write: if hasAnyPermission(['clinical', 'registration', 'admin']); }
-    match /fhir_observations/{id} { allow read, write: if hasAnyPermission(['clinical', 'lab', 'admin']); }
+    match /fhir_patients/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['clinical', 'registration', 'admin']); }
+    match /fhir_observations/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['clinical', 'lab', 'admin']); }
+    match /dynamic_fields/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
   }
 }

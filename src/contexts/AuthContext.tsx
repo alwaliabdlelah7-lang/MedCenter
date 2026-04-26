@@ -63,13 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(null);
         }
       } else {
-        // Fallback for local dev if needed, or if manual login happened
-        const savedUser = localStorage.getItem('hospital_current_user');
-        if (savedUser) {
-          setUser(JSON.parse(savedUser));
-        } else {
-          setUser(null);
-        }
+        setUser(null);
       }
       setIsLoading(false);
     });
@@ -94,16 +88,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const projectId = "ai-studio-applet-webapp-772b2";
         const authSettingsUrl = `https://console.firebase.google.com/project/${projectId}/authentication/settings`;
 
-        alert("تنبيه: فشل تسجيل الدخول (خطأ داخلي).\n\n" +
-              "هذا الخطأ غالباً ما يكون سببه:\n" +
-              "1. حظر ملفات تعريف الارتباط للجهات الخارجية (Third-party cookies).\n" +
-              "2. عدم إضافة النطاق " + hostname + " إلى 'Authorized Domains' في إعدادات Firebase.\n" +
-              "3. تشغيل التطبيق داخل إطار (iframe).\n\n" +
-              "للإصلاح، يرجى:\n" +
-              "- فتح التطبيق في نافذة مستقلة (Open in new tab).\n" +
-              "- إضافة النطاق التالي إلى قائمة Authorized Domains:\n" +
-              "   " + hostname + "\n\n" +
-              "يمكنك الوصول للإعدادات من هنا:\n" + authSettingsUrl);
+        alert("تنبيه: فشل في التواصل مع موفر تسجيل الدخول (auth/internal-error).\n\n" +
+              "هذا الخطأ غالباً ما يكون بسبب عوائق في المتصفح أو إعدادات الحماية. يرجى تجربة ما يلي:\n\n" +
+              "1. افتح التطبيق في نافذة مستقلة (Open in new tab) بدلاً من الإطار الحالي.\n" +
+              "2. تأكد من إضافة النطاقات التالية إلى قائمة 'Authorized Domains' في إعدادات Firebase:\n" +
+              "   - " + hostname + "\n" +
+              "   - ais-dev-ptbtc6rsmho3m6illzcrog-799672221951.europe-west2.run.app\n" +
+              "   - ais-pre-ptbtc6rsmho3m6illzcrog-799672221951.europe-west2.run.app\n\n" +
+              "رابط الإعدادات:\n" + authSettingsUrl + "\n\n" +
+              "3. تأكد من تفعيل موفر Google في لوحة التحكم.");
       } else if (errorCode === 'auth/popup-blocked') {
         alert("تنبيه: تم حظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة لهذا الموقع.");
       } else if (errorCode === 'auth/cancelled-popup-request') {

@@ -81,6 +81,9 @@ export default function Login() {
                   placeholder="••••••••"
                 />
               </div>
+              <div className="flex justify-between px-2 pt-1">
+                <span className="text-[9px] text-slate-500 font-bold italic">التجربة: admin / 123</span>
+              </div>
             </div>
 
             {error && (

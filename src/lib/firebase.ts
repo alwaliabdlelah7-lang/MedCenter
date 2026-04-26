@@ -1,10 +1,11 @@
 import { initializeApp } from 'firebase/app';
 import { getAnalytics } from 'firebase/analytics';
 import { 
-  initializeAuth, 
-  browserLocalPersistence,
+  getAuth,
   indexedDBLocalPersistence,
-  browserPopupRedirectResolver
+  browserLocalPersistence,
+  browserPopupRedirectResolver,
+  initializeAuth
 } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer, initializeFirestore } from 'firebase/firestore';
 
@@ -19,6 +20,8 @@ export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
 }, firebaseConfig.firestoreDatabaseId);
 
+// Using initializeAuth with indexedDBLocalPersistence and browserLocalPersistence is 
+// the recommended setup for cross-context persistence in frames.
 export const auth = initializeAuth(app, {
   persistence: [indexedDBLocalPersistence, browserLocalPersistence],
   popupRedirectResolver: browserPopupRedirectResolver
