@@ -175,12 +175,12 @@ export default function Laboratory() {
 
       <div id="lab-tests-print-list" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filtered.length > 0 ? (
-          filtered.map((test, idx) => (
+          filtered.map((test) => (
             <motion.div
               layout
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              key={`${test.id}-${idx}`}
+              key={test.id}
               className="glass p-8 rounded-[40px] relative group border border-white/5 hover:border-indigo-500/30 hover:bg-white/5 transition-all overflow-hidden"
             >
               <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-3xl -translate-x-12 -translate-y-12" />

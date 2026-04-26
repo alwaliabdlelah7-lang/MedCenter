@@ -27,6 +27,7 @@ import { cn } from '../lib/utils';
 import { INITIAL_DOCTORS, INITIAL_DEPARTMENTS } from '../data/seedData';
 import { dataStore } from '../services/dataService';
 import { exportToCSV, printReport } from '../lib/exportUtils';
+import { validateEmail } from '../lib/validationUtils';
 
 export default function DoctorManagement() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -66,6 +67,12 @@ export default function DoctorManagement() {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
+    
+    const email = formData.get('email') as string;
+    if (email && !validateEmail(email)) {
+      alert('يرجى إدخال بريد إلكتروني صحيح');
+      return;
+    }
     
     const docData: any = {
       name: formData.get('name') as string,
@@ -419,7 +426,7 @@ function InputGroup({ name, label, defaultValue, placeholder, icon: Icon, requir
         <input 
           name={name}
           type={type}
-          defaultValue={defaultValue}
+          defaultValue={isNaN(defaultValue) ? '' : defaultValue}
           required={required}
           className="w-full pr-12 pl-4 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none font-bold focus:border-sky-500 transition-all font-mono"
           placeholder={placeholder}

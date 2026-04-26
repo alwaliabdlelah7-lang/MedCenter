@@ -81,28 +81,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
     try {
-      // The resolver is now handled at the auth initialization in lib/firebase.ts
-      await signInWithPopup(auth, provider);
+      // Explicitly passing the resolver can help in some restricted environments
+      await signInWithPopup(auth, provider, browserPopupRedirectResolver);
     } catch (error: any) {
       console.error("Google login failed details:", error);
       
-      // Check if it's an internal error or possible iframe block
-      if (error.code === 'auth/internal-error' || error.message?.includes('internal-error')) {
-        const fullError = JSON.stringify(error, Object.getOwnPropertyNames(error));
-        console.log("Full Error Debug:", fullError);
-        
-        alert("تنبيه: فشل تسجيل الدخول.\n\n" +
-              "هذا الخطأ يحدث غالباً بسبب قيود المتصفح داخل الإطار (iframe).\n\n" +
-              "الحل المقترح:\n" +
-              "1. قم بفتح التطبيق في نافذة مستقلة (Open in new tab).\n" +
-              "2. تأكد من إضافة النطاق " + window.location.hostname + " إلى 'نطاقات معتمدة' (Authorized Domains) في إعدادات Firebase Authentication.\n" +
-              "3. تأكد من تفعيل موفر Google في لوحة تحكم Firebase.");
-      } else if (error.code === 'auth/popup-blocked') {
-        alert("تنبيه: تم حظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة.");
-      } else if (error.code === 'auth/cancelled-popup-request') {
-        // Ignored
+      const errorCode = error.code;
+      const errorMessage = error.message;
+
+      if (errorCode === 'auth/internal-error' || errorMessage?.includes('internal-error')) {
+        alert("تنبيه: فشل تسجيل الدخول (خطأ داخلي).\n\n" +
+              "هذا الخطأ غالباً ما يكون سببه:\n" +
+              "1. حظر ملفات تعريف الارتباط للجهات الخارجية (Third-party cookies) في متصفحك.\n" +
+              "2. عدم إضافة النطاق " + window.location.hostname + " إلى 'Authorized Domains' في إعدادات Firebase.\n" +
+              "3. تشغيل التطبيق داخل إطار (iframe) - يرجى فتحه في نافذة جديدة.\n\n" +
+              "يرجى التأكد من السماح بملفات تعريف الارتباط وتجربة فتح الرابط في نافذة مستقلة.");
+      } else if (errorCode === 'auth/popup-blocked') {
+        alert("تنبيه: تم حظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة لهذا الموقع.");
+      } else if (errorCode === 'auth/cancelled-popup-request') {
+        console.log("User closed the popup.");
+      } else if (errorCode === 'auth/unauthorized-domain') {
+        alert("هذا النطاق غير معتمد في إعدادات Firebase.\n\n" +
+              "النطاق الحالي: " + window.location.hostname);
       } else {
-        alert("خطأ في تسجيل الدخول: " + (error.code || "Error") + "\n" + error.message);
+        alert("خطأ في تسجيل الدخول: " + (errorCode || "Error") + "\n" + errorMessage);
       }
     }
   };

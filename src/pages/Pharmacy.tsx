@@ -397,7 +397,7 @@ function InputGroup({ name, label, defaultValue, placeholder, icon: Icon, requir
         <input 
           name={name}
           type={type}
-          defaultValue={defaultValue}
+          defaultValue={isNaN(defaultValue) ? '' : defaultValue}
           required={required}
           className="w-full pr-12 pl-4 font-mono py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none font-bold focus:border-emerald-500 transition-all shadow-inner"
           placeholder={placeholder}

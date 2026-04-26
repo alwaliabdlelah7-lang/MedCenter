@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { User as UserType, Permission } from '../types';
 import { cn } from '../lib/utils';
 import { dataStore } from '../services/dataService';
+import { validateEmail } from '../lib/validationUtils';
 
 const ROLES: UserType['role'][] = ['admin', 'doctor', 'nurse', 'pharmacist', 'lab_tech', 'receptionist'];
 const PERMISSIONS: Permission[] = ['all', 'read_only', 'clinical', 'pharmacy', 'lab', 'admin'];
@@ -43,6 +44,7 @@ export default function UsersManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [newUser, setNewUser] = useState<Partial<UserType>>({
     username: '',
+    email: '',
     password: '',
     name: '',
     role: 'receptionist',
@@ -53,10 +55,16 @@ export default function UsersManagement() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUser.username || !newUser.name) return;
+
+    if (newUser.email && !validateEmail(newUser.email)) {
+      alert('يرجى إدخال بريد إلكتروني صحيح');
+      return;
+    }
     
     const user: UserType = {
       id: `USR-${Date.now().toString().slice(-4)}`,
       username: newUser.username!,
+      email: newUser.email,
       password: newUser.password!,
       name: newUser.name!,
       role: newUser.role as any,
@@ -229,6 +237,10 @@ export default function UsersManagement() {
                        <div className="space-y-2">
                           <label className="text-xs font-bold text-slate-400 uppercase italic">اسم المستخدم (المعرف)</label>
                           <input required className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 font-mono" value={newUser.username} onChange={(e) => setNewUser({...newUser, username: e.target.value})} />
+                       </div>
+                       <div className="space-y-2">
+                          <label className="text-xs font-bold text-slate-400 uppercase italic">البريد الإلكتروني</label>
+                          <input type="email" className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 font-mono" value={newUser.email} onChange={(e) => setNewUser({...newUser, email: e.target.value})} placeholder="example@mail.com" />
                        </div>
                        <div className="space-y-2">
                           <label className="text-xs font-bold text-slate-400 uppercase italic">الدور الوظيفي</label>

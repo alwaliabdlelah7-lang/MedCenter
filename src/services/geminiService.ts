@@ -1,51 +1,48 @@
 import { GoogleGenAI } from "@google/genai";
 
-const apiKey = process.env.GEMINI_API_KEY;
-
-let aiClient: GoogleGenAI | null = null;
-
-if (apiKey) {
-  aiClient = new GoogleGenAI({ apiKey });
-}
+// Initialize the API with our environment variable
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export const geminiService = {
-  async analyzeMedicalRecord(record: string): Promise<string> {
-    if (!aiClient) {
-      throw new Error("Gemini API key is not configured.");
-    }
-
+  askGemini: async (prompt: string, context?: string) => {
     try {
-      const response = await aiClient.models.generateContent({
+      const fullPrompt = context 
+        ? `Context: ${context}\n\nUser Question: ${prompt}\n\nProvide a concise and helpful response as a medical assistant.`
+        : prompt;
+
+      const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: [{ parts: [{ text: `قم بتحليل السجل الطبي التالي باللغة العربية وقدم ملخصاً طبياً، تشخيصات محتملة، وتوصيات للفحوصات اللازمة:
-        
-        ${record}` }] }],
+        contents: fullPrompt,
+        config: {
+          systemInstruction: "You are an AI Medical Assistant for Al-Wali Hospital. Help staff with queries, summaries, and data analysis. Always be professional and concise."
+        }
       });
 
-      return response.text || "لم يتمكن الذكاء الاصطناعي من توليد رد.";
+      return response.text;
     } catch (error) {
-      console.error("Gemini Analysis Error:", error);
-      throw error;
+      console.error("Gemini API Error:", error);
+      return "عذراً، حدث خطأ أثناء الاتصال بالذكاء الاصطناعي.";
     }
   },
 
-  async suggestDiagnosis(symptoms: string[]): Promise<string> {
-    if (!aiClient) {
-      throw new Error("Gemini API key is not configured.");
-    }
-
+  suggestDiagnosis: async (symptoms: string[]) => {
     try {
-      const response = await aiClient.models.generateContent({
+      const prompt = `Based on the following symptoms: ${symptoms.join(', ')}, suggest possible diagnoses and recommended first steps. Provide the response in Arabic.`;
+      
+      const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: [{ parts: [{ text: `بناءً على الأعراض التالية، ما هي التشخيصات المحتملة؟ (هذا رد استرشادي فقط وليس تشخيصاً نهائياً):
-        
-        ${symptoms.join(", ")}` }] }],
+        contents: prompt,
+        config: {
+          systemInstruction: "You are a professional medical diagnostic assistant. Provide structured Arabic responses with headers. Disclaimer: Always state this is for guidance only."
+        }
       });
 
-      return response.text || "لا توجد اقتراحات حالياً.";
+      return response.text;
     } catch (error) {
-      console.error("Gemini Diagnosis Suggestion Error:", error);
-      throw error;
+      console.error("Gemini Diagnosis Error:", error);
+      throw new Error("حدث خطأ أثناء الحصول على تشخيص ذكي.");
     }
   }
 };
+
+export const askGemini = geminiService.askGemini;

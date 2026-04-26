@@ -12,13 +12,17 @@ import {
   Smile,
   MoreVertical,
   Circle,
-  AlertCircle
+  AlertCircle,
+  Sparkles,
+  Bot
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User as UserProfile, Message } from '../types';
 import { cn } from '../lib/utils';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
+import { askGemini } from '../services/geminiService';
+import { dataStore } from '../services/dataService';
 
 export default function StaffChat() {
   const { user: authUser } = useAuth();
@@ -57,20 +61,42 @@ export default function StaffChat() {
     }
   }, [activeChat]);
 
-  const handleSend = (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageText.trim() || !socketRef.current) return;
 
+    const content = messageText;
     const newMessage: Message = {
       id: `MSG-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       senderId: authUser?.id || 'u-admin',
-      content: messageText,
+      content: content,
       timestamp: new Date().toISOString(),
       chatId: activeChat
     };
 
     socketRef.current.emit('send-message', newMessage);
     setMessageText('');
+
+    // AI Trigger
+    if (content.toLowerCase().startsWith('@ai')) {
+      const prompt = content.slice(3).trim() || "كيف يمكنني مساعدتك اليوم؟";
+      
+      // Add loading message
+      const loadingId = `AI-LOAD-${Date.now()}`;
+      const loadingMsg: Message = {
+        id: loadingId,
+        senderId: 'ai-bot',
+        content: 'جاري التفكير...',
+        timestamp: new Date().toISOString(),
+        chatId: activeChat
+      };
+      setMessages(prev => [...prev, loadingMsg]);
+
+      const aiResponse = await askGemini(prompt);
+      
+      // Update loading message with response
+      setMessages(prev => prev.map(m => m.id === loadingId ? { ...m, content: aiResponse || 'عذراً، لم أستطع فهم طلبك.' } : m));
+    }
   };
 
   const currentMessages = messages.filter(m => m.chatId === activeChat);
@@ -99,6 +125,18 @@ export default function StaffChat() {
             <ChannelButton id="reception" name="قسم الاستقبال" active={activeChat === 'reception'} onClick={setActiveChat} icon={Users} />
             <ChannelButton id="emergency" name="حالات الطوارئ" active={activeChat === 'emergency'} onClick={setActiveChat} icon={AlertCircle} />
             
+            <div className="px-4 py-2 pt-6 text-[10px] text-slate-500 font-black uppercase tracking-widest">المساعدة الذكية</div>
+            <button 
+              onClick={() => {
+                setActiveChat('general');
+                setMessageText('@ai اشرح لي كيف يعمل الذكاء الاصطناعي في بضع كلمات');
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all font-bold text-xs text-right bg-sky-500/10 text-sky-400 border border-sky-500/20 hover:bg-sky-500/20"
+            >
+               <Sparkles size={16} />
+               <span>اسأل المساعد الذكي</span>
+            </button>
+
             <div className="px-4 py-2 pt-6 text-[10px] text-slate-500 font-black uppercase tracking-widest">الموظفون (DMs)</div>
             {users.map(u => (
               <UserChatButton key={u.id} profile={u} active={activeChat === u.id} onClick={setActiveChat} />
@@ -138,18 +176,20 @@ export default function StaffChat() {
                       )}
                     >
                        <div className="w-8 h-8 rounded-lg glass bg-white/10 shrink-0 border border-white/10 flex items-center justify-center text-slate-400 text-xs">
-                          {users.find(u => u.id === msg.senderId)?.name.charAt(0) || 'U'}
+                          {msg.senderId === 'ai-bot' ? <Bot size={16} className="text-sky-400" /> : (users.find(u => u.id === msg.senderId)?.name.charAt(0) || 'U')}
                        </div>
                        <div className="space-y-1">
-                          <div className={cn("flex items-center gap-2", msg.senderId === 'u-1' ? "flex-row-reverse" : "")}>
-                             <span className="text-[10px] font-bold text-white">{users.find(u => u.id === msg.senderId)?.name || 'موظف'}</span>
+                          <div className={cn("flex items-center gap-2", msg.senderId === authUser?.id ? "flex-row-reverse" : "")}>
+                             <span className="text-[10px] font-bold text-white">{msg.senderId === 'ai-bot' ? 'مساعد الذكاء الاصطناعي' : (users.find(u => u.id === msg.senderId)?.name || 'موظف')}</span>
                              <span className="text-[9px] text-slate-500 font-mono italic">{new Date(msg.timestamp).toLocaleTimeString('ar-YE', { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                           <div className={cn(
                             "p-4 rounded-3xl text-sm leading-relaxed",
-                            msg.senderId === 'u-1' 
+                            msg.senderId === authUser?.id 
                               ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20" 
-                              : "glass bg-white/5 text-slate-200 border border-white/10"
+                              : msg.senderId === 'ai-bot'
+                                ? "bg-sky-600/20 text-sky-100 border border-sky-500/30"
+                                : "glass bg-white/5 text-slate-200 border border-white/10"
                           )}>
                              {msg.content}
                           </div>

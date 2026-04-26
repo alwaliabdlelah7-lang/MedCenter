@@ -169,12 +169,12 @@ export default function LabDirectory() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filtered.map((test, idx) => (
+        {filtered.map((test) => (
           <motion.div
             layout
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            key={`${test.id}-${idx}`}
+            key={test.id}
             className="glass p-6 rounded-3xl relative group flex flex-col justify-between"
           >
             <div className="flex justify-between items-start mb-4">
@@ -266,7 +266,7 @@ export default function LabDirectory() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-500 uppercase italic">التسعيرة (ر.ي)</label>
-                      <input type="number" required className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 font-black" value={newTest.price} onChange={(e) => setNewTest({...newTest, price: parseFloat(e.target.value)})} />
+                      <input type="number" required className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 font-black" value={newTest.price || ''} onChange={(e) => setNewTest({...newTest, price: e.target.value === '' ? 0 : parseFloat(e.target.value)})} />
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-500 uppercase italic">التصنيف</label>

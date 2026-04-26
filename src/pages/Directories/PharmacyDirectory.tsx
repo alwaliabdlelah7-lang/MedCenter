@@ -231,7 +231,7 @@ export default function PharmacyDirectory() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-500 uppercase italic">السعر (ر.ي)</label>
-                    <input type="number" required className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-emerald-500 font-black" value={newMed.price} onChange={(e) => setNewMed({...newMed, price: parseFloat(e.target.value)})} />
+                    <input type="number" required className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-emerald-500 font-black" value={newMed.price || ''} onChange={(e) => setNewMed({...newMed, price: e.target.value === '' ? 0 : parseFloat(e.target.value)})} />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-500 uppercase italic">النوع (الجرعة)</label>
@@ -268,11 +268,11 @@ export default function PharmacyDirectory() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                    <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-500 uppercase italic">الكمية المتوفرة حالياً</label>
-                      <input type="number" required className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-emerald-500 font-black" value={newMed.totalQuantity} onChange={(e) => setNewMed({...newMed, totalQuantity: parseInt(e.target.value)})} />
+                      <input type="number" required className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-emerald-500 font-black" value={newMed.totalQuantity || ''} onChange={(e) => setNewMed({...newMed, totalQuantity: e.target.value === '' ? 0 : parseInt(e.target.value)})} />
                    </div>
                    <div className="space-y-2">
                       <label className="text-[10px] font-black text-amber-500 uppercase italic">حد إعادة الطلب (تنبيه المخزون)</label>
-                      <input type="number" required className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-amber-500 font-black" value={newMed.reorderPoint} onChange={(e) => setNewMed({...newMed, reorderPoint: parseInt(e.target.value)})} />
+                      <input type="number" required className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-amber-500 font-black" value={newMed.reorderPoint || ''} onChange={(e) => setNewMed({...newMed, reorderPoint: e.target.value === '' ? 0 : parseInt(e.target.value)})} />
                    </div>
                 </div>
 

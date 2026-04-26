@@ -2,9 +2,8 @@ import { initializeApp } from 'firebase/app';
 import { getAnalytics } from 'firebase/analytics';
 import { 
   initializeAuth, 
-  indexedDBLocalPersistence, 
-  browserPopupRedirectResolver,
-  browserLocalPersistence
+  browserLocalPersistence,
+  browserPopupRedirectResolver
 } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
@@ -15,9 +14,8 @@ const app = initializeApp(firebaseConfig);
 // export const analytics = getAnalytics(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
-// Enhanced Auth initialization for better behavior in frames/popups
 export const auth = initializeAuth(app, {
-  persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+  persistence: browserLocalPersistence,
   popupRedirectResolver: browserPopupRedirectResolver
 });
 

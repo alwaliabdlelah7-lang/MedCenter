@@ -3,6 +3,7 @@ import { Plus, Search, UserCheck, Phone, Syringe, Building2, Trash2, Edit2, Tag,
 import { motion, AnimatePresence } from 'motion/react';
 import { Nurse, Department, DynamicFieldDefinition } from '../../types';
 import { exportToCSV, printReport } from '../../lib/exportUtils';
+import { validateEmail } from '../../lib/validationUtils';
 
 export default function NursesDirectory() {
   const [nurses, setNurses] = useState<Nurse[]>(() => {
@@ -38,6 +39,12 @@ export default function NursesDirectory() {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
+
+    const email = formData.get('email') as string;
+    if (email && !validateEmail(email)) {
+      alert('يرجى إدخال بريد إلكتروني صحيح');
+      return;
+    }
     
     if (editingNurse) {
       const updatedNurse: Nurse = {

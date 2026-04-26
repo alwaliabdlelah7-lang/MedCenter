@@ -260,8 +260,8 @@ export default function ReceiptTransactions() {
                       type="number"
                       required
                       className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-sky-500/10 font-bold font-mono"
-                      value={newReceipt.patientAge}
-                      onChange={(e) => setNewReceipt({...newReceipt, patientAge: parseInt(e.target.value)})}
+                      value={newReceipt.patientAge || ''}
+                      onChange={(e) => setNewReceipt({...newReceipt, patientAge: e.target.value === '' ? 0 : parseInt(e.target.value)})}
                     />
                   </div>
                   <div className="space-y-2">

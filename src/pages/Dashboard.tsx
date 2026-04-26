@@ -289,7 +289,7 @@ export default function Dashboard() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: i * 0.1 }}
-            key={i} 
+            key={`stat-${stat.label}`} 
             className="glass p-6 rounded-3xl relative overflow-hidden group border border-white/5"
           >
             <div className={cn(
@@ -404,9 +404,9 @@ export default function Dashboard() {
                    تنبيهات النظام الذكية
                 </h3>
                 <div className="space-y-3">
-                   {lowStockMeds.slice(0, 3).map((med, i) => (
+                   {lowStockMeds.slice(0, 3).map((med) => (
                      <DashboardAlert 
-                       key={i}
+                       key={`low-stock-${med.id}`}
                        type="danger" 
                        title="مخزون حرج" 
                        desc={`الدواء '${med.tradeName || med.name}' متبقي ${med.stock} قطعة فقط.`} 
@@ -414,14 +414,15 @@ export default function Dashboard() {
                    ))}
                    {appointments.filter(a => a.status === 'scheduled').length > 10 && (
                      <DashboardAlert 
+                       key="congestion-alert"
                        type="warning" 
                        title="ازدحام في المواعيد" 
                        desc="يوجد عدد كبير من المواعيد المجدولة لليوم." 
                      />
                    )}
-                   {appointments.filter(a => a.returnDate === currentTime.toISOString().split('T')[0]).map((app, i) => (
+                   {appointments.filter(a => a.returnDate === currentTime.toISOString().split('T')[0]).map((app) => (
                      <DashboardAlert 
-                       key={`ret-${i}`}
+                       key={`return-alert-${app.id}`}
                        type="info" 
                        title="موعد عودة قادم" 
                        desc={`المريض '${app.patientName}' لديه موعد عودة مجانية اليوم.`} 

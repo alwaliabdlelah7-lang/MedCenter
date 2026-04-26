@@ -384,8 +384,8 @@ export default function PatientManagement() {
                                  <div className="glass p-6 rounded-[35px] border border-white/5 space-y-6 text-right shadow-xl">
                                     <h5 className="text-white font-black text-xs flex items-center gap-2 uppercase tracking-widest italic decoration-sky-500 underline underline-offset-8">Laboratory Analysis</h5>
                                     <div className="space-y-3 pt-2">
-                                       {patientLabs.map((l, i) => (
-                                         <div key={i} className="flex flex-col gap-2 p-4 glass rounded-2xl border border-white/5 hover:bg-white/10 transition-all cursor-pointer group">
+                                       {patientLabs.map((l) => (
+                                         <div key={`lab-${l.id}`} className="flex flex-col gap-2 p-4 glass rounded-2xl border border-white/5 hover:bg-white/10 transition-all cursor-pointer group">
                                             <div className="flex items-center justify-between">
                                                <p className="text-xs font-black text-white group-hover:text-sky-400 transition-colors uppercase">{l.testType}</p>
                                                <span className={cn(
@@ -405,8 +405,8 @@ export default function PatientManagement() {
                                  <div className="glass p-6 rounded-[35px] border border-white/5 space-y-6 text-right shadow-xl">
                                     <h5 className="text-white font-black text-xs flex items-center gap-2 uppercase tracking-widest italic decoration-emerald-500 underline underline-offset-8">Pharmacotherapy</h5>
                                     <div className="space-y-3 pt-2">
-                                       {patientPrescriptions.map((pr, i) => (
-                                         <div key={i} className="flex flex-col gap-2 p-4 glass rounded-2xl border border-white/5 group">
+                                       {patientPrescriptions.map((pr) => (
+                                         <div key={`pres-${pr.id}`} className="flex flex-col gap-2 p-4 glass rounded-2xl border border-white/5 group">
                                             <div className="p-2 w-fit bg-emerald-500/10 text-emerald-400 rounded-lg"><Pill size={16}/></div>
                                             <p className="text-xs font-black text-white uppercase">{pr.items.map(mi => mi.tradeName).join(' + ')}</p>
                                             <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
@@ -423,8 +423,8 @@ export default function PatientManagement() {
                                  <div className="glass p-6 rounded-[35px] border border-white/5 space-y-6 text-right shadow-xl">
                                     <h5 className="text-white font-black text-xs flex items-center gap-2 uppercase tracking-widest italic decoration-indigo-500 underline underline-offset-8">Imaging Diagnostics</h5>
                                     <div className="space-y-3 pt-2">
-                                       {patientScans.map((s, i) => (
-                                         <div key={i} className="flex flex-col gap-2 p-4 glass rounded-2xl border border-white/5 group">
+                                       {patientScans.map((s) => (
+                                         <div key={`scan-${s.id}`} className="flex flex-col gap-2 p-4 glass rounded-2xl border border-white/5 group">
                                             <div className="p-2 w-fit bg-indigo-500/10 text-indigo-400 rounded-lg"><ActivityIcon size={16}/></div>
                                             <p className="text-xs font-black text-white uppercase">{s.scanType}</p>
                                             <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
@@ -489,8 +489,8 @@ export default function PatientManagement() {
                            <motion.div key="history" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6 text-right">
                               <h4 className="text-xs font-black text-sky-400 tracking-[5px] uppercase mb-8 italic">Appointment History Ledger</h4>
                               <div className="relative pr-10 space-y-8 before:absolute before:right-4 before:top-2 before:bottom-2 before:w-0.5 before:bg-gradient-to-b before:from-sky-500/50 before:to-transparent">
-                                 {patientAppointments.map((app, i) => (
-                                   <div key={i} className="relative group">
+                                 {patientAppointments.map((app) => (
+                                   <div key={`hist-apt-${app.id}`} className="relative group">
                                       <div className="absolute -right-[31px] top-1.5 w-4 h-4 rounded-full bg-[#0f172a] border-4 border-sky-500 z-10 shadow-[0_0_15px_rgba(14,165,233,0.5)] transition-transform group-hover:scale-125" />
                                       <div className="glass p-6 rounded-[35px] border border-white/5 hover:bg-white/10 transition-all flex items-center justify-between shadow-xl">
                                          <div className="text-right">
@@ -539,8 +539,8 @@ export default function PatientManagement() {
                                           <td className="p-6 text-emerald-400 font-black font-mono">5,000 YER</td>
                                           <td className="p-6"><span className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest border border-emerald-500/30">CLEARED</span></td>
                                        </tr>
-                                       {patientLabs.map((l, i) => (
-                                         <tr key={i} className="hover:bg-white/5 transition-colors group">
+                                       {patientLabs.map((l) => (
+                                         <tr key={`bill-lab-${l.id}`} className="hover:bg-white/5 transition-colors group">
                                             <td className="p-6 text-slate-400 font-mono italic text-xs tracking-widest">{l.date}</td>
                                             <td className="p-6 font-black text-white group-hover:text-emerald-400 transition-colors uppercase italic text-xs">Lab Test: {l.testType}</td>
                                             <td className="p-6 text-emerald-400 font-black font-mono">3,500 YER</td>
@@ -776,8 +776,8 @@ export default function PatientManagement() {
                           <input 
                             type="number" 
                             className="w-full px-6 py-5 glass bg-white/5 border border-white/10 rounded-2xl text-white font-mono" 
-                            value={editPatientData.age} 
-                            onChange={(e) => setEditPatientData({...editPatientData, age: parseInt(e.target.value)})} 
+                            value={editPatientData.age || ''} 
+                            onChange={(e) => setEditPatientData({...editPatientData, age: e.target.value === '' ? 0 : parseInt(e.target.value)})} 
                           />
                        </div>
                        <div className="space-y-3">
