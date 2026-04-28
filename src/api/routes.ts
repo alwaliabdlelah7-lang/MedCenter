@@ -11,7 +11,7 @@ export function createApiRouter(db: any) {
 
   // RBAC Middleware
   const checkAuth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const publicPaths = ['/health', '/api-test', '/login', '/auth/login', '/auth0/url', '/auth0/callback'];
+    const publicPaths = ['/health', '/api-test', '/login', '/auth/login'];
     if (publicPaths.includes(req.path)) return next();
 
     const userId = req.headers['x-user-id'] as string;
