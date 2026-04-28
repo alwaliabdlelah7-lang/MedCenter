@@ -6,6 +6,7 @@ import {
   signInWithPopup, 
   GoogleAuthProvider, 
   signOut,
+  signInAnonymously,
   browserPopupRedirectResolver 
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -14,6 +15,7 @@ interface AuthContextType {
   user: User | null;
   login: (username: string, password?: string) => Promise<boolean>;
   loginWithGoogle: () => Promise<void>;
+  loginWithAuth0: () => Promise<void>;
   logout: () => void;
   hasPermission: (permission: Permission | Permission[]) => boolean;
   isLoading: boolean;
@@ -26,49 +28,118 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (fbUser) => {
-      if (fbUser) {
-        try {
-          // Try to get user from Firestore
-          const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
-          if (userDoc.exists()) {
-            setUser({ id: userDoc.id, ...userDoc.data() } as User);
-          } else {
-            // Check if it's the bootstrapped admin
-            if (fbUser.email === 'alwaliabdlelah7@gmail.com') {
-              const adminData: User = {
+    // Check for Auth0 session
+    const checkAuth0Session = async () => {
+      try {
+        const response = await fetch('/auth/profile');
+        if (response.ok) {
+          const auth0Data = await response.json();
+          if (auth0Data && auth0Data.sub) {
+            const auth0User: User = {
+              id: auth0Data.sub,
+              email: auth0Data.email,
+              username: auth0Data.nickname || auth0Data.email?.split('@')[0],
+              name: auth0Data.name || auth0Data.nickname,
+              role: 'doctor', // Default role for external login
+              permissions: ['clinical' as Permission],
+              status: 'active'
+            };
+            setUser(auth0User);
+            setIsLoading(false);
+            return true;
+          }
+        }
+      } catch (error) {
+        console.error("Auth0 session check failed:", error);
+      }
+      return false;
+    };
+
+    const handleMessage = async (event: MessageEvent) => {
+      // Basic origin check
+      if (!event.origin.endsWith('.run.app') && !event.origin.includes('localhost')) {
+        return;
+      }
+
+      if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
+        console.log("Auth0 Login success message received");
+        await checkAuth0Session();
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    const init = async () => {
+      const hasAuth0 = await checkAuth0Session();
+      if (hasAuth0) return;
+
+      const unsub = onAuthStateChanged(auth, async (fbUser) => {
+        if (fbUser) {
+          try {
+            // If anonymous, treat as the demo admin
+            if (fbUser.isAnonymous) {
+              const demoAdmin: User = {
                 id: fbUser.uid,
-                email: fbUser.email || '',
-                username: fbUser.email?.split('@')[0] || 'admin',
-                name: fbUser.displayName || 'System Admin',
+                username: 'admin',
+                name: 'Demo Admin (Guest)',
                 role: 'admin',
                 permissions: ['all' as Permission],
                 status: 'active'
               };
-              // Persist the admin user in Firestore if it doesn't exist
-              await setDoc(doc(db, 'users', fbUser.uid), adminData);
-              setUser(adminData);
-              
-              // Trigger seeding if database is empty (since we are now an authorized admin)
-              const { dataStore } = await import('../services/dataService');
-              await dataStore.autoSeedIfNeeded();
-            } else {
-              // Sign out if not allowed/not registered yet? 
-              // Or just set a basic user profile
-              setUser(null);
+              setUser(demoAdmin);
+              setIsLoading(false);
+              return;
             }
+
+            // Try to get user from Firestore
+            const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
+            if (userDoc.exists()) {
+              setUser({ id: userDoc.id, ...userDoc.data() } as User);
+            } else {
+              // Check if it's the bootstrapped admin
+              if (fbUser.email === 'alwaliabdlelah7@gmail.com') {
+                const adminData: User = {
+                  id: fbUser.uid,
+                  email: fbUser.email || '',
+                  username: fbUser.email?.split('@')[0] || 'admin',
+                  name: fbUser.displayName || 'System Admin',
+                  role: 'admin',
+                  permissions: ['all' as Permission],
+                  status: 'active'
+                };
+                // Persist the admin user in Firestore if it doesn't exist
+                await setDoc(doc(db, 'users', fbUser.uid), adminData);
+                setUser(adminData);
+                
+                // Trigger seeding if database is empty (since we are now an authorized admin)
+                const { dataStore } = await import('../services/dataService');
+                await dataStore.autoSeedIfNeeded();
+              } else {
+                setUser(null);
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching user profile:", error);
+            setUser(null);
           }
-        } catch (error) {
-          console.error("Error fetching user profile:", error);
+        } else {
           setUser(null);
         }
-      } else {
-        setUser(null);
-      }
-      setIsLoading(false);
+        setIsLoading(false);
+      });
+
+      return unsub;
+    };
+
+    let unsubFn: (() => void) | undefined;
+    init().then(unsub => {
+      if (unsub) unsubFn = unsub;
     });
 
-    return () => unsub();
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      if (unsubFn) unsubFn();
+    };
   }, []);
 
   const loginWithGoogle = async () => {
@@ -110,20 +181,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const loginWithAuth0 = async () => {
+    try {
+      // 1. Fetch the OAuth URL from server
+      const response = await fetch('/api/auth/url');
+      if (!response.ok) throw new Error('Failed to fetch Auth0 URL');
+      const { url } = await response.json();
+      
+      // 2. Open in popup directly to Auth0
+      const width = 500;
+      const height = 600;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      
+      window.open(url, 'auth0_login', `width=${width},height=${height},left=${left},top=${top}`);
+    } catch (error) {
+      console.error("Auth0 login init failed:", error);
+      alert("فشل بدء تسجيل الدخول عبر Auth0");
+    }
+  };
+
   const login = async (username: string, password?: string): Promise<boolean> => {
     // In this HIS, for initial setup we might still want the legacy admin login
     if (username === 'admin' && (!password || password === '123')) {
-       const adminData: User = {
-         id: 'u-1',
-         username: 'admin',
-         name: 'System Admin',
-         role: 'admin',
-         permissions: ['all' as Permission],
-         status: 'active'
-       };
-       setUser(adminData);
-       localStorage.setItem('hospital_current_user', JSON.stringify(adminData));
-       return true;
+       try {
+         // Perform anonymous sign-in to get a valid Firebase token for Firestore rules
+         await signInAnonymously(auth);
+         // The state will be updated by onAuthStateChanged
+         return true;
+       } catch (error) {
+         console.error("Anonymous login failed:", error);
+         return false;
+       }
     }
     
     // In a real Firebase setup, we'd use signInWithEmailAndPassword
@@ -132,6 +221,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    if (user?.id.startsWith('auth0')) {
+      window.location.href = '/auth/logout';
+      return;
+    }
     await signOut(auth);
     setUser(null);
     localStorage.removeItem('hospital_current_user');
@@ -149,7 +242,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, loginWithGoogle, logout, hasPermission, isLoading }}>
+    <AuthContext.Provider value={{ user, login, loginWithGoogle, loginWithAuth0, logout, hasPermission, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
