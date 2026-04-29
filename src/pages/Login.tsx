@@ -18,14 +18,19 @@ export default function Login() {
     setError('');
     
     try {
-      const success = await login(username, password);
-      if (success) {
-        navigate('/');
+      await login(username, password);
+      navigate('/');
+    } catch (err: any) {
+      console.error("Login error:", err);
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setError('خطأ في اسم المستخدم أو كلمة المرور');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('يرجى إدخال بريد إلكتروني صحيح');
+      } else if (err.code === 'auth/too-many-requests') {
+        setError('تم حظر المحاولات مؤقتاً بسبب كثرة المحاولات الفاشلة. يرجى المحاولة لاحقاً');
       } else {
-        setError('اسم المستخدم أو كلمة المرور غير صحيحة');
+        setError('اسم المستخدم أو كلمة المرور غير صحيحة أو الحساب غير موجود');
       }
-    } catch (err) {
-      setError('حدث خطأ أثناء تسجيل الدخول');
     } finally {
       setLoading(false);
     }

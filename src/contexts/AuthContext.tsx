@@ -6,7 +6,8 @@ import {
   signInWithPopup, 
   GoogleAuthProvider, 
   signOut,
-  browserPopupRedirectResolver 
+  browserPopupRedirectResolver,
+  signInWithEmailAndPassword
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -35,27 +36,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser({ id: userDoc.id, ...userDoc.data() } as User);
           } else {
             // Check if it's the bootstrapped admin
-            if (fbUser.email === 'alwaliabdlelah7@gmail.com') {
-              const adminData: User = {
-                id: fbUser.uid,
-                email: fbUser.email || '',
-                username: fbUser.email?.split('@')[0] || 'admin',
-                name: fbUser.displayName || 'System Admin',
-                role: 'admin',
-                permissions: ['all' as Permission],
-                status: 'active'
-              };
-              // Persist the admin user in Firestore if it doesn't exist
-              await setDoc(doc(db, 'users', fbUser.uid), adminData);
-              setUser(adminData);
-              
-              // Trigger seeding if database is empty (since we are now an authorized admin)
+            const isAdminEmail = fbUser.email === 'alwaliabdlelah7@gmail.com';
+            
+            const newUserProfile: User = {
+              id: fbUser.uid,
+              email: fbUser.email || '',
+              username: fbUser.email?.split('@')[0] || fbUser.displayName?.split(' ')[0]?.toLowerCase() || 'user',
+              name: fbUser.displayName || 'جديد موظف',
+              role: isAdminEmail ? 'admin' : 'receptionist',
+              permissions: isAdminEmail ? ['all' as Permission] : ['registration' as Permission],
+              status: 'active'
+            };
+
+            // Persist the user profile in Firestore
+            await setDoc(doc(db, 'users', fbUser.uid), newUserProfile);
+            setUser(newUserProfile);
+            
+            // Trigger seeding if database is empty (since we are now an authorized admin)
+            if (isAdminEmail) {
               const { dataStore } = await import('../services/dataService');
               await dataStore.autoSeedIfNeeded();
-            } else {
-              // Sign out if not allowed/not registered yet? 
-              // Or just set a basic user profile
-              setUser(null);
             }
           }
         } catch (error) {
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (errorCode === 'auth/internal-error' || errorMessage?.includes('internal-error')) {
         const hostname = window.location.hostname;
-        const projectId = "ai-studio-applet-webapp-772b2";
+        const projectId = "ai-studio-applet-webapp-6fbf2";
         const authSettingsUrl = `https://console.firebase.google.com/project/${projectId}/authentication/settings`;
 
         alert("تنبيه: فشل في التواصل مع موفر تسجيل الدخول (auth/internal-error).\n\n" +
@@ -111,24 +111,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const login = async (username: string, password?: string): Promise<boolean> => {
-    // In this HIS, for initial setup we might still want the legacy admin login
-    if (username === 'admin' && (!password || password === '123')) {
-       const adminData: User = {
-         id: 'u-1',
-         username: 'admin',
-         name: 'System Admin',
-         role: 'admin',
-         permissions: ['all' as Permission],
-         status: 'active'
-       };
-       setUser(adminData);
-       localStorage.setItem('hospital_current_user', JSON.stringify(adminData));
-       return true;
+    try {
+      // 1. Try Firebase Authentication (Email/Password)
+      // Note: We use username as email here
+      const email = username.includes('@') ? username : `${username}@medcenter.com`;
+      const userCredential = await signInWithEmailAndPassword(auth, email, password || '');
+      const fbUser = userCredential.user;
+      
+      // The onAuthStateChanged will handle the Firestore profile fetch/creation
+      return true;
+    } catch (firebaseError: any) {
+      console.warn("Firebase Auth login failed, checking legacy admin:", firebaseError.message);
+      
+      // 2. Legacy admin fallback (only if Firebase Auth fails and it matches the specific hardcoded credentials)
+      if (username === 'admin' && (!password || password === '123')) {
+         const adminData: User = {
+           id: 'u-1',
+           username: 'admin',
+           name: 'System Admin (Legacy)',
+           role: 'admin',
+           permissions: ['all' as Permission],
+           status: 'active'
+         };
+         setUser(adminData);
+         localStorage.setItem('hospital_current_user', JSON.stringify(adminData));
+         return true;
+      }
+      
+      // If we are here, it's a real failure
+      throw firebaseError;
     }
-    
-    // In a real Firebase setup, we'd use signInWithEmailAndPassword
-    // But for now we try to find the user in Firestore via username (not ideal)
-    return false;
   };
 
   const logout = async () => {

@@ -41,6 +41,7 @@ import { Appointment, Patient, User, Doctor, PharmacyItem, Receipt } from '../ty
 import { useNavigate } from 'react-router-dom';
 import { dataStore } from '../services/dataService';
 import { INITIAL_PATIENTS, INITIAL_APPOINTMENTS } from '../data/seedData';
+import { useAuth } from '../contexts/AuthContext';
 
 const chartData = [
   { name: 'السبت', revenue: 45000, appointments: 12 },
@@ -60,6 +61,7 @@ const patientTypeData = [
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeUsersCount] = useState(14);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -226,7 +228,7 @@ export default function Dashboard() {
             </span>
           </div>
           <h2 className="text-2xl font-bold text-white">لوحة القيادة المركزية</h2>
-          <p className="text-sm text-indigo-300/70 border-r-4 border-indigo-500 pr-3 font-medium">مرحباً بك مجدداً، نظرة عامة شاملة على نشاط المنشأة اليوم</p>
+          <p className="text-sm text-indigo-300/70 border-r-4 border-indigo-500 pr-3 font-medium">مرحباً بك مجدداً {user?.name || ''}، نظرة عامة شاملة على نشاط المنشأة اليوم</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">

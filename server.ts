@@ -10,15 +10,33 @@ import { createApiRouter } from "./src/api/routes.ts";
 
 // Initialize Firebase Admin lazily/conditionally
 let adminApp: admin.app.App | null = null;
-if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+const serviceAccountRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+if (serviceAccountRaw) {
   try {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    adminApp = admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
-    console.log("Firebase Admin initialized successfully");
-  } catch (error) {
-    console.warn("Failed to initialize Firebase Admin (check FIREBASE_SERVICE_ACCOUNT):", error.message);
+    // Attempt to handle both stringified JSON and potentially escaped strings
+    let serviceAccount;
+    if (serviceAccountRaw.startsWith('{')) {
+      serviceAccount = JSON.parse(serviceAccountRaw);
+    } else {
+      // Could be base64 if someone decided to pass it that way for safety
+      try {
+        serviceAccount = JSON.parse(Buffer.from(serviceAccountRaw, 'base64').toString());
+      } catch {
+        // Not base64, maybe it's just raw but doesn't start with { (unlikely)
+        serviceAccount = JSON.parse(serviceAccountRaw);
+      }
+    }
+
+    if (serviceAccount && serviceAccount.project_id) {
+      adminApp = admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+      console.log(`Firebase Admin initialized successfully (Project: ${serviceAccount.project_id})`);
+    }
+  } catch (error: any) {
+    console.error("Critical error: Failed to parse FIREBASE_SERVICE_ACCOUNT. Check secret formatting.", error.message);
+    // We don't exit(1) here to allow the server to start for diagnostics, but API calls requiring Admin will fail.
   }
 }
 
