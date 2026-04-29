@@ -33,6 +33,7 @@ import OperationsDirectory from './pages/Directories/OperationsDirectory.tsx';
 import UsersManagement from './pages/UsersManagement.tsx';
 import PatientManagement from './pages/PatientManagement.tsx';
 import AIDiagnosisAssistant from './pages/Clinical/AIDiagnosisAssistant.tsx';
+import ClinicalVisits from './pages/Clinical/ClinicalVisits.tsx';
 import QueueManagement from './pages/QueueManagement.tsx';
 import StaffChat from './pages/StaffChat.tsx';
 import DoctorManagement from './pages/DoctorManagement.tsx';
@@ -84,6 +85,7 @@ export default function App() {
               <Route path="patients" element={<ProtectedRoute permission="clinical"><PatientManagement /></ProtectedRoute>} />
               <Route path="appointments" element={<ProtectedRoute permission="clinical"><Appointments /></ProtectedRoute>} />
               <Route path="queue" element={<ProtectedRoute><QueueManagement /></ProtectedRoute>} />
+              <Route path="clinical-visits" element={<ProtectedRoute permission="clinical"><ClinicalVisits /></ProtectedRoute>} />
               <Route path="diagnosis-assistant" element={<ProtectedRoute permission="clinical"><AIDiagnosisAssistant /></ProtectedRoute>} />
               <Route path="chat" element={<ProtectedRoute><StaffChat /></ProtectedRoute>} />
               

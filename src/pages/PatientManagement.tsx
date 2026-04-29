@@ -278,12 +278,12 @@ export default function PatientManagement() {
                             <Users size={48} />
                          </div>
                          <div>
-                            <div className="text-[10px] text-sky-400 font-black uppercase tracking-[4px] mb-2 italic">Patient Identity File</div>
+                            <div className="text-[10px] text-sky-400 font-black uppercase tracking-[4px] mb-2 italic">ملف هوية المريض</div>
                             <h3 className="text-4xl font-black text-white tracking-tighter">{selectedPatient.name}</h3>
                             <div className="flex items-center gap-4 mt-4">
-                               <span className="text-[10px] bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-slate-400 font-black uppercase tracking-widest italic">ID: {selectedPatient.id}</span>
-                               <span className="text-[10px] bg-rose-500/10 border border-rose-500/20 px-4 py-2 rounded-xl text-rose-400 font-black italic">B-TYPE: {selectedPatient.bloodType || 'N/A'}</span>
-                               <span className="text-[10px] text-slate-500 flex items-center gap-2 font-black uppercase tracking-widest italic"><Calendar size={14} className="text-sky-500"/> {selectedPatient.age} YEARS OLD</span>
+                               <span className="text-[10px] bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-slate-400 font-black uppercase tracking-widest italic">المعرف: {selectedPatient.id}</span>
+                               <span className="text-[10px] bg-rose-500/10 border border-rose-500/20 px-4 py-2 rounded-xl text-rose-400 font-black italic">فصيلة الدم: {selectedPatient.bloodType || 'غير معروف'}</span>
+                               <span className="text-[10px] text-slate-500 flex items-center gap-2 font-black uppercase tracking-widest italic"><Calendar size={14} className="text-sky-500"/> العمر: {selectedPatient.age} سنة</span>
                             </div>
                          </div>
                       </div>
@@ -343,7 +343,7 @@ export default function PatientManagement() {
                          {activeTab === 'profile' && (
                            <motion.div key="profile" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="grid grid-cols-1 md:grid-cols-2 gap-8">
                               <div className="space-y-8 text-right">
-                                 <h4 className="text-xs font-black text-sky-500 tracking-[3px] uppercase mb-4 italic">Contact & Residence Information</h4>
+                                 <h4 className="text-xs font-black text-sky-500 tracking-[3px] uppercase mb-4 italic">بيانات الاتصال والسكن</h4>
                                  <div className="grid grid-cols-1 gap-4">
                                     <DetailItem icon={Phone} label="رقم الجوال النشط" value={selectedPatient.phone} />
                                     <DetailItem icon={MapPin} label="موقع السكن الحالي" value={selectedPatient.address || 'غير محدد في النظام'} />
@@ -364,13 +364,13 @@ export default function PatientManagement() {
                                  </div>
                               </div>
                               <div className="space-y-8 text-right">
-                                 <h4 className="text-xs font-black text-rose-500 tracking-[3px] uppercase mb-4 italic">Chronic Conditions & History</h4>
+                                 <h4 className="text-xs font-black text-rose-500 tracking-[3px] uppercase mb-4 italic">الحالات المزمنة والتاريخ المرضي</h4>
                                  <div className="p-8 glass bg-white/5 rounded-[40px] border border-white/5 shadow-inner">
                                      <div className="flex flex-wrap gap-3">
                                        {selectedPatient.medicalHistory.map((item, i) => (
                                          <span key={i} className="px-5 py-2.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-2xl text-[10px] font-black uppercase italic shadow-lg">{item}</span>
                                        ))}
-                                       {selectedPatient.medicalHistory.length === 0 && <div className="text-slate-700 font-black uppercase tracking-widest text-[10px] italic">No documented history</div>}
+                                       {selectedPatient.medicalHistory.length === 0 && <div className="text-slate-700 font-black uppercase tracking-widest text-[10px] italic">لا يوجد تاريخ مسجل</div>}
                                      </div>
                                  </div>
                               </div>
@@ -382,7 +382,7 @@ export default function PatientManagement() {
                               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                  {/* Lab Section */}
                                  <div className="glass p-6 rounded-[35px] border border-white/5 space-y-6 text-right shadow-xl">
-                                    <h5 className="text-white font-black text-xs flex items-center gap-2 uppercase tracking-widest italic decoration-sky-500 underline underline-offset-8">Laboratory Analysis</h5>
+                                    <h5 className="text-white font-black text-xs flex items-center gap-2 uppercase tracking-widest italic decoration-sky-500 underline underline-offset-8">تحاليل المختبر</h5>
                                     <div className="space-y-3 pt-2">
                                        {patientLabs.map((l) => (
                                          <div key={`lab-${l.id}`} className="flex flex-col gap-2 p-4 glass rounded-2xl border border-white/5 hover:bg-white/10 transition-all cursor-pointer group">
@@ -403,7 +403,7 @@ export default function PatientManagement() {
 
                                  {/* Pharmacy Section */}
                                  <div className="glass p-6 rounded-[35px] border border-white/5 space-y-6 text-right shadow-xl">
-                                    <h5 className="text-white font-black text-xs flex items-center gap-2 uppercase tracking-widest italic decoration-emerald-500 underline underline-offset-8">Pharmacotherapy</h5>
+                                    <h5 className="text-white font-black text-xs flex items-center gap-2 uppercase tracking-widest italic decoration-emerald-500 underline underline-offset-8">العلاجات الدوائية</h5>
                                     <div className="space-y-3 pt-2">
                                        {patientPrescriptions.map((pr) => (
                                          <div key={`pres-${pr.id}`} className="flex flex-col gap-2 p-4 glass rounded-2xl border border-white/5 group">
@@ -421,7 +421,7 @@ export default function PatientManagement() {
 
                                  {/* Radiology Section */}
                                  <div className="glass p-6 rounded-[35px] border border-white/5 space-y-6 text-right shadow-xl">
-                                    <h5 className="text-white font-black text-xs flex items-center gap-2 uppercase tracking-widest italic decoration-indigo-500 underline underline-offset-8">Imaging Diagnostics</h5>
+                                    <h5 className="text-white font-black text-xs flex items-center gap-2 uppercase tracking-widest italic decoration-indigo-500 underline underline-offset-8">الأشعة والتصوير</h5>
                                     <div className="space-y-3 pt-2">
                                        {patientScans.map((s) => (
                                          <div key={`scan-${s.id}`} className="flex flex-col gap-2 p-4 glass rounded-2xl border border-white/5 group">
@@ -440,7 +440,7 @@ export default function PatientManagement() {
 
                               {/* Clinical Visits Timeline */}
                               <div className="space-y-6 pt-6 text-right">
-                                 <h5 className="text-sky-500 font-black text-xs uppercase tracking-[5px] italic border-r-4 border-sky-500 pr-4">Clinical Encounter Timeline</h5>
+                                 <h5 className="text-sky-500 font-black text-xs uppercase tracking-[5px] italic border-r-4 border-sky-500 pr-4">الخط الزمني للزيارات الطبية</h5>
                                  <div className="space-y-6">
                                     {patientVisits.length > 0 ? [...patientVisits].reverse().map(v => (
                                       <div key={v.id} className="glass p-8 rounded-[40px] border border-white/5 relative group hover:bg-white/5 transition-all shadow-2xl">
@@ -487,7 +487,7 @@ export default function PatientManagement() {
 
                          {activeTab === 'history' && (
                            <motion.div key="history" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6 text-right">
-                              <h4 className="text-xs font-black text-sky-400 tracking-[5px] uppercase mb-8 italic">Appointment History Ledger</h4>
+                              <h4 className="text-xs font-black text-sky-400 tracking-[5px] uppercase mb-8 italic">أرشيف المواعيد والحجوزات</h4>
                               <div className="relative pr-10 space-y-8 before:absolute before:right-4 before:top-2 before:bottom-2 before:w-0.5 before:bg-gradient-to-b before:from-sky-500/50 before:to-transparent">
                                  {patientAppointments.map((app) => (
                                    <div key={`hist-apt-${app.id}`} className="relative group">
@@ -517,9 +517,9 @@ export default function PatientManagement() {
                          {activeTab === 'billing' && (
                            <motion.div key="billing" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-10 text-right">
                               <div className="flex items-center justify-between mb-2">
-                                 <h4 className="text-xs font-black text-emerald-500 tracking-[5px] uppercase italic">Financial Account Ledger</h4>
+                                 <h4 className="text-xs font-black text-emerald-500 tracking-[5px] uppercase italic">سجل الحركة المالية والمدفوعات</h4>
                                  <button className="flex items-center gap-2 text-[10px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-6 py-2.5 rounded-2xl hover:bg-emerald-500/20 transition-all uppercase italic shadow-lg shadow-emerald-500/10">
-                                    <Receipt size={14}/> EXPORT ACCOUNT STATEMENT
+                                    <Receipt size={14}/> تصدير كشف حساب المريض
                                  </button>
                               </div>
                               <div className="glass rounded-[40px] overflow-hidden border border-white/5 shadow-2xl">
@@ -553,7 +553,7 @@ export default function PatientManagement() {
                               <div className="p-8 glass bg-emerald-500/5 rounded-[45px] border border-emerald-500/10 flex items-center justify-between shadow-emerald-500/5 shadow-2xl relative overflow-hidden group">
                                  <div className="absolute inset-0 bg-gradient-to-l from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                  <div className="text-right relative z-10">
-                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-[4px] mb-2 font-mono">Total Cumulative Clearance</p>
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-[4px] mb-2 font-mono">إجمالي المستحقات المسددة</p>
                                     <h5 className="text-4xl font-black text-white italic tracking-tighter">{(5000 + (patientLabs.length * 3500)).toLocaleString()} <small className="text-sm text-slate-500 not-italic font-mono uppercase">YER</small></h5>
                                  </div>
                                  <div className="p-6 bg-emerald-500/10 rounded-[30px] text-emerald-400 shadow-2xl relative z-10">
@@ -570,9 +570,9 @@ export default function PatientManagement() {
              <div className="h-full glass rounded-[50px] flex flex-col items-center justify-center border border-white/5 p-24 text-center opacity-40 shadow-inner group overflow-hidden relative">
                 <div className="absolute inset-0 bg-gradient-to-b from-sky-500/5 to-transparent animate-pulse" />
                 <Users size={120} className="mb-10 text-slate-800 group-hover:scale-110 transition-transform duration-700" />
-                <h3 className="text-4xl font-black text-slate-700 tracking-[15px] uppercase">Select Record</h3>
+                <h3 className="text-4xl font-black text-slate-700 tracking-[15px] uppercase">اختر مريضاً</h3>
                 <p className="text-sm text-slate-600 mt-6 leading-[2] max-w-sm font-black uppercase tracking-widest">
-                   Access unified healthcare records, clinical insights and unified financial statements.
+                   يمكنك الوصول إلى السجلات الصحية الموحدة، والتحليلات السريرية، وكشوف الحسابات المالية الموحدة.
                 </p>
              </div>
            )}
@@ -587,17 +587,17 @@ export default function PatientManagement() {
               <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative w-full max-w-2xl glass bg-[#0f172a]/95 rounded-[50px] p-12 border border-white/10 text-right my-auto shadow-[0_0_100px_rgba(0,0,0,0.5)]">
                  <div className="flex items-center justify-between mb-12">
                     <button onClick={() => setShowAddModal(false)} className="p-3 glass rounded-2xl text-slate-500 hover:text-white hover:bg-rose-500 transition-all"><X size={24} /></button>
-                    <h3 className="text-3xl font-black text-white border-r-8 border-sky-500 pr-6 tracking-tighter uppercase">New Patient Enrollment</h3>
+                    <h3 className="text-3xl font-black text-white border-r-8 border-sky-500 pr-6 tracking-tighter uppercase">تسجيل مريض جديد</h3>
                  </div>
 
                  <form onSubmit={handleAddPatient} className="grid grid-cols-2 gap-8">
                     <div className="space-y-3">
-                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Full Legal Name</label>
-                       <input name="name" key={prefilledName} defaultValue={prefilledName} required className="w-full px-6 py-5 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-sky-500 font-bold transition-all" placeholder="Enter patient name..." />
+                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">الاسم الكامل (رباعي)</label>
+                       <input name="name" key={prefilledName} defaultValue={prefilledName} required className="w-full px-6 py-5 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-sky-500 font-bold transition-all" placeholder="أدخل اسم المريض..." />
                     </div>
                     <div className="space-y-3">
-                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Mobile Number</label>
-                       <input name="phone" required className="w-full px-6 py-5 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-sky-500 font-mono transition-all" placeholder="+967XXXXXXXXX" />
+                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">رقم الجوال</label>
+                       <input name="phone" required className="w-full px-6 py-5 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-sky-500 font-mono transition-all" placeholder="7XXXXXXXX" />
                     </div>
                     <div className="space-y-3">
                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Patient Age</label>

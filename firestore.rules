@@ -6,73 +6,107 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // --- Helper Functions ---
+    // --- Helper Functions (Phase 3: Primitives) ---
     function isSignedIn() { return request.auth != null; }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
     
-    // Bootstrapped Admin logic
-    function isBootstrappedAdmin() {
-      return isSignedIn() && request.auth.token.email == 'alwaliabdlelah7@gmail.com' && request.auth.token.email_verified == true;
-    }
+    // Auth tokens should have verified emails if applicable
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
 
-    function getUserData(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data;
-    }
-
+    // Admin check using document lookup (Pillar 3/4)
     function isAdmin() {
-      return isBootstrappedAdmin() || (isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData(request.auth.uid).role == 'admin');
+      return isSignedIn() && (
+        request.auth.token.email == 'alwaliabdlelah7@gmail.com' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
     }
 
     function hasPermission(p) {
-      return isAdmin() || (isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData(request.auth.uid).permissions.hasAny([p]));
+      return isAdmin() || (
+        isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny([p])
+      );
     }
 
     function hasAnyPermission(ps) {
-      return isAdmin() || (isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData(request.auth.uid).permissions.hasAny(ps));
+      return isAdmin() || (
+        isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(ps)
+      );
     }
 
-    // --- Entity Validations ---
+    // --- Entity Validations (Pillar 2: Blueprints) ---
     function isValidUser(data) {
-      return data.keys().hasAll(['id', 'username', 'role', 'permissions', 'status'])
-        && data.id is string && data.id.size() <= 128
-        && data.username is string && data.username.size() <= 64
+      return data.keys().hasAll(['username', 'role', 'permissions', 'status'])
+        && data.username is string && data.username.size() >= 3 && data.username.size() <= 64
         && data.role in ['admin', 'doctor', 'nurse', 'receptionist', 'pharmacist', 'lab_tech']
         && data.permissions is list
         && data.status in ['active', 'inactive'];
     }
 
     function isValidPatient(data) {
-      return data.keys().hasAll(['id', 'name', 'fileNumber'])
-        && data.id is string && data.id.size() <= 128
-        && data.name is string && data.name.size() <= 100
-        && data.fileNumber is string && data.fileNumber.size() <= 50;
+      return data.keys().hasAll(['name'])
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 100
+        && (!('age' in data) || (data.age is number && data.age >= 0 && data.age <= 150))
+        && (!('gender' in data) || data.gender in ['male', 'female']);
     }
 
-    // --- Rules for Collections ---
+    function isValidAppointment(data) {
+      return data.keys().hasAll(['patientId', 'doctorId', 'date', 'status'])
+        && isValidId(data.patientId)
+        && isValidId(data.doctorId)
+        && data.date is string
+        && data.status in ['scheduled', 'waiting', 'in_consultation', 'completed', 'cancelled', 'return'];
+    }
+
+    // --- Collection Matches (Phase 4: Fortress) ---
+    
     match /users/{userId} {
       allow get: if isSignedIn();
-      allow list: if isSignedIn(); 
-      allow create: if (isAdmin() || isBootstrappedAdmin()) && isValidUser(incoming());
-      allow update: if (isAdmin() || request.auth.uid == userId) && isValidUser(incoming())
-                       && incoming().id == existing().id 
-                       && (isAdmin() || incoming().role == existing().role);
+      allow list: if isAdmin(); // Only admins can list all users
+      allow create: if isAdmin() && isValidUser(incoming());
+      allow update: if (isAdmin() || request.auth.uid == userId) 
+                    && (isAdmin() || (incoming().role == existing().role && incoming().permissions == existing().permissions));
       allow delete: if isAdmin();
     }
 
     match /patients/{patientId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
-      allow create: if isSignedIn() && (hasAnyPermission(['registration', 'admin']) || isBootstrappedAdmin()) && isValidPatient(incoming());
-      allow update: if isSignedIn() && (hasAnyPermission(['clinical', 'registration', 'admin']) || isBootstrappedAdmin()) && isValidPatient(incoming());
+      allow create: if isVerified() && hasAnyPermission(['registration', 'admin']) && isValidPatient(incoming());
+      allow update: if isVerified() && hasAnyPermission(['clinical', 'registration', 'admin']) && isValidPatient(incoming());
       allow delete: if isAdmin();
     }
 
-    match /clinical_visits/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['clinical', 'admin']); }
-    match /prescriptions/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['clinical', 'pharmacy', 'admin']); }
-    match /lab_tests/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['clinical', 'lab', 'admin']); }
-    match /radiology_scans/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['clinical', 'lab', 'admin']); }
+    match /clinical_visits/{id} { 
+      allow read: if isSignedIn(); 
+      allow create: if isVerified() && hasAnyPermission(['clinical', 'admin']);
+      allow update: if isVerified() && hasAnyPermission(['clinical', 'admin']);
+      allow delete: if isAdmin();
+    }
+
+    match /prescriptions/{id} { 
+      allow read: if isSignedIn(); 
+      allow create: if isVerified() && hasAnyPermission(['clinical', 'admin']);
+      allow update: if isVerified() && hasAnyPermission(['clinical', 'pharmacy', 'admin']);
+    }
+
+    match /lab_tests/{id} { 
+      allow read: if isSignedIn(); 
+      allow create: if isVerified() && hasAnyPermission(['clinical', 'admin']);
+      allow update: if isVerified() && hasAnyPermission(['clinical', 'lab', 'admin']);
+    }
+
+    match /radiology_scans/{id} { 
+      allow read: if isSignedIn(); 
+      allow create: if isVerified() && hasAnyPermission(['clinical', 'admin']);
+      allow update: if isVerified() && hasAnyPermission(['clinical', 'lab', 'admin']);
+    }
     
     match /departments/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
     match /clinics/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
@@ -80,16 +114,38 @@ service cloud.firestore {
     match /nurses/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
     match /services/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
     match /operations/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    
+    match /pharmacy_items/{id} { 
+      allow read: if isSignedIn(); 
+      allow write: if isVerified() && hasAnyPermission(['pharmacy', 'admin']); 
+    }
+
+    match /appointments/{id} { 
+      allow read: if isSignedIn(); 
+      allow create: if isVerified() && hasAnyPermission(['registration', 'clinical', 'admin']) && isValidAppointment(incoming());
+      allow update: if isVerified() && hasAnyPermission(['registration', 'clinical', 'admin']);
+      allow delete: if isAdmin();
+    }
+
+    match /receipts/{id} { 
+      allow read: if isSignedIn(); 
+      allow write: if isVerified() && hasAnyPermission(['billing', 'admin']); 
+    }
+
+    match /queue/{id} {
+      allow read: if isSignedIn();
+      allow write: if isVerified() && hasAnyPermission(['registration', 'clinical', 'admin']);
+    }
+
+    match /messages/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+    }
+    
+    match /dynamic_fields/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
+    
+    // Master data with public read
     match /master_medicines/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
     match /master_lab_tests/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
-    
-    match /pharmacy_items/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['pharmacy', 'admin']); }
-    match /appointments/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['registration', 'clinical', 'admin']); }
-    match /receipts/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['billing', 'admin']); }
-    match /companions/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['registration', 'admin']); }
-    match /inpatients/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['registration', 'clinical', 'admin']); }
-    match /fhir_patients/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['clinical', 'registration', 'admin']); }
-    match /fhir_observations/{id} { allow read: if isSignedIn(); allow write: if hasAnyPermission(['clinical', 'lab', 'admin']); }
-    match /dynamic_fields/{id} { allow read: if isSignedIn(); allow write: if isAdmin(); }
   }
 }

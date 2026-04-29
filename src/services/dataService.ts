@@ -1,17 +1,15 @@
-import { supabase } from '../lib/supabase';
 import { db } from '../lib/firebase';
 import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, where, addDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 
 /**
  * Unified Data Service for Hospital Management System
- * Handles data persistence using Firestore (Primary) or Supabase (Secondary).
+ * Handles data persistence using Firestore.
  */
 
 class DataService {
   private static instance: DataService;
   private _useFirebase: boolean = true;
-  private _useSupabase: boolean = !!import.meta.env.VITE_SUPABASE_URL;
   private listeners: (() => void)[] = [];
   
   private constructor() {}
@@ -48,19 +46,6 @@ class DataService {
       console.warn(`Firebase Fetch Error for ${key}:`, error);
     }
 
-    if (this._useSupabase && supabase) {
-      try {
-        const { data, error } = await supabase.from(key).select('*').order('id', { ascending: true });
-        if (!error && data) {
-          const items = data as T[];
-          this.saveLocalAll(key, items);
-          return items;
-        }
-      } catch (error) {
-        console.warn(`Supabase Fetch Error for ${key}:`, error);
-      }
-    }
-
     return this.getLocalAll<T>(key);
   }
 
@@ -78,17 +63,6 @@ class DataService {
         handleFirestoreError(error, OperationType.GET, `${key} (query)`);
       }
       console.error(`Firebase Find Error for ${key}:`, error);
-    }
-
-    if (this._useSupabase && supabase) {
-      try {
-        let supabaseQuery = supabase.from(key).select('*');
-        Object.entries(queryFilters).forEach(([field, value]) => {
-          supabaseQuery = supabaseQuery.eq(field, value);
-        });
-        const { data, error } = await supabaseQuery;
-        if (!error) return (data as T[]) || [];
-      } catch (error) {}
     }
 
     return [];
@@ -112,12 +86,6 @@ class DataService {
       console.warn(`Firebase Add Error for ${key}:`, error);
     }
 
-    if (this._useSupabase && supabase) {
-      try {
-        await supabase.from(key).insert(item);
-      } catch (error) {}
-    }
-
     const current = this.getLocalAll<T>(key);
     this.saveLocalAll(key, [...current, item]);
     this.notify();
@@ -134,12 +102,6 @@ class DataService {
         handleFirestoreError(error, OperationType.UPDATE, `${key}/${id}`);
       }
       console.warn(`Firebase Update Error for ${key}:`, error);
-    }
-
-    if (this._useSupabase && supabase) {
-      try {
-        await supabase.from(key).update(updates as any).eq('id', id);
-      } catch (error) {}
     }
 
     const current = this.getLocalAll<any>(key);
@@ -160,19 +122,13 @@ class DataService {
       console.warn(`Firebase Delete Error for ${key}:`, error);
     }
 
-    if (this._useSupabase && supabase) {
-      try {
-        await supabase.from(key).delete().eq('id', id);
-      } catch (error) {}
-    }
-
     const current = this.getLocalAll<any>(key);
     this.saveLocalAll(key, current.filter(item => item.id !== id));
     this.notify();
   }
 
   public isCloudEnabled(): boolean {
-    return this._useFirebase || this._useSupabase;
+    return this._useFirebase;
   }
 
   /**

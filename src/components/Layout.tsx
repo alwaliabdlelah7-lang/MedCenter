@@ -48,6 +48,7 @@ const sidebarItems: { icon?: any, label: string, path?: string, type?: 'header',
   { icon: FileHeart, label: 'إدارة المرضى (EMR)', path: '/patients', permission: ['clinical', 'registration'] as Permission[] },
   { icon: Calendar, label: 'المواعيد والحجوزات', path: '/appointments', permission: ['clinical', 'registration'] as Permission[] },
   { icon: ListOrdered, label: 'قائمة الانتظار الذكية', path: '/queue', permission: ['clinical', 'registration'] as Permission[] },
+  { icon: ClipboardList, label: 'أرشيف الزيارات السريرية', path: '/clinical-visits', permission: 'clinical' },
   { icon: MessageSquare, label: 'محادثات الموظفين', path: '/chat', permission: 'all' },
   
   { label: 'الأدلة والنظام', type: 'header', permission: 'admin' },

@@ -28,7 +28,7 @@ export default function SettingsPage() {
   const [migrationStatus, setMigrationStatus] = useState<string | null>(null);
 
   const seedDatabase = async () => {
-    if (!confirm('هل أنت متأكد من زرع البيانات الأولية في قاعدة البيانات السحابية Supabase؟ سيتم إضافة البيانات المرجعية الأساسية لبدء العمل.')) return;
+    if (!confirm('هل أنت متأكد من زرع البيانات الأولية في قاعدة البيانات السحابية؟ سيتم إضافة البيانات المرجعية الأساسية لبدء العمل.')) return;
     setIsSeeding(true);
     try {
       const seedData = await import('../data/seedData');
@@ -73,7 +73,7 @@ export default function SettingsPage() {
         }
       }
 
-      alert(`تم زرع ${successCount} سجل مرجعي في Supabase بنجاح!`);
+      alert(`تم زرع ${successCount} سجل مرجعي في السحابة بنجاح!`);
     } catch (error) {
       alert('فشل في زرع البيانات: ' + (error as Error).message);
     } finally {
@@ -89,7 +89,7 @@ export default function SettingsPage() {
       'prescriptions', 'nurses', 'companions', 'operations'
     ];
     
-    if (!confirm('هل تريد ترحيل كافة البيانات المحلية الحالية إلى Supabase؟ قد يستغرق هذا وقتاً طويلاً.')) return;
+    if (!confirm('هل تريد ترحيل كافة البيانات المحلية الحالية إلى السحابة؟ قد يستغرق هذا وقتاً طويلاً.')) return;
     
     setIsMigrating(true);
     setMigrationStatus('جاري التحليل والترحيل...');
@@ -129,12 +129,12 @@ export default function SettingsPage() {
 
   const toggleStorageSource = (source: 'local' | 'cloud') => {
     if (source === 'cloud' && !isRealtimeEnabled) {
-      if (!confirm('سيتم تفعيل الربط السحابي واستخدام قاعدة بيانات Supabase. يتطلب هذا اتصالاً بالإنترنت لمزامنة البيانات بين الأجهزة.')) return;
+      if (!confirm('سيتم تفعيل الربط السحابي واستخدام قاعدة بيانات Firebase. يتطلب هذا اتصالاً بالإنترنت لمزامنة البيانات بين الأجهزة.')) return;
     }
     if (source === 'local' && isRealtimeEnabled) {
       if (!confirm('هل أنت متأكد من العودة لوضع العمل المحلي؟ سيتم حفظ البيانات في هذا المتصفح فقط ولن يراها الآخرون.')) return;
     }
-    (dataStore as any)._useCloud = (source === 'cloud');
+    (dataStore as any)._useFirebase = (source === 'cloud');
     localStorage.setItem('hospital_storage_source', source);
     setIsRealtimeEnabled(source === 'cloud');
   };
@@ -238,7 +238,7 @@ export default function SettingsPage() {
           onClick={() => setActiveTab('cloud')}
           className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'cloud' ? 'bg-white/10 text-sky-400 shadow-xl' : 'text-slate-500 hover:text-slate-300'}`}
         >
-          البيانات السحابية (Supabase)
+          البيانات السحابية (Firebase)
         </button>
       </div>
 
@@ -250,7 +250,7 @@ export default function SettingsPage() {
                 <div className="glass p-8 rounded-[40px] space-y-8 border border-white/5">
                   <div className="flex items-center gap-3 mb-4">
                     <Cloud className="text-sky-400" size={20} />
-                    <h3 className="text-white font-black italic uppercase tracking-widest text-sm">Supabase Cloud Management</h3>
+                    <h3 className="text-white font-black italic uppercase tracking-widest text-sm">Firebase Cloud Management</h3>
                   </div>
 
                   {/* Storage Source Toggle */}
@@ -271,8 +271,8 @@ export default function SettingsPage() {
                     >
                       <Cloud size={32} className={isRealtimeEnabled ? 'text-sky-400' : ''} />
                       <div>
-                        <span className="text-sm font-black block mb-1">وضع الربط السحابي (Supabase)</span>
-                        <span className="text-[10px] opacity-70 leading-relaxed italic block">مزامنة لحظية بين جميع أجهزة وسيرفرات العيادات (Supabase). يسمح بالعمل الجماعي ومشاركة التقارير بشكل آمن.</span>
+                        <span className="text-sm font-black block mb-1">وضع الربط السحابي (Firebase)</span>
+                        <span className="text-[10px] opacity-70 leading-relaxed italic block">مزامنة لحظية بين جميع أجهزة وسيرفرات العيادات (Firebase). يسمح بالعمل الجماعي ومشاركة التقارير بشكل آمن.</span>
                       </div>
                     </button>
                   </div>

@@ -1,10 +1,4 @@
 import express from "express";
-import { createClient } from "@supabase/supabase-js";
-
-// Initialize Supabase client for server-side (legacy/option)
-const supabaseUrl = process.env.VITE_SUPABASE_URL || "";
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
-const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
 export function createApiRouter(db: any) {
   const router = express.Router();
@@ -35,17 +29,7 @@ export function createApiRouter(db: any) {
       }
     }
 
-    if (supabase) {
-      try {
-        const { data: user, error } = await supabase.from('users').select('*').eq('id', userId).single();
-        if (!error && user) {
-          (req as any).user = user;
-          return next();
-        }
-      } catch (err) {}
-    }
-
-    res.status(403).json({ error: "Forbidden: User not found" });
+    res.status(403).json({ error: "Forbidden: User not found in Cloud Database" });
   };
 
   const hasPermission = (permissions: string[]) => {
@@ -80,15 +64,6 @@ export function createApiRouter(db: any) {
       }
     }
 
-    if (supabase) {
-      try {
-        const { data: user, error } = await supabase.from('users').select('*').eq('username', username).single();
-        if (!error && user) {
-          if (!user.password || user.password === password) return res.json(user);
-        }
-      } catch (err) {}
-    }
-
     // Fallback admin
     if (username === 'admin' && (!password || password === '123')) {
       return res.json({ id: 'u-1', username: 'admin', role: 'admin', permissions: ['all'] });
@@ -106,15 +81,6 @@ export function createApiRouter(db: any) {
       try {
         const snapshot = await db.collection(collection).get();
         return res.json(snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })));
-      } catch (error) {
-        return res.status(500).json({ error: (error as Error).message });
-      }
-    }
-    if (supabase) {
-      try {
-        const { data, error } = await supabase.from(collection).select('*').order('id', { ascending: true });
-        if (error) throw error;
-        return res.json(data);
       } catch (error) {
         return res.status(500).json({ error: (error as Error).message });
       }
@@ -137,15 +103,6 @@ export function createApiRouter(db: any) {
         return res.status(500).json({ error: (error as Error).message });
       }
     }
-    if (supabase) {
-      try {
-        const { data, error } = await supabase.from(collection).insert(req.body).select().single();
-        if (error) throw error;
-        return res.json(data);
-      } catch (error) {
-        return res.status(500).json({ error: (error as Error).message });
-      }
-    }
     res.status(503).json({ error: "Cloud not configured" });
   });
 
@@ -163,15 +120,6 @@ export function createApiRouter(db: any) {
         return res.status(500).json({ error: (error as Error).message });
       }
     }
-    if (supabase) {
-      try {
-        const { error } = await supabase.from(collection).update(req.body).eq('id', id);
-        if (error) throw error;
-        return res.json({ success: true });
-      } catch (error) {
-        return res.status(500).json({ error: (error as Error).message });
-      }
-    }
     res.status(503).json({ error: "Cloud not configured" });
   });
 
@@ -181,15 +129,6 @@ export function createApiRouter(db: any) {
     if (db) {
       try {
         await db.collection(collection).doc(id).delete();
-        return res.json({ success: true });
-      } catch (error) {
-        return res.status(500).json({ error: (error as Error).message });
-      }
-    }
-    if (supabase) {
-      try {
-        const { error } = await supabase.from(collection).delete().eq('id', id);
-        if (error) throw error;
         return res.json({ success: true });
       } catch (error) {
         return res.status(500).json({ error: (error as Error).message });
