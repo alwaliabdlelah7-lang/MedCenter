@@ -5,12 +5,21 @@ import { motion } from 'motion/react';
 import { Lock, User, Activity, AlertCircle } from 'lucide-react';
 
 export default function Login() {
+  const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState('');
+  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, loginWithGoogle } = useAuth();
+  const { user, login, register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  React.useEffect(() => {
+    if (user) {
+      navigate('/', { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,18 +27,26 @@ export default function Login() {
     setError('');
     
     try {
-      await login(username, password);
+      if (isRegister) {
+        await register(username.includes('@') ? username : `${username}@medcenter.com`, password, name);
+      } else {
+        await login(username, password);
+      }
       navigate('/');
     } catch (err: any) {
-      console.error("Login error:", err);
+      console.error("Auth error:", err);
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         setError('خطأ في اسم المستخدم أو كلمة المرور');
       } else if (err.code === 'auth/invalid-email') {
         setError('يرجى إدخال بريد إلكتروني صحيح');
       } else if (err.code === 'auth/too-many-requests') {
         setError('تم حظر المحاولات مؤقتاً بسبب كثرة المحاولات الفاشلة. يرجى المحاولة لاحقاً');
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError('هذا البريد الإلكتروني مسجل مسبقاً');
+      } else if (err.code === 'auth/weak-password') {
+        setError('كلمة المرور ضعيفة جداً');
       } else {
-        setError('اسم المستخدم أو كلمة المرور غير صحيحة أو الحساب غير موجود');
+        setError('حدث خطأ أثناء الاتصال بالنظام. يرجى المحاولة لاحقاً');
       }
     } finally {
       setLoading(false);
@@ -54,12 +71,29 @@ export default function Login() {
                <Activity size={40} className="text-white relative z-10" />
             </div>
             <h1 className="text-3xl font-black text-white tracking-tight mb-2 italic">نظام ايداع الطبي</h1>
-            <p className="text-slate-500 text-sm font-bold uppercase tracking-widest italic">Hospital Information System</p>
+            <p className="text-slate-500 text-sm font-bold uppercase tracking-widest italic">{isRegister ? 'إنشاء حساب جديد' : 'الدخول للنظام المركزي'}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6 text-right">
+            {isRegister && (
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-[2px] pr-2 italic">الاسم الكامل</label>
+                <div className="relative group">
+                  <User className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
+                  <input 
+                    required
+                    type="text" 
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full py-4 pr-12 pl-6 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold"
+                    placeholder="الوليد بن طلال"
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-[2px] pr-2 italic">اسم المستخدم</label>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-[2px] pr-2 italic">البريد الإلكتروني / اسم المستخدم</label>
               <div className="relative group">
                 <User className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
                 <input 
@@ -68,7 +102,7 @@ export default function Login() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full py-4 pr-12 pl-6 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold"
-                  placeholder="alwaliabdlelah7@gmail.com"
+                  placeholder="user@medcenter.com"
                 />
               </div>
             </div>
@@ -86,9 +120,29 @@ export default function Login() {
                   placeholder="••••••••"
                 />
               </div>
-              <div className="flex justify-between px-2 pt-1">
-                <span className="text-[9px] text-slate-500 font-bold italic">التجربة: admin / 123</span>
-              </div>
+              {!isRegister && (
+                <div className="flex justify-between px-2 pt-1 font-bold">
+                  <button 
+                    type="button"
+                    onClick={() => setIsRegister(true)}
+                    className="text-[9px] text-indigo-400 hover:text-indigo-300 transition-colors uppercase italic"
+                  >
+                    ليس لديك حساب؟ سجل هنا
+                  </button>
+                  <span className="text-[9px] text-slate-500 italic">التجربة: admin / 123</span>
+                </div>
+              )}
+              {isRegister && (
+                <div className="flex justify-center px-2 pt-1 font-bold">
+                  <button 
+                    type="button"
+                    onClick={() => setIsRegister(false)}
+                    className="text-[9px] text-indigo-400 hover:text-indigo-300 transition-colors uppercase italic"
+                  >
+                    لديك حساب بالفعل؟ سجل دخولك
+                  </button>
+                </div>
+              )}
             </div>
 
             {error && (
@@ -110,7 +164,7 @@ export default function Login() {
               {loading ? (
                 <div className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full animate-spin" />
               ) : (
-                'تسجيل الدخول للنظام'
+                isRegister ? 'إنشاء الحساب' : 'تسجيل الدخول للنظام'
               )}
             </button>
 
@@ -127,11 +181,13 @@ export default function Login() {
               type="button"
               onClick={async () => {
                 setLoading(true);
+                setError('');
                 try {
                   await loginWithGoogle();
                   navigate('/');
-                } catch (err) {
-                  setError('فشل تسجيل الدخول عبر جوجل');
+                } catch (err: any) {
+                  // Error is already alerted in context for domains/popups
+                  console.error("Google login rejected", err);
                 } finally {
                   setLoading(false);
                 }

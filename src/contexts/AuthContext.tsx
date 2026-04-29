@@ -14,6 +14,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 interface AuthContextType {
   user: User | null;
   login: (username: string, password?: string) => Promise<boolean>;
+  register: (email: string, password: string, name: string, role?: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => void;
   hasPermission: (permission: Permission | Permission[]) => boolean;
@@ -83,30 +84,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const errorCode = error.code;
       const errorMessage = error.message;
 
-      if (errorCode === 'auth/internal-error' || errorMessage?.includes('internal-error')) {
+      // Handle specific errors for professional feedback
+      if (errorCode === 'auth/internal-error' || errorMessage?.includes('internal-error') || errorCode === 'auth/network-request-failed') {
         const hostname = window.location.hostname;
         const projectId = "ai-studio-applet-webapp-6fbf2";
         const authSettingsUrl = `https://console.firebase.google.com/project/${projectId}/authentication/settings`;
 
-        alert("تنبيه: فشل في التواصل مع موفر تسجيل الدخول (auth/internal-error).\n\n" +
-              "هذا الخطأ غالباً ما يكون بسبب عوائق في المتصفح أو إعدادات الحماية. يرجى تجربة ما يلي:\n\n" +
-              "1. افتح التطبيق في نافذة مستقلة (Open in new tab) بدلاً من الإطار الحالي.\n" +
-              "2. تأكد من إضافة النطاقات التالية إلى قائمة 'Authorized Domains' في إعدادات Firebase:\n" +
-              "   - " + hostname + "\n" +
-              "   - ais-dev-ptbtc6rsmho3m6illzcrog-799672221951.europe-west2.run.app\n" +
-              "   - ais-pre-ptbtc6rsmho3m6illzcrog-799672221951.europe-west2.run.app\n\n" +
-              "رابط الإعدادات:\n" + authSettingsUrl + "\n\n" +
-              "3. تأكد من تفعيل موفر Google في لوحة التحكم.");
+        alert("⚠️ فشل في التواصل مع موفر تسجيل الدخول.\n\n" +
+              "هذا الخطأ شائع عند استخدام المتصفحات في وضع 'التطوير' أو داخل إطارات (iframes).\n\n" +
+              "الحل المقترح:\n" +
+              "1. اضغط على 'Open in new tab' لفتح التطبيق في نافذة مستقلة.\n" +
+              "2. تأكد من تفعيل خدمة Google في لوحة تحكم Firebase.\n" +
+              "3. تأكد من إضافة النطاق " + hostname + " إلى Authorized Domains.");
       } else if (errorCode === 'auth/popup-blocked') {
-        alert("تنبيه: تم حظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة لهذا الموقع.");
+        alert("🔒 تم حظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة لهذا الموقع للمتابعة.");
       } else if (errorCode === 'auth/cancelled-popup-request') {
-        console.log("User closed the popup.");
-      } else if (errorCode === 'auth/unauthorized-domain') {
-        alert("هذا النطاق غير معتمد في إعدادات Firebase.\n\n" +
-              "النطاق الحالي: " + window.location.hostname);
+        // Silent fail as user just closed the window
       } else {
-        alert("خطأ في تسجيل الدخول: " + (errorCode || "Error") + "\n" + errorMessage);
+        alert("خطأ تقني: " + (errorCode || "Error") + "\n" + (errorMessage || "يرجى المحاولة لاحقاً"));
       }
+      throw error;
+    }
+  };
+
+  const register = async (email: string, password: string, name: string, role: string = 'receptionist'): Promise<void> => {
+    try {
+      const { createUserWithEmailAndPassword } = await import('firebase/auth');
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const fbUser = userCredential.user;
+
+      const newUserProfile: User = {
+        id: fbUser.uid,
+        email: fbUser.email || '',
+        username: email.split('@')[0],
+        name: name,
+        role: role as any,
+        permissions: role === 'admin' ? ['all' as Permission] : ['registration' as Permission],
+        status: 'active'
+      };
+
+      await setDoc(doc(db, 'users', fbUser.uid), newUserProfile);
+      setUser(newUserProfile);
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      throw error;
     }
   };
 
@@ -161,7 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, loginWithGoogle, logout, hasPermission, isLoading }}>
+    <AuthContext.Provider value={{ user, login, register, loginWithGoogle, logout, hasPermission, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
