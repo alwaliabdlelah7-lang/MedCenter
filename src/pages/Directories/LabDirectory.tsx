@@ -15,13 +15,17 @@ export default function LabDirectory() {
       try {
         const data = await dataStore.getAll<MasterLabItem>('master_lab_tests');
         if (data.length === 0) {
-          setTests(SEED_TESTS.map((t, i) => ({
+          const seeded = SEED_TESTS.map((t, i) => ({
             id: `LBT-${i + 1}`,
             name: t.name,
             price: t.price,
-            category: 'عام',
-            parameters: []
-          })));
+            category: t.category || 'عام',
+            isProfile: t.isProfile || false,
+            parameters: t.parameters || []
+          }));
+          setTests(seeded);
+          // Optional: Add to DB if empty
+          seeded.forEach(item => dataStore.addItem('master_lab_tests', item));
         } else {
           setTests(data);
         }
@@ -113,12 +117,15 @@ export default function LabDirectory() {
       id: Math.random().toString(36).substr(2, 9),
       name: '',
       unit: '',
-      normalRange: ''
+      normalRange: '',
+      minRange: 0,
+      maxRange: 0,
+      gender: 'both'
     });
     setNewTest({ ...newTest, parameters: params });
   };
 
-  const updateParameter = (id: string, field: keyof LabTestParameter, value: string) => {
+  const updateParameter = (id: string, field: keyof LabTestParameter, value: any) => {
     const params = (newTest.parameters || []).map(p => 
       p.id === id ? { ...p, [field]: value } : p
     );
@@ -139,7 +146,7 @@ export default function LabDirectory() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-white">دليل الفحوصات المخبرية</h2>
-          <p className="text-sm text-sky-300/70 border-r-4 border-sky-500 pr-3 font-medium">إدارة البنود المخبرية ومكونات كل فحص بالتفصيل</p>
+          <p className="text-sm text-sky-300/70 border-r-4 border-sky-500 pr-3 font-medium">إدارة البنود المخبرية ومكونات كل فحص بالتفصيل الدقيق</p>
         </div>
         
         <div className="flex items-center gap-3">
@@ -147,7 +154,7 @@ export default function LabDirectory() {
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-sky-400 transition-colors" size={18} />
             <input 
               type="text" 
-              placeholder="ابحث عن فحص أو كود..." 
+              placeholder="ابحث عن فحص..." 
               className="pr-10 pl-4 py-2 glass bg-white/5 text-white border border-white/10 rounded-xl focus:border-sky-500 outline-none w-64 transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -163,7 +170,7 @@ export default function LabDirectory() {
             className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 transition-all active:scale-95"
           >
             <Plus size={20} />
-            <span>إضافة بند فحص</span>
+            <span>إضافة فحص جديد</span>
           </button>
         </div>
       </div>
@@ -175,7 +182,7 @@ export default function LabDirectory() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             key={test.id}
-            className="glass p-6 rounded-3xl relative group flex flex-col justify-between"
+            className="glass p-6 rounded-3xl relative group flex flex-col justify-between border border-white/5 hover:border-indigo-500/30 transition-all"
           >
             <div className="flex justify-between items-start mb-4">
               <div className="w-12 h-12 rounded-2xl glass bg-indigo-500/10 flex items-center justify-center text-indigo-400">
@@ -198,7 +205,10 @@ export default function LabDirectory() {
             </div>
 
             <div>
-              <h3 className="font-bold text-lg text-white mb-1">{test.name}</h3>
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-bold text-lg text-white">{test.name}</h3>
+                {test.isProfile && <span className="text-[9px] bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full font-bold">PROFILE</span>}
+              </div>
               <div className="flex items-center gap-2 mb-4">
                 <Tag size={12} className="text-sky-400" />
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{test.category}</span>
@@ -206,18 +216,28 @@ export default function LabDirectory() {
               </div>
               
               {test.parameters && test.parameters.length > 0 && (
-                <div className="mb-4 space-y-1">
-                   <p className="text-[9px] text-slate-500 font-black uppercase mb-2">مكونات الفحص ({test.parameters.length}):</p>
-                   <div className="flex flex-wrap gap-2">
-                      {test.parameters.slice(0, 3).map(p => (
-                        <span key={p.id} className="text-[10px] px-2 py-0.5 glass bg-white/5 rounded-md text-slate-300 border border-white/5">{p.name}</span>
+                <div className="mb-4 space-y-2 bg-slate-950/30 p-3 rounded-2xl border border-white/5">
+                   <p className="text-[9px] text-slate-500 font-black uppercase flex items-center gap-1">
+                      <Activity size={10} />
+                      المكونات ({test.parameters.length}):
+                   </p>
+                   <div className="grid grid-cols-2 gap-2">
+                      {test.parameters.slice(0, 4).map(p => (
+                        <div key={p.id} className="flex flex-col gap-0.5">
+                           <span className="text-[10px] text-slate-300 font-bold truncate">{p.name}</span>
+                           <span className="text-[9px] text-slate-500 font-mono">{p.normalRange} <small>{p.unit}</small></span>
+                        </div>
                       ))}
-                      {test.parameters.length > 3 && <span className="text-[10px] text-slate-500 italic">+{test.parameters.length - 3} أخرى</span>}
                    </div>
+                   {test.parameters.length > 4 && (
+                     <div className="pt-1 mt-1 border-t border-white/5 text-center">
+                        <span className="text-[9px] text-slate-500 italic">+{test.parameters.length - 4} باراميترات إضافية</span>
+                     </div>
+                   )}
                 </div>
               )}
 
-              {test.description && <p className="text-xs text-slate-500 line-clamp-2 mb-4 italic">{test.description}</p>}
+              {test.description && <p className="text-xs text-slate-500 line-clamp-2 mb-4 italic leading-relaxed">{test.description}</p>}
             </div>
 
             <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
@@ -227,14 +247,9 @@ export default function LabDirectory() {
                 <span className="text-[10px] text-slate-400">ر.ي</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-emerald-500/10 rounded-lg">
+                <div className="p-2 bg-emerald-500/10 rounded-lg" title="متوفر">
                    <FlaskConical size={14} className="text-emerald-400" />
                 </div>
-                {test.parameters && test.parameters.length > 0 && (
-                   <div className="p-2 bg-indigo-500/10 rounded-lg">
-                      <Activity size={14} className="text-indigo-400" />
-                   </div>
-                )}
               </div>
             </div>
           </motion.div>
@@ -251,105 +266,180 @@ export default function LabDirectory() {
             />
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="relative w-full max-w-3xl glass bg-slate-900/95 rounded-[40px] p-10 border border-white/10 text-right overflow-y-auto max-h-[90vh] custom-scrollbar"
+              className="relative w-full max-w-5xl glass bg-slate-900/95 rounded-[40px] p-10 border border-white/10 text-right overflow-y-auto max-h-[90vh] custom-scrollbar shadow-2xl"
             >
-              <h3 className="text-2xl font-black mb-10 text-white border-r-4 border-indigo-500 pr-5">
-                 {editingTest ? 'تعديل بيانات الفحص' : 'إضافة بند فحص مخبري جديد'}
-              </h3>
+              <div className="flex items-center justify-between mb-10">
+                <h3 className="text-2xl font-black text-white border-r-4 border-indigo-500 pr-5">
+                   {editingTest ? 'تعديل بيانات الفحص' : 'إضافة فحص مخبري جديد'}
+                </h3>
+                <button onClick={() => setShowModal(false)} className="p-3 glass bg-white/5 rounded-2xl text-slate-400 hover:text-white transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
               <form onSubmit={handleSubmit} className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase italic">اسم الفحص الرئيسي</label>
-                    <input required className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 font-bold" value={newTest.name} onChange={(e) => setNewTest({...newTest, name: e.target.value})} />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="md:col-span-1 space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase italic">اسم الفحص (بالعربية/الإنجليزية)</label>
+                    <input required className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 font-bold" value={newTest.name} onChange={(e) => setNewTest({...newTest, name: e.target.value})} placeholder="مثلاً: فحص دم شامل (CBC)" />
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase italic">التسعيرة (ر.ي)</label>
-                      <input type="number" required className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 font-black" value={newTest.price || ''} onChange={(e) => setNewTest({...newTest, price: e.target.value === '' ? 0 : parseFloat(e.target.value)})} />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase italic">التصنيف</label>
-                      <select className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 appearance-none font-bold" value={newTest.category} onChange={(e) => setNewTest({...newTest, category: e.target.value})}>
-                        <option className="bg-slate-900">عام</option>
-                        <option className="bg-slate-900">هرمونات</option>
-                        <option className="bg-slate-900">كيمياء حيوية</option>
-                        <option className="bg-slate-900">أحياء دقيقة</option>
-                        <option className="bg-slate-900">دمويات</option>
-                      </select>
-                    </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase italic">التسعيرة (ر.ي)</label>
+                    <input type="number" required className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 font-black" value={newTest.price || ''} onChange={(e) => setNewTest({...newTest, price: e.target.value === '' ? 0 : parseFloat(e.target.value)})} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase italic">التصنيف</label>
+                    <select className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 appearance-none font-bold" value={newTest.category} onChange={(e) => setNewTest({...newTest, category: e.target.value})}>
+                      <option className="bg-slate-900">عام</option>
+                      <option className="bg-slate-900">دمويات</option>
+                      <option className="bg-slate-900">كيمياء حيوية</option>
+                      <option className="bg-slate-900">أحياء دقيقة</option>
+                      <option className="bg-slate-900">هرمونات</option>
+                      <option className="bg-slate-900">مناعة</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-4 mt-6">
+                     <label className="flex items-center gap-3 cursor-pointer group">
+                        <div className="relative">
+                           <input 
+                              type="checkbox" 
+                              className="sr-only" 
+                              checked={newTest.isProfile} 
+                              onChange={(e) => setNewTest({...newTest, isProfile: e.target.checked})}
+                           />
+                           <div className={`w-12 h-6 rounded-full transition-colors ${newTest.isProfile ? 'bg-indigo-600' : 'bg-slate-700'}`}></div>
+                           <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${newTest.isProfile ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                        </div>
+                        <span className="text-xs font-bold text-slate-400 group-hover:text-white transition-colors">هل هذا الفحص عبارة عن مجموعة (Profile)؟</span>
+                     </label>
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                   <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2 italic">
-                         <Activity size={18} />
-                         مكونات وباراميترات الفحص
-                      </h4>
+                   <div className="flex items-center justify-between bg-indigo-500/5 p-4 rounded-2xl border border-indigo-500/10">
+                      <div className="flex items-center gap-3">
+                         <div className="p-2 bg-indigo-500/20 rounded-xl">
+                            <Activity size={20} className="text-indigo-400" />
+                         </div>
+                         <div>
+                            <h4 className="text-sm font-black text-white uppercase tracking-widest italic">
+                               مكونات وباراميترات الفحص الدقيقة
+                            </h4>
+                            <p className="text-[10px] text-slate-400 font-medium">أضف المكونات، الوحدات، والمجالات الطبيعية لكل باراميتر (مطابق للمعايير في اليمن)</p>
+                         </div>
+                      </div>
                       <button 
                         type="button"
                         onClick={addParameter}
-                        className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 text-xs font-bold transition-colors"
+                        className="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all border border-white/10"
                       >
-                         <Plus size={16} />
+                         <Plus size={16} className="text-indigo-400" />
                          إضافة باراميتر
                       </button>
                    </div>
 
-                   <div className="space-y-4">
-                      <AnimatePresence>
-                        {newTest.parameters?.map((p, idx) => (
-                          <motion.div 
-                            key={p.id}
-                            initial={{ opacity: 0, height: 0, mb: 0 }}
-                            animate={{ opacity: 1, height: 'auto', mb: 16 }}
-                            exit={{ opacity: 0, height: 0, mb: 0 }}
-                            className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 glass bg-white/5 rounded-3xl border border-white/5 relative overflow-hidden"
-                          >
-                             <button 
-                               type="button"
-                               onClick={() => removeParameter(p.id)}
-                               className="absolute -top-2 -left-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center hover:bg-rose-600 transition-all shadow-lg z-10"
+                   <div className="space-y-3">
+                      {newTest.parameters && newTest.parameters.length > 0 ? (
+                        <div className="grid grid-cols-1 gap-3">
+                           {newTest.parameters.map((p, idx) => (
+                             <motion.div 
+                               key={p.id}
+                               initial={{ opacity: 0, x: 20 }}
+                               animate={{ opacity: 1, x: 0 }}
+                               className="grid grid-cols-1 lg:grid-cols-12 gap-3 p-4 glass bg-white/5 rounded-2xl border border-white/5 relative items-end shadow-sm"
                              >
-                                <X size={14} />
-                             </button>
-                             <div className="space-y-1">
-                                <label className="text-[9px] text-slate-500 font-bold uppercase">اسم المكون</label>
-                                <input 
-                                  className="w-full px-3 py-2 glass bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-indigo-500 text-xs text-right"
-                                  value={p.name}
-                                  onChange={(e) => updateParameter(p.id, 'name', e.target.value)}
-                                  placeholder="مثلاً: Glucose"
-                                />
-                             </div>
-                             <div className="space-y-1">
-                                <label className="text-[9px] text-slate-500 font-bold uppercase">وحدة القياس</label>
-                                <input 
-                                  className="w-full px-3 py-2 glass bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-indigo-500 text-xs text-right"
-                                  value={p.unit}
-                                  onChange={(e) => updateParameter(p.id, 'unit', e.target.value)}
-                                  placeholder="mg/dL"
-                                />
-                             </div>
-                             <div className="md:col-span-2 space-y-1">
-                                <label className="text-[9px] text-slate-500 font-bold uppercase">المجال الطبيعي (Normal Range)</label>
-                                <input 
-                                  className="w-full px-3 py-2 glass bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-indigo-500 text-xs font-mono text-right"
-                                  value={p.normalRange}
-                                  onChange={(e) => updateParameter(p.id, 'normalRange', e.target.value)}
-                                  placeholder="70 - 100"
-                                />
-                             </div>
-                          </motion.div>
-                        ))}
-                      </AnimatePresence>
-                      {(!newTest.parameters || newTest.parameters.length === 0) && (
-                        <div className="text-center py-8 border-2 border-dashed border-white/5 rounded-3xl text-slate-500 italic text-xs">
-                           لا توجد باراميترات محددة لهذا الفحص حالياً. اضغط "إضافة" لتعريف المكونات والمجالات الطبيعية.
+                                <div className="lg:col-span-3 space-y-1">
+                                   <label className="text-[9px] text-slate-500 font-bold uppercase pr-1">اسم المكون (Parameter)</label>
+                                   <input 
+                                     className="w-full px-4 py-2.5 glass bg-white/10 border border-white/10 rounded-xl text-white outline-none focus:border-indigo-500 text-xs font-bold"
+                                     value={p.name}
+                                     onChange={(e) => updateParameter(p.id, 'name', e.target.value)}
+                                     placeholder="e.g. Hemoglobin"
+                                   />
+                                </div>
+                                <div className="lg:col-span-2 space-y-1">
+                                   <label className="text-[9px] text-slate-500 font-bold uppercase pr-1">الوحدة (Unit)</label>
+                                   <input 
+                                     className="w-full px-4 py-2.5 glass bg-white/10 border border-white/10 rounded-xl text-white outline-none focus:border-indigo-500 text-xs font-mono"
+                                     value={p.unit}
+                                     onChange={(e) => updateParameter(p.id, 'unit', e.target.value)}
+                                     placeholder="mg/dL"
+                                   />
+                                </div>
+                                <div className="lg:col-span-3 space-y-1">
+                                   <label className="text-[9px] text-slate-500 font-bold uppercase pr-1">المجال الطبيعي (Textual Reference)</label>
+                                   <input 
+                                     className="w-full px-4 py-2.5 glass bg-white/10 border border-white/10 rounded-xl text-white outline-none focus:border-indigo-500 text-xs font-medium"
+                                     value={p.normalRange}
+                                     onChange={(e) => updateParameter(p.id, 'normalRange', e.target.value)}
+                                     placeholder="13.5 - 17.5"
+                                   />
+                                </div>
+                                <div className="lg:col-span-1 space-y-1">
+                                   <label className="text-[9px] text-slate-500 font-bold uppercase pr-1">أقل قيمة</label>
+                                   <input 
+                                     type="number"
+                                     step="any"
+                                     className="w-full px-4 py-2.5 glass bg-white/10 border border-white/10 rounded-xl text-white outline-none focus:border-indigo-500 text-xs font-black text-center"
+                                     value={p.minRange || ''}
+                                     onChange={(e) => updateParameter(p.id, 'minRange', parseFloat(e.target.value))}
+                                   />
+                                </div>
+                                <div className="lg:col-span-1 space-y-1">
+                                   <label className="text-[9px] text-slate-500 font-bold uppercase pr-1">أعلى قيمة</label>
+                                   <input 
+                                     type="number"
+                                     step="any"
+                                     className="w-full px-4 py-2.5 glass bg-white/10 border border-white/10 rounded-xl text-white outline-none focus:border-indigo-500 text-xs font-black text-center"
+                                     value={p.maxRange || ''}
+                                     onChange={(e) => updateParameter(p.id, 'maxRange', parseFloat(e.target.value))}
+                                   />
+                                </div>
+                                <div className="lg:col-span-1 space-y-1">
+                                   <label className="text-[9px] text-slate-500 font-bold uppercase pr-1">الجنس</label>
+                                   <select 
+                                     className="w-full px-2 py-2.5 glass bg-white/10 border border-white/10 rounded-xl text-white outline-none focus:border-indigo-500 text-[10px] font-bold"
+                                     value={p.gender}
+                                     onChange={(e) => updateParameter(p.id, 'gender', e.target.value)}
+                                   >
+                                      <option value="both">الكل</option>
+                                      <option value="male">ذكر</option>
+                                      <option value="female">أنثى</option>
+                                   </select>
+                                </div>
+                                <div className="lg:col-span-1 flex items-end pb-1.5">
+                                   <button 
+                                     type="button"
+                                     onClick={() => removeParameter(p.id)}
+                                     className="w-full py-2 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl flex items-center justify-center transition-all border border-rose-500/20"
+                                   >
+                                      <Trash2 size={16} />
+                                   </button>
+                                </div>
+                             </motion.div>
+                           ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-12 border-2 border-dashed border-white/5 rounded-[30px] flex flex-col items-center gap-3">
+                           <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-slate-500">
+                              <Info size={24} />
+                           </div>
+                           <p className="text-slate-500 italic text-sm font-medium">
+                              لا توجد باراميترات محددة لهذا الفحص حالياً.
+                              <br />
+                              <span className="text-[10px] text-slate-600 not-italic">يرجى إضافة المكونات لتخصيص نتائج الفحص بدقة.</span>
+                           </p>
                         </div>
                       )}
                    </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase italic">وصف الفحص / شروط الصيام أو التحضيرات</label>
+                  <textarea className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-3xl text-white outline-none focus:border-indigo-500 h-28 font-bold leading-relaxed" value={newTest.description} onChange={(e) => setNewTest({...newTest, description: e.target.value})} placeholder="اكتب تعليمات المريض هنا..." />
                 </div>
 
                 {/* Dynamic Custom Fields */}
@@ -401,16 +491,11 @@ export default function LabDirectory() {
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase italic">ملاحظات إضافية / تعليمات قبل الفحص</label>
-                  <textarea className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 h-24 font-bold" value={newTest.description} onChange={(e) => setNewTest({...newTest, description: e.target.value})} />
-                </div>
-
-                <div className="flex gap-4 pt-6">
-                  <button type="submit" className="flex-1 bg-indigo-600 text-white py-5 rounded-[25px] font-black shadow-2xl shadow-indigo-600/30 hover:bg-indigo-500 active:scale-95 transition-all uppercase tracking-widest text-sm">
-                    {editingTest ? 'تحديث الفحص' : 'حفظ البند'}
+                <div className="flex gap-4 pt-6 border-t border-white/5">
+                  <button type="submit" className="flex-1 bg-indigo-600 text-white py-5 rounded-[25px] font-black shadow-2xl shadow-indigo-600/30 hover:bg-indigo-500 active:scale-95 transition-all text-sm uppercase tracking-widest">
+                    {editingTest ? 'تحديث الفحص المخبري' : 'حفظ بيانات الفحص'}
                   </button>
-                  <button type="button" onClick={() => setShowModal(false)} className="px-10 glass bg-white/5 text-slate-400 py-5 rounded-[25px] font-bold hover:bg-white/10 transition-colors uppercase tracking-widest text-sm">إلغاء</button>
+                  <button type="button" onClick={() => setShowModal(false)} className="px-10 glass bg-white/5 text-slate-400 py-5 rounded-[25px] font-bold hover:bg-white/10 transition-colors text-sm">إلغاء</button>
                 </div>
               </form>
             </motion.div>

@@ -10,7 +10,11 @@ import {
 import { getFirestore, doc, getDocFromServer, initializeFirestore } from 'firebase/firestore';
 
 // In AI Studio, firebase-applet-config.json is served at the root
-import firebaseConfig from '../../firebase-applet-config.json';
+import firebaseConfig from '@/firebase-applet-config.json';
+
+if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('YOUR_')) {
+  console.error('[Firebase] Invalid API Key detected in config:', firebaseConfig.apiKey);
+}
 
 const app = initializeApp(firebaseConfig);
 // export const analytics = getAnalytics(app);
@@ -18,7 +22,7 @@ const app = initializeApp(firebaseConfig);
 // Use experimentalForceLongPolling to improve connectivity in restricted environments (iframes, proxies)
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
-}, firebaseConfig.firestoreDatabaseId);
+}, (firebaseConfig as any).firestoreDatabaseId);
 
 // Using initializeAuth with indexedDBLocalPersistence and browserLocalPersistence is 
 // the recommended setup for cross-context persistence in frames.

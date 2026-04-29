@@ -1,18 +1,86 @@
 import { PharmacyItem, LabTest, Service, Doctor, Department, Clinic, Patient, Appointment } from '../types';
 
 export const YEMEN_LAB_TESTS = [
-  { name: 'فحص دم شامل (CBC)', price: 3500 },
-  { name: 'سكر الدم (FBS/RBS)', price: 1500 },
-  { name: 'وظائف الكبد (LFT)', price: 8000 },
-  { name: 'وظائف الكلى (KFT)', price: 6500 },
-  { name: 'فحص حمى التيفوئيد (Widal)', price: 2500 },
-  { name: 'فحص الملاريا (Malaria)', price: 2000 },
-  { name: 'فحص البول (GUE)', price: 1500 },
-  { name: 'فحص البراز (GSE)', price: 1500 },
-  { name: 'فحص الدهون (Lipid Profile)', price: 9000 },
-  { name: 'فحص الهرمونات (T3, T4, TSH)', price: 12000 },
-  { name: 'فحص الحمل (HCG)', price: 2000 },
-  { name: 'فحص السكر التراكمي (HbA1c)', price: 5000 },
+  { 
+    name: 'فحص دم شامل (CBC)', 
+    price: 3500, 
+    category: 'دمويات', 
+    isProfile: true,
+    parameters: [
+      { id: 'cbc-1', name: 'WBC Count', unit: 'x10³/µL', normalRange: '4.0 - 11.0', minRange: 4.0, maxRange: 11.0, gender: 'both' },
+      { id: 'cbc-2', name: 'RBC Count', unit: 'x10⁶/µL', normalRange: '4.5 - 5.5', minRange: 4.5, maxRange: 5.5, gender: 'male' },
+      { id: 'cbc-3', name: 'Hemoglobin (Hb)', unit: 'g/dL', normalRange: '13.5 - 17.5', minRange: 13.5, maxRange: 17.5, gender: 'male' },
+      { id: 'cbc-4', name: 'Hemoglobin (Hb)', unit: 'g/dL', normalRange: '12.0 - 15.5', minRange: 12.0, maxRange: 15.5, gender: 'female' },
+      { id: 'cbc-5', name: 'Hematocrit (HCT)', unit: '%', normalRange: '40 - 52', minRange: 40, maxRange: 52, gender: 'male' },
+      { id: 'cbc-6', name: 'MCV', unit: 'fL', normalRange: '80 - 100', minRange: 80, maxRange: 100, gender: 'both' },
+      { id: 'cbc-7', name: 'Platelets (PLT)', unit: 'x10³/µL', normalRange: '150 - 450', minRange: 150, maxRange: 450, gender: 'both' }
+    ]
+  },
+  { 
+    name: 'سكر الدم العشوائي (RBS)', 
+    price: 1500, 
+    category: 'كيمياء حيوية',
+    parameters: [
+      { id: 'rbs-1', name: 'Random Blood Sugar', unit: 'mg/dL', normalRange: '70 - 140', minRange: 70, maxRange: 140, gender: 'both' }
+    ]
+  },
+  { 
+    name: 'وظائف الكبد (LFT)', 
+    price: 8000, 
+    category: 'كيمياء حيوية',
+    isProfile: true,
+    parameters: [
+      { id: 'lft-1', name: 'ALT (SGPT)', unit: 'U/L', normalRange: '0 - 41', minRange: 0, maxRange: 41, gender: 'both' },
+      { id: 'lft-2', name: 'AST (SGOT)', unit: 'U/L', normalRange: '0 - 40', minRange: 0, maxRange: 40, gender: 'both' },
+      { id: 'lft-3', name: 'Alkaline Phosphatase', unit: 'U/L', normalRange: '40 - 129', minRange: 40, maxRange: 129, gender: 'both' },
+      { id: 'lft-4', name: 'Bilirubin Total', unit: 'mg/dL', normalRange: '0.1 - 1.2', minRange: 0.1, maxRange: 1.2, gender: 'both' },
+      { id: 'lft-5', name: 'Albumin', unit: 'g/dL', normalRange: '3.4 - 5.4', minRange: 3.4, maxRange: 5.4, gender: 'both' }
+    ]
+  },
+  { 
+    name: 'وظائف الكلى (KFT)', 
+    price: 6500, 
+    category: 'كيمياء حيوية',
+    isProfile: true,
+    parameters: [
+      { id: 'kft-1', name: 'Creatinine', unit: 'mg/dL', normalRange: '0.7 - 1.3', minRange: 0.7, maxRange: 1.3, gender: 'male' },
+      { id: 'kft-2', name: 'Creatinine', unit: 'mg/dL', normalRange: '0.6 - 1.1', minRange: 0.6, maxRange: 1.1, gender: 'female' },
+      { id: 'kft-3', name: 'Urea', unit: 'mg/dL', normalRange: '15 - 45', minRange: 15, maxRange: 45, gender: 'both' },
+      { id: 'kft-4', name: 'Uric Acid', unit: 'mg/dL', normalRange: '3.5 - 7.2', minRange: 3.5, maxRange: 7.2, gender: 'male' }
+    ]
+  },
+  { 
+    name: 'فحص الدهون (Lipid Profile)', 
+    price: 9000, 
+    category: 'كيمياء حيوية',
+    isProfile: true,
+    parameters: [
+      { id: 'lipid-1', name: 'Cholesterol Total', unit: 'mg/dL', normalRange: '< 200', maxRange: 200, gender: 'both' },
+      { id: 'lipid-2', name: 'Triglycerides', unit: 'mg/dL', normalRange: '< 150', maxRange: 150, gender: 'both' },
+      { id: 'lipid-3', name: 'HDL Cholesterol', unit: 'mg/dL', normalRange: '> 40', minRange: 40, gender: 'both' },
+      { id: 'lipid-4', name: 'LDL Cholesterol', unit: 'mg/dL', normalRange: '< 130', maxRange: 130, gender: 'both' }
+    ]
+  },
+  { 
+    name: 'فحص حمى التيفوئيد (Widal)', 
+    price: 2500, 
+    category: 'أحياء دقيقة',
+    parameters: [
+      { id: 'widal-1', name: 'Salmonella Typhi O', unit: 'Titer', normalRange: '< 1/80', gender: 'both' },
+      { id: 'widal-2', name: 'Salmonella Typhi H', unit: 'Titer', normalRange: '< 1/80', gender: 'both' },
+      { id: 'widal-3', name: 'Salmonella Paratyphi A', unit: 'Titer', normalRange: '< 1/80', gender: 'both' },
+      { id: 'widal-4', name: 'Salmonella Paratyphi B', unit: 'Titer', normalRange: '< 1/80', gender: 'both' }
+    ]
+  },
+  { 
+    name: 'فحص الملاريا (Malaria)', 
+    price: 2000, 
+    category: 'دمويات / أحياء دقيقة',
+    parameters: [
+      { id: 'mal-1', name: 'Malaria Parasite (BF)', unit: 'Result', normalRange: 'Not Seen', gender: 'both' },
+      { id: 'mal-2', name: 'ICT Malaria (Ag)', unit: 'Result', normalRange: 'Negative', gender: 'both' }
+    ]
+  }
 ];
 
 export const YEMEN_MEDICINES: Partial<PharmacyItem>[] = [

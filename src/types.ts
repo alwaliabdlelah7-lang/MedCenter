@@ -143,8 +143,12 @@ export interface LabTestParameter {
   id: string;
   name: string;
   unit: string;
-  defaultValue?: string;
-  normalRange: string; // Simplified for this implementation
+  normalRange: string;
+  minRange?: number;
+  maxRange?: number;
+  gender?: 'male' | 'female' | 'both';
+  ageGroup?: string;
+  note?: string;
 }
 
 export interface MasterLabItem {
@@ -154,6 +158,7 @@ export interface MasterLabItem {
   category: string;
   description?: string;
   parameters: LabTestParameter[];
+  isProfile?: boolean; // If it's a profile like CBC, Lipid, etc.
   customFields?: Record<string, any>;
 }
 

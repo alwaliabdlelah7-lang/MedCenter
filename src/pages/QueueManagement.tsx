@@ -22,7 +22,7 @@ import {
   MessageCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Appointment, Doctor, Patient, ClinicalVisit } from '../types';
+import { Appointment, Doctor, Patient, ClinicalVisit, MasterLabItem, MasterMedicine, Service } from '../types';
 import { cn } from '../lib/utils';
 import { dataStore } from '../services/dataService';
 
@@ -38,17 +38,31 @@ export default function QueueManagement() {
   const [activeVisit, setActiveVisit] = useState<Partial<ClinicalVisit>>({});
   const [selectedApt, setSelectedApt] = useState<Appointment | null>(null);
 
+  // Master Data State
+  const [masterTests, setMasterTests] = useState<MasterLabItem[]>([]);
+  const [masterMedicines, setMasterMedicines] = useState<MasterMedicine[]>([]);
+  const [masterServices, setMasterServices] = useState<Service[]>([]);
+  const [patientHistory, setPatientHistory] = useState<ClinicalVisit[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'current' | 'history'>('current');
+
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [apptsData, doctorsData, patientsData] = await Promise.all([
+        const [apptsData, doctorsData, patientsData, testsData, medsData, servicesData] = await Promise.all([
           dataStore.getAll<Appointment>('appointments'),
           dataStore.getAll<Doctor>('doctors'),
-          dataStore.getAll<Patient>('patients')
+          dataStore.getAll<Patient>('patients'),
+          dataStore.getAll<MasterLabItem>('master_lab_tests'),
+          dataStore.getAll<MasterMedicine>('pharmacy_items'),
+          dataStore.getAll<Service>('services')
         ]);
         setAppointments(apptsData);
         setDoctors(doctorsData);
         setPatients(patientsData);
+        setMasterTests(testsData);
+        setMasterMedicines(medsData);
+        setMasterServices(servicesData);
       } catch (error) {
         console.error("Failed to load queue data", error);
       } finally {
@@ -57,6 +71,18 @@ export default function QueueManagement() {
     };
     loadData();
   }, []);
+
+  const loadPatientHistory = async (patientId: string) => {
+    setHistoryLoading(true);
+    try {
+      const history = await dataStore.find<ClinicalVisit>('clinical_visits', { patientId });
+      setPatientHistory(history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    } catch (err) {
+      console.error("Failed to load patient history", err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
   const updateStatus = async (id: string, status: Appointment['status']) => {
     const appointment = appointments.find(a => a.id === id);
@@ -96,6 +122,8 @@ export default function QueueManagement() {
       radOrders: []
     });
     updateStatus(apt.id, 'in_consultation');
+    loadPatientHistory(apt.patientId);
+    setActiveTab('current');
     setShowVisitModal(true);
   };
 
@@ -114,12 +142,13 @@ export default function QueueManagement() {
     // INTEGRATION: Push orders to Laboratory and Pharmacy
     if (visit.labOrders && visit.labOrders.length > 0) {
       for (const testId of visit.labOrders) {
+        const master = masterTests.find(m => m.id === testId);
         await dataStore.addItem('lab_tests', {
-          id: `LAB-${Date.now().toString().slice(-6)}`,
+          id: `LAB-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substr(2, 2).toUpperCase()}`,
           patientId: visit.patientId,
           patientName: visit.patientName,
           testId: testId,
-          testType: 'فحص مخبري',
+          testType: master?.name || 'فحص مخبري',
           doctorId: visit.doctorId,
           status: 'pending',
           date: new Date().toISOString()
@@ -127,13 +156,25 @@ export default function QueueManagement() {
       }
     }
 
-    if (visit.prescriptions && visit.prescriptions.length > 0) {
+    if (activeVisit.prescriptions && activeVisit.prescriptions.length > 0) {
+      const rxItems = activeVisit.prescriptions.map(medName => {
+        const master = masterMedicines.find(m => m.tradeName === medName);
+        return {
+          medicineId: master?.id || 'manual',
+          tradeName: medName,
+          dosage: '1x1', // Default dosage
+          duration: '5 days',
+          instructions: 'بعد الأكل'
+        };
+      });
+
       await dataStore.addItem('prescriptions', {
         id: `RX-${Date.now().toString().slice(-6)}`,
         patientId: visit.patientId,
+        patientName: visit.patientName,
         doctorId: visit.doctorId,
-        medicines: visit.prescriptions,
-        status: 'pending',
+        items: rxItems,
+        status: 'active',
         date: new Date().toISOString()
       });
     }
@@ -350,86 +391,250 @@ export default function QueueManagement() {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  {/* Left Column: Vitals & Diagnosis */}
-                  <div className="lg:col-span-2 space-y-8">
-                    {/* Vitals Section */}
-                    <div className="space-y-4">
-                      <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic flex items-center gap-2">
-                        <ActivityIcon size={14} className="text-rose-500" /> Vital Signs (المؤشرات الحيوية)
-                      </h4>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="p-4 glass bg-white/5 rounded-2xl border border-white/5">
-                           <label className="block text-[9px] font-bold text-slate-500 mb-2">درجة الحرارة (°C)</label>
-                           <input type="text" className="w-full bg-transparent text-white font-mono text-xl outline-none" value={activeVisit.vitals?.temp} onChange={(e) => setActiveVisit({...activeVisit, vitals: {...activeVisit.vitals!, temp: e.target.value}})} />
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                {/* Tab Switcher */}
+                <div className="flex border-b border-white/5 bg-white/5">
+                  <button 
+                    onClick={() => setActiveTab('current')}
+                    className={cn(
+                      "flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all border-b-2",
+                      activeTab === 'current' ? "border-sky-500 text-sky-400 bg-sky-500/5" : "border-transparent text-slate-500 hover:text-slate-300"
+                    )}
+                  >
+                    جلسة الكشف الحالية
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('history')}
+                    className={cn(
+                      "flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all border-b-2",
+                      activeTab === 'history' ? "border-amber-500 text-amber-400 bg-amber-500/5" : "border-transparent text-slate-500 hover:text-slate-300"
+                    )}
+                  >
+                    السجل الطبي للمريض ({patientHistory.length})
+                  </button>
+                </div>
+
+                <div className="p-8">
+                  {activeTab === 'current' ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                      {/* Left Column: Vitals & Diagnosis */}
+                      <div className="lg:col-span-2 space-y-8">
+                        {/* Vitals Section */}
+                        <div className="space-y-4">
+                          <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic flex items-center gap-2">
+                            <ActivityIcon size={14} className="text-rose-500" /> Vital Signs (المؤشرات الحيوية)
+                          </h4>
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="p-4 glass bg-white/5 rounded-2xl border border-white/5">
+                               <label className="block text-[9px] font-bold text-slate-500 mb-2">درجة الحرارة (°C)</label>
+                               <input type="text" className="w-full bg-transparent text-white font-mono text-xl outline-none" value={activeVisit.vitals?.temp} onChange={(e) => setActiveVisit({...activeVisit, vitals: {...activeVisit.vitals!, temp: e.target.value}})} />
+                            </div>
+                            <div className="p-4 glass bg-white/5 rounded-2xl border border-white/5">
+                               <label className="block text-[9px] font-bold text-slate-500 mb-2">ضغط الدم</label>
+                               <input type="text" className="w-full bg-transparent text-white font-mono text-xl outline-none" value={activeVisit.vitals?.bp} onChange={(e) => setActiveVisit({...activeVisit, vitals: {...activeVisit.vitals!, bp: e.target.value}})} />
+                            </div>
+                            <div className="p-4 glass bg-white/5 rounded-2xl border border-white/5">
+                               <label className="block text-[9px] font-bold text-slate-500 mb-2">نبض القلب (bpm)</label>
+                               <input type="text" className="w-full bg-transparent text-white font-mono text-xl outline-none" value={activeVisit.vitals?.hr} onChange={(e) => setActiveVisit({...activeVisit, vitals: {...activeVisit.vitals!, hr: e.target.value}})} />
+                            </div>
+                          </div>
                         </div>
-                        <div className="p-4 glass bg-white/5 rounded-2xl border border-white/5">
-                           <label className="block text-[9px] font-bold text-slate-500 mb-2">ضغط الدم</label>
-                           <input type="text" className="w-full bg-transparent text-white font-mono text-xl outline-none" value={activeVisit.vitals?.bp} onChange={(e) => setActiveVisit({...activeVisit, vitals: {...activeVisit.vitals!, bp: e.target.value}})} />
+
+                        {/* Diagnosis & Notes */}
+                        <div className="space-y-4">
+                           <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic flex items-center gap-2">
+                            <ClipboardList size={14} className="text-sky-500" /> Clinical Diagnosis (التشخيص الطبي)
+                          </h4>
+                          <textarea 
+                            className="w-full h-32 p-6 glass bg-white/5 border border-white/10 rounded-[30px] text-white outline-none focus:border-sky-500 font-bold leading-relaxed pr-8"
+                            placeholder="اكتب التشخيص هنا..."
+                            value={activeVisit.diagnosis}
+                            onChange={(e) => setActiveVisit({...activeVisit, diagnosis: e.target.value})}
+                          />
+                          <textarea 
+                            className="w-full h-24 p-6 glass bg-white/5 border border-white/10 rounded-[30px] text-white outline-none focus:border-slate-500 text-sm font-medium pr-8"
+                            placeholder="ملاحظات إضافية أو توصيات طبيّة..."
+                            value={activeVisit.treatmentPlan}
+                            onChange={(e) => setActiveVisit({...activeVisit, treatmentPlan: e.target.value})}
+                          />
                         </div>
-                        <div className="p-4 glass bg-white/5 rounded-2xl border border-white/5">
-                           <label className="block text-[9px] font-bold text-slate-500 mb-2">نبض القلب (bpm)</label>
-                           <input type="text" className="w-full bg-transparent text-white font-mono text-xl outline-none" value={activeVisit.vitals?.hr} onChange={(e) => setActiveVisit({...activeVisit, vitals: {...activeVisit.vitals!, hr: e.target.value}})} />
+                      </div>
+
+                      {/* Right Column: Orders Integration */}
+                      <div className="space-y-6">
+                        {/* Lab & Radiology Orders */}
+                        <div className="glass p-6 rounded-[35px] border border-white/10 space-y-4">
+                           <div className="flex items-center justify-between">
+                             <h4 className="text-xs font-black text-white flex items-center gap-2">
+                               <FlaskConical size={16} className="text-emerald-400" /> طلب فحوصات
+                             </h4>
+                           </div>
+                           <select 
+                            className="w-full py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] text-white outline-none"
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val && !activeVisit.labOrders?.includes(val)) {
+                                setActiveVisit({...activeVisit, labOrders: [...(activeVisit.labOrders || []), val]});
+                              }
+                            }}
+                           >
+                             <option value="">+ إضافة فحص...</option>
+                             {masterTests.map(t => <option key={t.id} value={t.id} className="bg-slate-900">{t.name}</option>)}
+                           </select>
+                           <div className="space-y-2">
+                              {activeVisit.labOrders?.map((testId, i) => (
+                                <div key={i} className="flex items-center justify-between p-3 glass bg-white/5 rounded-xl text-[10px] text-slate-300 border border-white/5">
+                                   <span>{masterTests.find(m => m.id === testId)?.name || testId}</span>
+                                   <button 
+                                    onClick={() => setActiveVisit({...activeVisit, labOrders: activeVisit.labOrders?.filter(id => id !== testId)})}
+                                    className="text-rose-500 hover:text-rose-400"
+                                   >
+                                      حذف
+                                   </button>
+                                </div>
+                              ))}
+                           </div>
+                        </div>
+
+                        {/* Pharmacy Prescription */}
+                        <div className="glass p-6 rounded-[35px] border border-white/10 space-y-4">
+                           <div className="flex items-center justify-between">
+                             <h4 className="text-xs font-black text-white flex items-center gap-2">
+                               <Beaker size={16} className="text-amber-400" /> وصِفة دوائية
+                             </h4>
+                           </div>
+                           <select 
+                            className="w-full py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] text-white outline-none"
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val && !activeVisit.prescriptions?.includes(val)) {
+                                setActiveVisit({...activeVisit, prescriptions: [...(activeVisit.prescriptions || []), val]});
+                              }
+                            }}
+                           >
+                             <option value="">+ إضافة دواء...</option>
+                             {masterMedicines.map(m => <option key={m.id} value={m.tradeName} className="bg-slate-900">{m.tradeName}</option>)}
+                           </select>
+                           <div className="space-y-2">
+                              {activeVisit.prescriptions?.map((med, i) => (
+                                <div key={i} className="flex items-center justify-between p-3 glass bg-white/5 rounded-xl text-[10px] text-slate-300 border border-white/5">
+                                   <span>{med}</span>
+                                   <button 
+                                    onClick={() => setActiveVisit({...activeVisit, prescriptions: activeVisit.prescriptions?.filter(m => m !== med)})}
+                                    className="text-rose-500"
+                                   >حذف</button>
+                                </div>
+                              ))}
+                           </div>
+                        </div>
+
+                        {/* Clinic Services */}
+                        <div className="glass p-6 rounded-[35px] border border-white/10 space-y-4">
+                           <div className="flex items-center justify-between">
+                             <h4 className="text-xs font-black text-white flex items-center gap-2">
+                               <RefreshCw size={16} className="text-sky-400" /> خدمات إضافية
+                             </h4>
+                           </div>
+                           <select 
+                            className="w-full py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] text-white outline-none"
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val && !activeVisit.radOrders?.includes(val)) {
+                                setActiveVisit({...activeVisit, radOrders: [...(activeVisit.radOrders || []), val]});
+                              }
+                            }}
+                           >
+                             <option value="">+ طلب خدمة...</option>
+                             {masterServices.map(s => <option key={s.id} value={s.name} className="bg-slate-900">{s.name}</option>)}
+                           </select>
+                           <div className="space-y-2">
+                              {activeVisit.radOrders?.map((svc, i) => (
+                                <div key={i} className="flex items-center justify-between p-3 glass bg-white/5 rounded-xl text-[10px] text-slate-300 border border-white/5">
+                                   <span>{svc}</span>
+                                   <button 
+                                    onClick={() => setActiveVisit({...activeVisit, radOrders: activeVisit.radOrders?.filter(s => s !== svc)})}
+                                    className="text-rose-500"
+                                   >حذف</button>
+                                </div>
+                              ))}
+                           </div>
                         </div>
                       </div>
                     </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {historyLoading ? (
+                        <div className="py-20 flex justify-center">
+                          <RefreshCw className="animate-spin text-amber-500" size={32} />
+                        </div>
+                      ) : patientHistory.length > 0 ? (
+                        <div className="space-y-4">
+                          {patientHistory.map((h) => (
+                            <div key={h.id} className="p-6 glass bg-white/5 border border-white/5 rounded-[30px] space-y-4">
+                               <div className="flex items-center justify-between">
+                                  <span className="text-xs font-black text-white">{new Date(h.date).toLocaleDateString('ar-YE')}</span>
+                                  <span className="text-[10px] font-mono text-slate-500">#{h.id}</span>
+                               </div>
+                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4 border-b border-white/5">
+                                  <div className="space-y-4">
+                                     <div className="space-y-1">
+                                        <p className="text-[10px] font-black text-sky-400 uppercase italic">التشخيص</p>
+                                        <p className="text-sm text-white font-bold">{h.diagnosis}</p>
+                                     </div>
+                                     <div className="space-y-1">
+                                        <p className="text-[10px] font-black text-emerald-400 uppercase italic">الخطة العلاجية</p>
+                                        <p className="text-xs text-slate-400 leading-relaxed">{h.treatmentPlan}</p>
+                                     </div>
+                                  </div>
 
-                    {/* Diagnosis & Notes */}
-                    <div className="space-y-4">
-                       <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic flex items-center gap-2">
-                        <ClipboardList size={14} className="text-sky-500" /> Clinical Diagnosis (التشخيص الطبي)
-                      </h4>
-                      <textarea 
-                        className="w-full h-32 p-6 glass bg-white/5 border border-white/10 rounded-[30px] text-white outline-none focus:border-sky-500 font-bold leading-relaxed pr-8"
-                        placeholder="اكتب التشخيص هنا..."
-                        value={activeVisit.diagnosis}
-                        onChange={(e) => setActiveVisit({...activeVisit, diagnosis: e.target.value})}
-                      />
-                      <textarea 
-                        className="w-full h-24 p-6 glass bg-white/5 border border-white/10 rounded-[30px] text-white outline-none focus:border-slate-500 text-sm font-medium pr-8"
-                        placeholder="ملاحظات إضافية أو توصيات طبيّة..."
-                        value={activeVisit.treatmentPlan}
-                        onChange={(e) => setActiveVisit({...activeVisit, treatmentPlan: e.target.value})}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Right Column: Orders Integration */}
-                  <div className="space-y-6">
-                    {/* Lab & Radiology Orders */}
-                    <div className="glass p-6 rounded-[35px] border border-white/10 space-y-4">
-                       <div className="flex items-center justify-between">
-                         <h4 className="text-xs font-black text-white flex items-center gap-2">
-                           <FlaskConical size={16} className="text-emerald-400" /> طلب فحوصات
-                         </h4>
-                         <button className="text-[10px] text-emerald-400 font-bold">+ إضافة</button>
-                       </div>
-                       <div className="space-y-2">
-                          {['CBC (فحص دم شامل)', 'Urine (فحص بول)'].map((test, i) => (
-                            <div key={i} className="flex items-center justify-between p-3 glass bg-white/5 rounded-xl text-[10px] text-slate-400 border border-white/5">
-                               <span>{test}</span>
-                               <CheckCircle2 size={12} className="text-slate-700" />
+                                  <div className="space-y-4">
+                                     {h.labOrders && h.labOrders.length > 0 && (
+                                       <div className="space-y-2">
+                                          <p className="text-[10px] font-black text-rose-400 uppercase italic flex items-center gap-2">
+                                             <FlaskConical size={12} /> الفحوصات المخبرية السابقة
+                                          </p>
+                                          <div className="flex flex-wrap gap-2">
+                                             {h.labOrders.map((testId, idx) => (
+                                               <span key={idx} className="px-2 py-1 bg-white/5 border border-white/5 rounded-lg text-[9px] text-slate-300">
+                                                  {masterTests.find(m => m.id === testId)?.name || testId}
+                                               </span>
+                                             ))}
+                                          </div>
+                                       </div>
+                                     )}
+                                     {h.prescriptions && h.prescriptions.length > 0 && (
+                                       <div className="space-y-2">
+                                          <p className="text-[10px] font-black text-amber-400 uppercase italic flex items-center gap-2">
+                                             <Beaker size={12} /> الأدوية الموصوفة سابقاً
+                                          </p>
+                                          <div className="flex flex-wrap gap-2">
+                                             {h.prescriptions.map((med, idx) => (
+                                               <span key={idx} className="px-2 py-1 bg-white/5 border border-white/5 rounded-lg text-[9px] text-slate-300">
+                                                  {med}
+                                               </span>
+                                             ))}
+                                          </div>
+                                       </div>
+                                     )}
+                                  </div>
+                               </div>
+                               <div className="flex items-center gap-4 pt-2">
+                                  <div className="flex items-center gap-2 text-[9px] text-slate-500 italic">
+                                     <Stethoscope size={12} />
+                                     <span>بواسطة: د. {doctors.find(d => d.id === h.doctorId)?.name}</span>
+                                  </div>
+                               </div>
                             </div>
                           ))}
-                       </div>
+                        </div>
+                      ) : (
+                        <div className="py-20 text-center glass rounded-[40px] border-2 border-dashed border-white/5 opacity-50">
+                           <ClipboardList size={48} className="mx-auto mb-4 text-slate-600" />
+                           <p className="text-slate-500 font-bold uppercase tracking-widest">لا يوجد سجل زيارات سابقة لهذا المريض</p>
+                        </div>
+                      )}
                     </div>
-
-                    {/* Pharmacy Prescription */}
-                    <div className="glass p-6 rounded-[35px] border border-white/10 space-y-4">
-                       <div className="flex items-center justify-between">
-                         <h4 className="text-xs font-black text-white flex items-center gap-2">
-                           <Beaker size={16} className="text-amber-400" /> وصِفة دويئة
-                         </h4>
-                         <button className="text-[10px] text-amber-400 font-bold">+ إضافة دواء</button>
-                       </div>
-                       <div className="space-y-2">
-                          <div className="p-4 glass bg-white/5 rounded-xl text-center">
-                             <p className="text-[10px] text-slate-500 italic">سيتم إرسال الوصفة مباشرة للصيدلية فور الحفظ</p>
-                          </div>
-                       </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
 

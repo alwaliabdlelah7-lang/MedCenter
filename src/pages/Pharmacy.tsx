@@ -12,7 +12,8 @@ export default function Pharmacy() {
   const [inventory, setInventory] = useState<PharmacyItem[]>([]);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'inventory' | 'prescriptions'>('inventory');
+  const [activeTab, setActiveTab] = useState<'inventory' | 'prescriptions' | 'sales'>('inventory');
+  const [sales, setSales] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingItem, setEditingItem] = useState<PharmacyItem | null>(null);
@@ -20,14 +21,16 @@ export default function Pharmacy() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [invData, masterData, prescriptionsData] = await Promise.all([
+        const [invData, masterData, prescriptionsData, salesData] = await Promise.all([
           dataStore.getAll<PharmacyItem>('pharmacy_items'),
           dataStore.getAll<MasterMedicine>('master_medicines'),
-          dataStore.getAll<Prescription>('prescriptions')
+          dataStore.getAll<Prescription>('prescriptions'),
+          dataStore.getAll<any>('pharmacy_sales')
         ]);
         setInventory(invData);
         setMasterMedicines(masterData);
         setPrescriptions(prescriptionsData);
+        setSales(salesData || []);
         
         if (invData.length === 0 && masterData.length === 0) {
            const seeded = YEMEN_MEDICINES.slice(0, 10).map((m: any, idx: number) => ({
@@ -86,6 +89,88 @@ export default function Pharmacy() {
     }
   };
 
+  const handleDispense = async (prescription: Prescription) => {
+    if (prescription.status === 'dispensed') {
+      alert('هذه الوصفة تم صرفها مسبقاً');
+      return;
+    }
+
+    try {
+      // 1. Update stock for each medicine
+      const updatedInventory = [...inventory];
+      for (const item of prescription.items) {
+        const invItem = updatedInventory.find(i => i.tradeName === item.tradeName || i.name === item.tradeName);
+        if (invItem) {
+          if (invItem.stock > 0) {
+            invItem.stock -= 1; // Simplification: 1 unit per prescription item
+            await dataStore.updateItem('pharmacy_items', invItem.id, { stock: invItem.stock });
+          }
+        }
+      }
+      setInventory(updatedInventory);
+
+      // 2. Update prescription status
+      await dataStore.updateItem('prescriptions', prescription.id, { status: 'dispensed' });
+      setPrescriptions(prescriptions.map(p => p.id === prescription.id ? { ...p, status: 'dispensed' } : p));
+
+      // 3. Add to sales
+      const totalAmount = prescription.items.reduce((acc, item) => {
+        const invItem = inventory.find(i => i.tradeName === item.tradeName || i.name === item.tradeName);
+        return acc + (invItem?.price || 0);
+      }, 0);
+
+      const sale = {
+        id: `SALE-${Date.now().toString().slice(-6)}`,
+        itemName: `وصفة طبية: ${prescription.patientName}`,
+        quantity: prescription.items.length,
+        total: totalAmount,
+        date: new Date().toISOString(),
+        prescriptionId: prescription.id
+      };
+      await dataStore.addItem('pharmacy_sales', sale);
+      setSales([sale, ...sales]);
+
+      alert('تم صرف الوصفة بنجاح وتحديث المخزون');
+    } catch (error) {
+      console.error("Dispense failed", error);
+      alert('فشل عملية الصرف');
+    }
+  };
+
+  const handleSale = async (item: PharmacyItem) => {
+    const qty = prompt(`كم عدد الوحدات التي تريد بيعها من ${item.name}؟`, "1");
+    if (!qty) return;
+    const quantity = parseInt(qty);
+    if (isNaN(quantity) || quantity <= 0) return;
+
+    if (item.stock < quantity) {
+      alert('الكمية المطلوبة غير متوفرة في المخزن');
+      return;
+    }
+
+    try {
+      // 1. Update Stock
+      const newStock = item.stock - quantity;
+      await dataStore.updateItem('pharmacy_items', item.id, { stock: newStock });
+      setInventory(inventory.map(i => i.id === item.id ? { ...i, stock: newStock } : i));
+
+      // 2. Record Sale
+      const sale = {
+        id: `SALE-${Date.now().toString().slice(-6)}`,
+        itemName: item.name,
+        quantity: quantity,
+        total: item.price * quantity,
+        date: new Date().toISOString(),
+        itemId: item.id
+      };
+      await dataStore.addItem('pharmacy_sales', sale);
+      setSales([sale, ...sales]);
+
+      alert('تمت عملية البيع بنجاح');
+    } catch (error) {
+      console.error("Sale failed", error);
+    }
+  };
   const handleExportCSV = () => {
     const data = (activeTab === 'inventory' ? inventory : prescriptions).map((item: any) => ({
       'المعرف': item.id,
@@ -172,6 +257,15 @@ export default function Pharmacy() {
         >
           <ClipboardCheck size={14} /> صرف الوصفات الطبية
         </button>
+        <button 
+          onClick={() => setActiveTab('sales')}
+          className={cn(
+            "px-8 py-3 rounded-xl text-xs font-black transition-all flex items-center gap-2",
+            activeTab === 'sales' ? "bg-indigo-600 text-white shadow-xl shadow-indigo-600/20" : "text-slate-500 hover:text-slate-300"
+          )}
+        >
+          <DollarSign size={14} /> سجل المبيعات المباشرة
+        </button>
       </div>
 
       {activeTab === 'inventory' ? (
@@ -180,7 +274,7 @@ export default function Pharmacy() {
              <StatCard label="إجمالي الأصناف" value={inventory.length} color="sky" icon={ListFilter} />
              <StatCard label="أصناف منخفضة المخزون" value={inventory.filter(i => i.stock < 10).length} color="amber" icon={AlertTriangle} />
              <StatCard label="قيمة المخزون" value={`${inventory.reduce((acc, i) => acc + (i.price * i.stock), 0).toLocaleString()} ر.ي`} color="emerald" icon={DollarSign} />
-             <StatCard label="أصناف منتهية" value={inventory.filter(i => new Date(i.expiryDate) < new Date()).length} color="rose" icon={Pill} />
+             <StatCard label="إجمالي المبيعات" value={`${sales.reduce((acc, s) => acc + s.total, 0).toLocaleString()} ر.ي`} color="rose" icon={History} />
           </div>
 
           <div className="glass rounded-[32px] overflow-hidden border border-white/5 shadow-2xl" id="pharmacy-inventory-table">
@@ -250,6 +344,13 @@ export default function Pharmacy() {
                                <Edit2 size={14} />
                              </button>
                              <button 
+                               onClick={() => handleSale(item)}
+                               className="p-2 text-emerald-400 hover:text-white bg-emerald-500/10 hover:bg-emerald-600 rounded-lg transition-all"
+                               title="بيع مباشر"
+                             >
+                               <DollarSign size={14} />
+                             </button>
+                             <button 
                               onClick={() => handleDelete(item.id)}
                               className="p-2 text-slate-400 hover:text-white bg-white/5 hover:bg-rose-600 rounded-lg transition-all"
                              >
@@ -265,7 +366,7 @@ export default function Pharmacy() {
             </div>
           </div>
         </>
-      ) : (
+      ) : activeTab === 'prescriptions' ? (
         <div id="pharmacy-prescriptions-list" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
            {filtered.map((pres: any) => (
              <div key={pres.id} className="glass p-8 rounded-[40px] border border-white/5 relative group hover:bg-white/5 transition-all overflow-hidden">
@@ -300,13 +401,52 @@ export default function Pharmacy() {
                 </div>
 
                 <div className="mt-8 flex gap-3 no-print">
-                   <button className="flex-1 py-3 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20">صرف الأدوية</button>
+                   <button 
+                    onClick={() => handleDispense(pres)}
+                    disabled={pres.status === 'dispensed'}
+                    className={cn(
+                      "flex-1 py-3 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20",
+                      pres.status === 'dispensed' && "opacity-50 cursor-not-allowed bg-slate-700 shadow-none"
+                    )}
+                   >
+                     {pres.status === 'dispensed' ? 'تم الصرف بنجاح' : 'صرف الأدوية'}
+                   </button>
                    <button className="p-3 glass-card rounded-2xl text-slate-500 hover:text-white transition-colors" title="طباعة الوصفة">
                       <Printer size={18} />
                    </button>
                 </div>
              </div>
            ))}
+        </div>
+      ) : (
+        <div className="glass rounded-[32px] overflow-hidden border border-white/5 shadow-2xl">
+          <table className="w-full text-right">
+            <thead>
+              <tr className="bg-white/5 text-slate-400 text-[10px] uppercase font-black italic border-b border-white/5">
+                <th className="px-8 py-6">ID</th>
+                <th className="px-8 py-6">Item Name</th>
+                <th className="px-8 py-6">Quantity</th>
+                <th className="px-8 py-6">Total Amount</th>
+                <th className="px-8 py-6">Time</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+               {sales.map(sale => (
+                 <tr key={sale.id} className="hover:bg-white/5">
+                   <td className="px-8 py-4 font-mono text-[10px] text-slate-500">#{sale.id}</td>
+                   <td className="px-8 py-4 text-white font-bold">{sale.itemName}</td>
+                   <td className="px-8 py-4 text-slate-300">{sale.quantity}</td>
+                   <td className="px-8 py-4 text-emerald-400 font-bold">{sale.total.toLocaleString()}</td>
+                   <td className="px-8 py-4 text-slate-500 text-[10px]">{new Date(sale.date).toLocaleString('ar-YE')}</td>
+                 </tr>
+               ))}
+               {sales.length === 0 && (
+                 <tr>
+                    <td colSpan={5} className="py-20 text-center text-slate-700 font-black uppercase tracking-[10px]">No Sales Records</td>
+                 </tr>
+               )}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -397,7 +537,7 @@ function InputGroup({ name, label, defaultValue, placeholder, icon: Icon, requir
         <input 
           name={name}
           type={type}
-          defaultValue={isNaN(defaultValue) ? '' : defaultValue}
+          defaultValue={defaultValue ?? ''}
           required={required}
           className="w-full pr-12 pl-4 font-mono py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none font-bold focus:border-emerald-500 transition-all shadow-inner"
           placeholder={placeholder}

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Settings, Shield, Bell, Cloud, Database, Monitor, Printer, Smartphone, Save, Plus, Trash2, Tag, Calendar, List, CheckSquare, Type, Hash, X, RefreshCw, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DynamicFieldDefinition } from '../types';
-import { dataStore } from '../services/dataService';
+import { dataStore, StorageProvider } from '../services/dataService';
+import { auth } from '../lib/firebase';
 
 export default function SettingsPage() {
   const [hospitalName, setHospitalName] = useState('إبداع الطبي');
@@ -22,121 +23,124 @@ export default function SettingsPage() {
   }, []);
 
   const [printAuto, setPrintAuto] = useState(false);
-  const [activeTab, setActiveTab] = useState<'general' | 'dynamic_fields' | 'cloud'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'dynamic_fields' | 'cloud' | 'db_management'>('general');
+  const [dbStats, setDbStats] = useState<Record<string, number>>({});
+  const [isRefreshingStats, setIsRefreshingStats] = useState(false);
+  const [dbHealth, setDbHealth] = useState<{ status: 'healthy' | 'warning' | 'error', message: string }>({ status: 'healthy', message: 'جاري الفحص...' });
+  const [dbProvider, setDbProvider] = useState(dataStore.getProvider());
+  const [supabaseUrl, setSupabaseUrl] = useState(localStorage.getItem('supabase_url') || '');
+  const [supabaseKey, setSupabaseKey] = useState(localStorage.getItem('supabase_key') || '');
+  
+  const [fbApiKey, setFbApiKey] = useState(localStorage.getItem('firebase_api_key') || '');
+  const [fbProjectId, setFbProjectId] = useState(localStorage.getItem('firebase_project_id') || '');
+  const [fbDatabaseId, setFbDatabaseId] = useState(localStorage.getItem('firebase_database_id') || '');
+
   const [isSeeding, setIsSeeding] = useState(false);
+
+  const handleProviderChange = (provider: StorageProvider) => {
+    if (provider === 'supabase' && (!supabaseUrl || !supabaseKey)) {
+      alert('يرجى إدخال إعدادات Supabase أولاً.');
+      return;
+    }
+    if (provider === 'firebase' && fbApiKey && !confirm('هل تريد استخدام الثوابت الافتراضية أم الإعدادات اليدوية التي أدخلتها؟')) {
+       // logic for customized firebase
+    }
+    dataStore.setProvider(provider);
+    setDbProvider(provider);
+    refreshDbStats();
+  };
+
+  const saveSupabaseConfig = () => {
+    localStorage.setItem('supabase_url', supabaseUrl);
+    localStorage.setItem('supabase_key', supabaseKey);
+    alert('تم حفظ إعدادات Supabase بنجاح. سيتم إعادة تحميل الصفحة لتطبيق التغييرات.');
+    window.location.reload();
+  };
+
+  const saveFirebaseConfig = () => {
+    localStorage.setItem('firebase_api_key', fbApiKey);
+    localStorage.setItem('firebase_project_id', fbProjectId);
+    localStorage.setItem('firebase_database_id', fbDatabaseId);
+    alert('تم حفظ إعدادات Firebase المخصصة. سيتم إعادة تحميل الصفحة لتطبيق التغييرات.');
+    window.location.reload();
+  };
   const [isMigrating, setIsMigrating] = useState(false);
   const [migrationStatus, setMigrationStatus] = useState<string | null>(null);
 
+  const collectionsList = [
+    'users', 'departments', 'clinics', 'doctors', 'patients', 'appointments', 
+    'clinical_visits', 'receipts', 'pharmacy_items', 'prescriptions', 
+    'lab_tests', 'radiology_scans', 'services', 'operations', 'inpatients', 'nurses'
+  ];
+
+  const refreshDbStats = async () => {
+    setIsRefreshingStats(true);
+    try {
+      const stats = await dataStore.getDatabaseStats(collectionsList);
+      setDbStats(stats);
+      
+      const userLink = await dataStore.verifyUserLink();
+      if (!userLink.linked) {
+        setDbHealth({ status: 'warning', message: 'حسابك الحالي غير مربوط بملف مستخدم في قاعدة البيانات.' });
+      } else {
+        setDbHealth({ status: 'healthy', message: 'قاعدة البيانات متصلة وتعمل بكفاءة عالية.' });
+      }
+    } catch (e) {
+      setDbHealth({ status: 'error', message: 'فشل في الاتصال بقاعدة البيانات. يرجى التحقق من الإعدادات.' });
+    } finally {
+      setIsRefreshingStats(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'db_management') {
+      refreshDbStats();
+    }
+  }, [activeTab]);
+
   const seedDatabase = async () => {
-    if (!confirm('هل أنت متأكد من زرع البيانات الأولية في قاعدة البيانات السحابية؟ سيتم إضافة البيانات المرجعية الأساسية لبدء العمل.')) return;
+    if (!confirm(`هل أنت متأكد من زرع البيانات الأولية في قاعدة البيانات بربط (${dbProvider})؟ سيتم إضافة البيانات المرجعية الأساسية لبدء العمل.`)) return;
+    
     setIsSeeding(true);
     try {
-      const seedData = await import('../data/seedData');
-      
-      const seedMap: Record<string, any[]> = {
-        users: seedData.INITIAL_USERS || [],
-        departments: seedData.INITIAL_DEPARTMENTS || [],
-        clinics: seedData.INITIAL_CLINICS || [],
-        doctors: seedData.INITIAL_DOCTORS || [],
-        patients: seedData.INITIAL_PATIENTS || [],
-        appointments: seedData.INITIAL_APPOINTMENTS || [],
-        services: seedData.YEMEN_SERVICES || [],
-        master_lab_tests: (seedData.YEMEN_LAB_TESTS || []).map((t: any, i: number) => ({
-          id: `LBT-${i + 1}`,
-          name: t.name,
-          price: t.price,
-          category: 'عام',
-          parameters: []
-        })),
-        master_medicines: (seedData.YEMEN_MEDICINES || []).map((m: any, i: number) => ({
-          id: `MED-${i + 1}`,
-          ...m,
-          unit: 'عبوة',
-          dosageForm: 'قرص',
-          totalQuantity: 100,
-          reorderPoint: 10
-        }))
-      };
-      
-      let successCount = 0;
-
-      for (const [col, items] of Object.entries(seedMap)) {
-        if (Array.isArray(items)) {
-          for (const item of items) {
-             try {
-               await dataStore.addItem(col, item);
-               successCount++;
-             } catch (e) {
-               console.error(`Error seeding item in ${col}:`, e);
-             }
-          }
-        }
-      }
-
-      alert(`تم زرع ${successCount} سجل مرجعي في السحابة بنجاح!`);
-    } catch (error) {
-      alert('فشل في زرع البيانات: ' + (error as Error).message);
+      await dataStore.autoSeed();
+      alert('تمت تهيئة قاعدة البيانات بنجاح.');
+      refreshDbStats();
+    } catch (error: any) {
+      alert('فشل في زرع البيانات: ' + error.message);
     } finally {
       setIsSeeding(false);
     }
   };
 
-  const handleMigrate = async () => {
-    const collections = [
-      'departments', 'clinics', 'doctors', 'patients', 'users', 'services', 
-      'master_lab_tests', 'master_medicines', 'lab_tests', 'radiology_scans', 
-      'receipts', 'appointments', 'queues', 'clinical_visits', 
-      'prescriptions', 'nurses', 'companions', 'operations'
-    ];
-    
-    if (!confirm('هل تريد ترحيل كافة البيانات المحلية الحالية إلى السحابة؟ قد يستغرق هذا وقتاً طويلاً.')) return;
+  const migrateData = async () => {
+    if (!confirm('هل أنت متأكد من بدء عملية ترحيل البيانات؟ سيتم نسخ البيانات من التخزين المحلي إلى المحرك السحابي النشط حالياً.')) return;
     
     setIsMigrating(true);
-    setMigrationStatus('جاري التحليل والترحيل...');
+    setMigrationStatus('بدء ترحيل البيانات المحلية للسحابة...');
     
-    let totalMigrated = 0;
-    const migrations: Record<string, number> = {};
-
-    for (const col of collections) {
-      const localData = (dataStore as any).getLocalAll(col);
-      if (localData.length === 0) continue;
-      
-      let colCount = 0;
-      for (const item of localData) {
-        try {
-          await dataStore.addItem(col, item);
-          colCount++;
-          totalMigrated++;
-        } catch (e) {
-          console.error(`Migration error for ${col}:`, e);
+    try {
+      let totalMigrated = 0;
+      for (const col of collectionsList) {
+        setMigrationStatus(`ترحيل جدول: ${col}...`);
+        const localItems = (dataStore as any).getLocalAll(col);
+        if (localItems && localItems.length > 0) {
+          for (const item of localItems) {
+             await dataStore.addItem(col, item);
+             totalMigrated++;
+          }
         }
       }
-      migrations[col] = colCount;
+      setMigrationStatus(`تم ترحيل ${totalMigrated} سجل بنجاح!`);
+      setTimeout(() => {
+        setMigrationStatus(null);
+        setIsMigrating(false);
+        refreshDbStats();
+      }, 3000);
+    } catch (e) {
+      setMigrationStatus('فشل الترحيل: ' + (e as Error).message);
+      setIsMigrating(false);
     }
-    
-    if (totalMigrated > 0) {
-      setMigrationStatus('تم الترحيل بنجاح!');
-      const summary = Object.entries(migrations)
-        .map(([col, count]) => `${col}: ${count}`)
-        .join('\n');
-      alert(`تم ترحيل البيانات بنجاح!\nالإجمالي: ${totalMigrated} سجل.\n\nالتفاصيل:\n${summary}`);
-    } else {
-      setMigrationStatus('لا توجد بيانات للترحيل');
-      alert('لا توجد سجلات محلية حالياً للترحيل.');
-    }
-    setIsMigrating(false);
-  };
-
-  const toggleStorageSource = (source: 'local' | 'cloud') => {
-    if (source === 'cloud' && !isRealtimeEnabled) {
-      if (!confirm('سيتم تفعيل الربط السحابي واستخدام قاعدة بيانات Firebase. يتطلب هذا اتصالاً بالإنترنت لمزامنة البيانات بين الأجهزة.')) return;
-    }
-    if (source === 'local' && isRealtimeEnabled) {
-      if (!confirm('هل أنت متأكد من العودة لوضع العمل المحلي؟ سيتم حفظ البيانات في هذا المتصفح فقط ولن يراها الآخرون.')) return;
-    }
-    (dataStore as any)._useFirebase = (source === 'cloud');
-    localStorage.setItem('hospital_storage_source', source);
-    setIsRealtimeEnabled(source === 'cloud');
   };
 
   const [dynamicFields, setDynamicFields] = useState<DynamicFieldDefinition[]>(() => {
@@ -212,6 +216,30 @@ export default function SettingsPage() {
     localStorage.setItem('hospital_name', hospitalName);
   };
 
+  const linkCurrentAccount = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    
+    setIsRefreshingStats(true);
+    try {
+      await dataStore.addItem('users', {
+        id: user.uid,
+        email: user.email,
+        name: user.displayName || 'مدير جديد',
+        username: user.email?.split('@')[0] || user.uid.substring(0, 8),
+        role: 'admin',
+        permissions: ['all'],
+        status: 'active'
+      });
+      alert('تم ربط حسابك الحالي بنجاح كمدير للنظام.');
+      refreshDbStats();
+    } catch (e) {
+      alert('فشل في ربط الحساب: ' + (e as Error).message);
+    } finally {
+      setIsRefreshingStats(false);
+    }
+  };
+
   return (
     <div className="space-y-8 lg:p-4 text-right">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -238,74 +266,309 @@ export default function SettingsPage() {
           onClick={() => setActiveTab('cloud')}
           className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'cloud' ? 'bg-white/10 text-sky-400 shadow-xl' : 'text-slate-500 hover:text-slate-300'}`}
         >
-          البيانات السحابية (Firebase)
+          الربط السحابي (Cloud)
+        </button>
+        <button 
+          onClick={() => setActiveTab('db_management')}
+          className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'db_management' ? 'bg-white/10 text-sky-400 shadow-xl' : 'text-slate-500 hover:text-slate-300'}`}
+        >
+          إدارة قاعدة البيانات (Database)
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-6">
           <AnimatePresence mode="wait">
-            {activeTab === 'cloud' && (
-              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-                <div className="glass p-8 rounded-[40px] space-y-8 border border-white/5">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Cloud className="text-sky-400" size={20} />
-                    <h3 className="text-white font-black italic uppercase tracking-widest text-sm">Firebase Cloud Management</h3>
+            {activeTab === 'db_management' && (
+              <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="space-y-6">
+                {/* Database Health Summary */}
+                <div className="glass p-8 rounded-[40px] border border-white/5 space-y-6 relative overflow-hidden">
+                  <div className={`absolute top-0 right-0 w-1 h-full ${dbHealth.status === 'healthy' ? 'bg-emerald-500' : dbHealth.status === 'warning' ? 'bg-amber-500' : 'bg-rose-500'}`} />
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${dbHealth.status === 'healthy' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                        <Shield size={24} />
+                      </div>
+                      <div>
+                        <h3 className="text-white font-black">حالة قاعدة البيانات</h3>
+                        <p className={`text-xs font-bold mt-1 ${dbHealth.status === 'healthy' ? 'text-emerald-400' : 'text-amber-400'}`}>{dbHealth.message}</p>
+                      </div>
+                    </div>
+                    {dbHealth.status === 'warning' && (
+                      <button 
+                         onClick={linkCurrentAccount}
+                         className="px-5 py-2 bg-amber-500 text-white rounded-xl text-xs font-black shadow-lg shadow-amber-500/20 hover:bg-amber-400 transition-all"
+                      >
+                         ربط حسابي الآن
+                      </button>
+                    )}
+                    <button 
+                      onClick={refreshDbStats}
+                      disabled={isRefreshingStats}
+                      className="p-3 glass rounded-2xl text-slate-400 hover:text-white hover:bg-white/10 transition-all disabled:opacity-50"
+                    >
+                      <RefreshCw size={20} className={isRefreshingStats ? 'animate-spin' : ''} />
+                    </button>
                   </div>
 
-                  {/* Storage Source Toggle */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+                    <div className="p-4 glass bg-white/5 rounded-2xl border border-white/5">
+                      <p className="text-[10px] font-black text-slate-500 uppercase italic mb-1">المحرك النشط</p>
+                      <p className="text-sm font-black text-sky-400 capitalize">{dbProvider}</p>
+                    </div>
+                    <div className="p-4 glass bg-white/5 rounded-2xl border border-white/5">
+                      <p className="text-[10px] font-black text-slate-500 uppercase italic mb-1">إجمالي الجداول</p>
+                      <p className="text-sm font-black text-white">{collectionsList.length}</p>
+                    </div>
+                    <div className="p-4 glass bg-white/5 rounded-2xl border border-white/5">
+                      <p className="text-[10px] font-black text-slate-500 uppercase italic mb-1">وضع المزامنة</p>
+                      <p className="text-sm font-black text-emerald-400">لحظي (Real-time)</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Provider Selector */}
+                <div className="glass p-8 rounded-[40px] border border-white/5 space-y-6">
+                   <div className="flex items-center gap-3">
+                      <Cloud className="text-sky-400" size={20} />
+                      <h3 className="text-white font-black italic uppercase tracking-widest text-sm">تبديل محرك قاعدة البيانات (Connection Hub)</h3>
+                   </div>
+                   
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <button 
+                        onClick={() => handleProviderChange('local')}
+                        className={`p-6 rounded-3xl border-2 transition-all text-right ${dbProvider === 'local' ? 'bg-rose-500/10 border-rose-500 text-white' : 'glass bg-white/5 border-transparent text-slate-500'}`}
+                      >
+                         <Database size={24} className="mb-2" />
+                         <p className="font-black text-sm">المحرك المحلي</p>
+                         <p className="text-[10px] opacity-70">بيانات تجريبية على هذا المتصفح</p>
+                      </button>
+                      
+                      <button 
+                        onClick={() => handleProviderChange('firebase')}
+                        className={`p-6 rounded-3xl border-2 transition-all text-right ${dbProvider === 'firebase' ? 'bg-sky-500/10 border-sky-500 text-white' : 'glass bg-white/5 border-transparent text-slate-500'}`}
+                      >
+                         <Cloud size={24} className="mb-2" />
+                         <p className="font-black text-sm">Firebase Cloud</p>
+                         <p className="text-[10px] opacity-70">المزامنة اللحظية (تلقائي)</p>
+                      </button>
+
+                      <button 
+                        onClick={() => handleProviderChange('supabase')}
+                        className={`p-6 rounded-3xl border-2 transition-all text-right ${dbProvider === 'supabase' ? 'bg-emerald-500/10 border-emerald-500 text-white' : 'glass bg-white/5 border-transparent text-slate-500'}`}
+                      >
+                         <Database size={24} className="mb-2 text-emerald-400" />
+                         <p className="font-black text-sm">Supabase Sync</p>
+                         <p className="text-[10px] opacity-70">محرك PostgreSQL السحابي</p>
+                      </button>
+                   </div>
+                </div>
+
+                {/* Provider Configuration Forms */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Firebase Custom Sync */}
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`glass p-8 rounded-[40px] border transition-all ${dbProvider === 'firebase' ? 'border-sky-500/30 bg-sky-500/5' : 'border-white/5 opacity-80'}`}>
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-3">
+                        <Cloud size={20} className="text-sky-400" />
+                        <h4 className="text-white font-black text-sm uppercase italic">إعدادات Firebase المخصصة</h4>
+                      </div>
+                      {dbProvider === 'firebase' && <span className="bg-sky-500 text-[8px] text-white px-2 py-1 rounded-full font-black animate-pulse">نشط الآن</span>}
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-500 mr-2">Firebase API Key</label>
+                        <input type="text" value={fbApiKey} onChange={(e) => setFbApiKey(e.target.value)} className="w-full px-5 py-3 glass bg-white/5 border border-white/10 rounded-xl text-white font-mono text-xs" placeholder="AIzaSy..." />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-500 mr-2">Project ID</label>
+                        <input type="text" value={fbProjectId} onChange={(e) => setFbProjectId(e.target.value)} className="w-full px-5 py-3 glass bg-white/5 border border-white/10 rounded-xl text-white font-mono text-xs" placeholder="my-hospital-project" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-500 mr-2">Firestore Database ID</label>
+                        <input type="text" value={fbDatabaseId} onChange={(e) => setFbDatabaseId(e.target.value)} className="w-full px-5 py-3 glass bg-white/5 border border-white/10 rounded-xl text-white font-mono text-xs" placeholder="(default)" />
+                      </div>
+                      <button onClick={saveFirebaseConfig} className="w-full py-3 bg-sky-600 text-white rounded-xl text-xs font-black shadow-lg shadow-sky-600/20 hover:bg-sky-500 transition-all mt-2">حفظ وتطبيق إعدادات Firebase</button>
+                    </div>
+                  </motion.div>
+
+                  {/* Supabase Configuration */}
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`glass p-8 rounded-[40px] border transition-all ${dbProvider === 'supabase' ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-white/5 opacity-80'}`}>
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-3">
+                        <Database size={20} className="text-emerald-400" />
+                        <h4 className="text-white font-black text-sm uppercase italic">إعدادات Supabase Connection</h4>
+                      </div>
+                      {dbProvider === 'supabase' && <span className="bg-emerald-500 text-[8px] text-white px-2 py-1 rounded-full font-black animate-pulse">نشط الآن</span>}
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-500 mr-2">Supabase URL</label>
+                        <input type="text" value={supabaseUrl} onChange={(e) => setSupabaseUrl(e.target.value)} className="w-full px-5 py-3 glass bg-white/5 border border-white/10 rounded-xl text-white font-mono text-xs" placeholder="https://xxx.supabase.co" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-500 mr-2">Anon Key</label>
+                        <input type="password" value={supabaseKey} onChange={(e) => setSupabaseKey(e.target.value)} className="w-full px-5 py-3 glass bg-white/5 border border-white/10 rounded-xl text-white font-mono text-xs" placeholder="eyJhbG... (Anon Key)" />
+                      </div>
+                      <div className="pt-2">
+                        <p className="text-[9px] text-slate-500 font-bold italic text-right mb-2 leading-relaxed">
+                          * ملاحظة: يجب أن تكون الجداول (Tables) منشأة مسبقاً في Supabase مع تفعيل صلاحيات RLS أو إيقافها للمزامنة المفتوحة.
+                        </p>
+                        <button onClick={saveSupabaseConfig} className="w-full py-3 bg-emerald-600 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20 hover:bg-emerald-500 transition-all">حفظ وتطبيق إعدادات Supabase</button>
+                      </div>
+                    </div>
+                  </motion.div>
+                </div>
+                <div className="glass p-8 rounded-[40px] border border-white/5 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Database className="text-sky-400" size={20} />
+                      <h3 className="text-white font-black italic uppercase tracking-widest text-sm">مستكشف الجداول (Schema Explorer)</h3>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button 
-                      onClick={() => toggleStorageSource('local')}
-                      className={`flex flex-col items-center gap-4 p-8 rounded-[35px] transition-all border-2 text-center ${!isRealtimeEnabled ? 'bg-rose-500/10 border-rose-500 shadow-2xl shadow-rose-500/10 text-white' : 'glass bg-white/5 border-transparent text-slate-500 hover:bg-white/10'}`}
-                    >
-                      <Database size={32} className={!isRealtimeEnabled ? 'text-rose-400' : ''} />
-                      <div>
-                        <span className="text-sm font-black block mb-1">وضع العمل المنفرد (Local)</span>
-                        <span className="text-[10px] opacity-70 leading-relaxed italic block">يتم حفظ البيانات في المتصفح الحالي فقط. مثالي للاستخدام الشخصي أو عند فقدان الإنترنت تماماً.</span>
-                      </div>
-                    </button>
-                    <button 
-                      onClick={() => toggleStorageSource('cloud')}
-                      className={`flex flex-col items-center gap-4 p-8 rounded-[35px] transition-all border-2 text-center ${isRealtimeEnabled ? 'bg-sky-500/10 border-sky-500 shadow-2xl shadow-sky-500/10 text-white' : 'glass bg-white/5 border-transparent text-slate-500 hover:bg-white/10'}`}
-                    >
-                      <Cloud size={32} className={isRealtimeEnabled ? 'text-sky-400' : ''} />
-                      <div>
-                        <span className="text-sm font-black block mb-1">وضع الربط السحابي (Firebase)</span>
-                        <span className="text-[10px] opacity-70 leading-relaxed italic block">مزامنة لحظية بين جميع أجهزة وسيرفرات العيادات (Firebase). يسمح بالعمل الجماعي ومشاركة التقارير بشكل آمن.</span>
-                      </div>
-                    </button>
-                  </div>
-
-                  {isRealtimeEnabled && (
-                    <div className="space-y-6">
-                      <div className="bg-amber-500/10 border border-amber-500/20 p-6 rounded-3xl flex items-start gap-4">
-                        <AlertTriangle className="text-amber-500 shrink-0" size={24} />
-                        <div>
-                          <h4 className="text-amber-400 font-bold text-sm mb-1">ترحيل البيانات المحلية</h4>
-                          <p className="text-xs text-slate-400 leading-relaxed italic">
-                            يمكنك دفع كافة البيانات المخزنة حالياً في المتصفح إلى السحابة. سيتم رفع جميع السجلات (المرضى، الفحوصات، السندات) لضمان عدم ضياع العمل السابق.
-                          </p>
+                    {collectionsList.map(col => (
+                      <div key={col} className="p-4 glass bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 flex items-center justify-between group transition-all">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-slate-500 group-hover:text-sky-400 transition-colors">
+                            <Tag size={14} />
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-white capitalize">{col.replace('_', ' ')}</p>
+                            <p className="text-[9px] text-slate-500 font-bold italic">{isRefreshingStats ? 'جاري التحميل...' : `${dbStats[col] ?? 0} سجل`}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
                           <button 
-                            onClick={handleMigrate}
-                            disabled={isMigrating}
-                            className="mt-6 px-6 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 disabled:opacity-50"
+                            onClick={async () => {
+                              if(confirm(`هل أنت متأكد من مسح كافة البيانات في جدول ${col}؟ لا يمكن التراجع عن هذا الإجراء.`)) {
+                                await dataStore.wipeCollection(col);
+                                refreshDbStats();
+                              }
+                            }}
+                            className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
+                            title="مسح الجدول"
                           >
-                            {isMigrating ? <RefreshCw className="animate-spin" size={14} /> : <RefreshCw size={14} />}
-                            {isMigrating ? migrationStatus : 'ترحيل البيانات إلى السحابة الآن'}
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                </div>
 
-                      <div className="bg-sky-500/10 border border-sky-500/20 p-6 rounded-3xl space-y-4">
-                        <h4 className="text-sky-400 font-bold flex items-center gap-2">
-                           <Database size={18} />
-                           النسخ الاحتياطي والاستعادة
-                        </h4>
-                        <p className="text-sm text-slate-300 leading-relaxed">
-                           احتفظ بنسخة احتياطية من كافة البيانات المحلية الحالية في ملف JSON أو استعادتها لاحقاً.
+                {/* Advanced Operations */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                   <div className="glass p-8 rounded-[40px] border border-white/5 space-y-4">
+                      <h4 className="text-white font-black text-sm flex items-center gap-2">
+                        <Save size={18} className="text-emerald-400" />
+                        الإنشاء الذاتي والبناء
+                      </h4>
+                      <p className="text-[11px] text-slate-500 leading-relaxed font-bold italic">
+                        يقوم النظام بفحص هيكلية قاعدة البيانات وإنشاء كافة الجداول (Collections) غير الموجودة تلقائياً بناءً على الـ Blueprint.
+                      </p>
+                      <button 
+                        onClick={seedDatabase}
+                        disabled={isSeeding}
+                        className="w-full py-4 bg-sky-600/10 text-sky-400 hover:bg-sky-600 hover:text-white border border-sky-500/20 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all mt-4"
+                      >
+                        {isSeeding ? 'جاري البناء...' : 'بناء الجداول وتهيئة البيانات'}
+                      </button>
+                   </div>
+
+                   <div className="glass p-8 rounded-[40px] border border-white/5 space-y-4">
+                      <h4 className="text-white font-black text-sm flex items-center gap-2">
+                        <RefreshCw size={18} className="text-amber-400" />
+                        ترحيل البيانات (Local ➔ Cloud)
+                      </h4>
+                      <p className="text-[11px] text-slate-500 leading-relaxed font-bold italic">
+                        نسخ كافة البيانات من الذاكرة المحلية (LocalStorage) إلى المحرك السحابي النشط حالياً (Firebase/Supabase).
+                      </p>
+                      <button 
+                        onClick={migrateData}
+                        disabled={isMigrating}
+                        className="w-full py-4 bg-amber-600/10 text-amber-500 hover:bg-amber-600 hover:text-white border border-amber-500/20 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all mt-4"
+                      >
+                        {isMigrating ? (migrationStatus || 'جاري الترحيل...') : 'بدء عملية الترحيل السحابي'}
+                      </button>
+                   </div>
+
+                   <div className="glass p-8 rounded-[40px] border border-white/5 space-y-4">
+                      <h4 className="text-white font-black text-sm flex items-center gap-2">
+                        <AlertTriangle size={18} className="text-rose-400" />
+                        تصفير شامل (Factory Reset)
+                      </h4>
+                      <p className="text-[11px] text-slate-500 leading-relaxed font-bold italic">
+                        حذف كافة البيانات من جميع الجداول والعودة لضبط المصنع. يتطلب هذا الإجراء صلاحيات المدير العام الكاملة.
+                      </p>
+                      <button 
+                         onClick={async () => {
+                           if(confirm('تنبيه خطير جداً: سيتم حذف كافة بيانات المنشأة الطبية تماماً. هل أنت متأكد من المضي قدماً؟')) {
+                             const code = prompt('يرجى كتابة كلمة "RESET" للتأكيد:');
+                             if (code === 'RESET') {
+                               setIsRefreshingStats(true);
+                               for(const col of collectionsList) {
+                                  await dataStore.wipeCollection(col);
+                               }
+                               alert('تم تصفير قاعدة البيانات بالكامل.');
+                               refreshDbStats();
+                             }
+                           }
+                         }}
+                         className="w-full py-4 bg-rose-600/10 text-rose-400 hover:bg-rose-600 hover:text-white border border-rose-500/20 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all mt-4"
+                      >
+                        تصفير كافة البيانات
+                      </button>
+                   </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'cloud' && (
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                <div className="glass p-8 rounded-[40px] space-y-8 border border-white/5 overflow-hidden relative">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-sky-500/5 blur-[100px] -mr-32 -mt-32" />
+                  
+                  <div className="flex items-center justify-between relative z-10">
+                    <div className="flex items-center gap-3">
+                      <Cloud className="text-sky-400" size={20} />
+                      <h3 className="text-white font-black italic uppercase tracking-widest text-sm">Cloud Data Management</h3>
+                    </div>
+                    <div className="flex items-center gap-2 px-4 py-1.5 glass bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+                       <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                       <span className="text-[10px] font-black text-emerald-400 uppercase">Live Connection Active</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+                     <div className="p-8 glass bg-white/5 border border-white/5 rounded-[35px] space-y-4">
+                        <Monitor className="text-sky-400" size={32} />
+                        <h4 className="text-white font-black text-sm">مزامنة الأجهزة المتعددة</h4>
+                        <p className="text-[10px] text-slate-500 leading-relaxed font-bold italic">
+                          يسمح هذا الخيار بمشاركة البيانات فورياً بين جميع مستخدمي النظام (أطباء، تمريض، استقبال) عبر خوادم Google Cloud.
                         </p>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="flex items-center justify-between pt-4">
+                          <span className="text-xs font-black text-white">حالة الربط السحابي</span>
+                           <button 
+                            onClick={() => handleProviderChange(dbProvider === 'firebase' ? 'local' : 'firebase')}
+                            className={`w-14 h-7 rounded-full transition-all relative ${dbProvider === 'firebase' ? 'bg-sky-500 shadow-lg shadow-sky-500/20' : 'bg-slate-800 border border-white/10'}`}
+                          >
+                            <div className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-xl transition-all ${dbProvider === 'firebase' ? 'left-1' : 'left-8'}`} />
+                          </button>
+                        </div>
+                     </div>
+
+                     <div className="p-8 glass bg-white/5 border border-white/5 rounded-[35px] space-y-4">
+                        <Database className="text-amber-400" size={32} />
+                        <h4 className="text-white font-black text-sm">النسخ الاحتياطي اليدوي</h4>
+                        <p className="text-[10px] text-slate-500 leading-relaxed font-bold italic">
+                          يمكنك تحميل نسخة كاملة من بياناتك المحلية كملف JSON لضمان أمان البيانات في حال تعذر الوصول للسحابة.
+                        </p>
+                        <div className="grid grid-cols-2 gap-3 pt-4">
                            <button 
                              onClick={async () => {
                                const data = await dataStore.exportAllLocalData();
@@ -316,10 +579,8 @@ export default function SettingsPage() {
                                a.download = `medcenter_backup_${new Date().toISOString().split('T')[0]}.json`;
                                a.click();
                              }}
-                             className="py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-all border border-white/5"
-                           >
-                              تصدير نسخة احتياطية
-                           </button>
+                             className="py-3 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl text-[10px] font-black transition-all"
+                           >تصدير JSON</button>
                            <button 
                              onClick={() => {
                                const input = document.createElement('input');
@@ -333,7 +594,7 @@ export default function SettingsPage() {
                                    try {
                                      const data = JSON.parse(event.target.result);
                                      await dataStore.importAllLocalData(data);
-                                     alert('تم استعادة البيانات بنجاح! سيتم إعادة تحميل الصفحة.');
+                                     alert('تم استعادة البيانات بنجاح! سيتم إعادة تحميل الصفحة لتطبيق التغييرات.');
                                      window.location.reload();
                                    } catch (err) {
                                      alert('فشل في استعادة البيانات: ملف غير صالح.');
@@ -343,46 +604,31 @@ export default function SettingsPage() {
                                };
                                input.click();
                              }}
-                             className="py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all"
-                           >
-                              استيراد نسخة احتياطية
-                           </button>
+                             className="py-3 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl text-[10px] font-black transition-all"
+                           >استيراد JSON</button>
                         </div>
-                    </div>
+                     </div>
+                  </div>
 
-                    <div className="bg-sky-500/10 border border-sky-500/20 p-6 rounded-3xl space-y-4">
-                        <h4 className="text-sky-400 font-bold flex items-center gap-2">
-                           <Database size={18} />
-                           زرع البيانات الأولية المهنية
-                        </h4>
-                        <p className="text-sm text-slate-300 leading-relaxed">
-                          تهيئة قاعدة البيانات السحابية بمجموعة كاملة من البيانات المرجعية (أدوية، خدمات، فحوصات، أطباء).
-                        </p>
-                        <button 
-                          onClick={seedDatabase}
-                          disabled={isSeeding}
-                          className="w-full py-4 bg-sky-600 hover:bg-sky-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-sky-600/20 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-                        >
-                          {isSeeding ? (
-                            <>
-                              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                              <span>جاري المزامنة...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Database size={20} />
-                              <span>تزويد السحابة بالبيانات المرجعية</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  <div className="p-8 glass bg-sky-500/5 border border-sky-500/20 rounded-[35px] relative z-10">
+                     <div className="flex items-start gap-5">
+                        <div className="w-14 h-14 rounded-2xl bg-sky-500/10 flex items-center justify-center text-sky-400 shrink-0">
+                           <Cloud size={28} />
+                        </div>
+                        <div>
+                           <h4 className="text-white font-black text-sm mb-2">ربط الجوال والعيادات عبر QR</h4>
+                           <p className="text-[11px] text-slate-500 leading-relaxed font-bold italic mb-6">
+                              قم بمسح رمز الاستجابة السريعة هذا لربط تطبيق المساعد الطبي على هاتفك بهذا السيرفر مباشرة. سيتم توجيه هاتفك لاستخدام نفس قاعدة البيانات والمزامنة اللحظية.
+                           </p>
+                           <button className="px-8 py-3 bg-sky-600 text-white rounded-xl text-[10px] font-black shadow-lg shadow-sky-600/20 hover:bg-sky-500 transition-all uppercase tracking-[3px]">توليد رمز ربط الأجهزة (Device Link)</button>
+                        </div>
+                     </div>
+                  </div>
                 </div>
               </motion.div>
             )}
 
-            {activeTab === 'general' ? (
+            {activeTab === 'general' && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                 {/* General Config */}
                 <div className="glass p-8 rounded-[40px] space-y-6 border border-white/5">
@@ -509,7 +755,9 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </motion.div>
-            ) : (
+            )}
+
+            {activeTab === 'dynamic_fields' && (
               <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
                 <div className="glass p-8 rounded-[40px] border border-white/5">
                   <div className="flex items-center justify-between mb-10">
@@ -530,8 +778,8 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {dynamicFields.length > 0 ? dynamicFields.map(field => (
-                      <div key={field.id} className="p-5 glass bg-white/5 border border-white/5 rounded-3xl flex items-center justify-between group hover:bg-white/10 transition-all">
+                    {dynamicFields.length > 0 ? dynamicFields.map((field) => (
+                      <div key={field.id} className="p-5 glass bg-white/5 border border-white/5 rounded-3xl flex items-center justify-between group hover:bg-white/10 transition-all" id={field.id}>
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-xl glass bg-indigo-500/10 flex items-center justify-center text-indigo-400">
                             {field.type === 'text' && <Type size={18} />}
@@ -553,7 +801,7 @@ export default function SettingsPage() {
                         </button>
                       </div>
                     )) : (
-                      <div className="col-span-full py-20 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-[40px] opacity-30">
+                      <div className="col-span-full py-20 flex flex-col items-center justify-center border-2 border-dashed border-white/5 rounded-[40px] opacity-30" id="empty-fields-state">
                         <Tag size={48} className="mb-4 text-slate-500" />
                         <p className="text-xs font-black uppercase tracking-[5px]">No Custom Fields Defined</p>
                       </div>

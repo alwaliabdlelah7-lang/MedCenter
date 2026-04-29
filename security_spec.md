@@ -1,71 +1,24 @@
-# Security Specification: MedCenter HIS
+# Security Specification - User Management & Auditing
 
 ## Data Invariants
-1. A user cannot change their own role or permissions.
-2. Only admins can delete medical records.
-3. Doctors and Nurses can create/update clinical data (prescriptions, visits, lab/rad orders).
-4. Pharmacists can update pharmacy stock and prescription status.
-5. Lab Technicians can update lab test results.
-6. Receptionists can create patients, appointments, and receipts but cannot access detailed clinical visits or prescriptions.
+1. **Admin Exclusive**: Only users with the `admin` role can create or modify other user profiles.
+2. **Self-Access**: Any authenticated user can read their own profile.
+3. **Immutability of UID**: Once a user profile is created, the `id` (linked to UID) must never change.
+4. **Audit Integrity**: Audit logs are write-only for authenticated users (append only) and can only be read by admins.
 
-## The Dirty Dozen Payloads
+## The "Dirty Dozen" Payloads (Deny Cases)
+1. **Identity Spoofing**: A `doctor` tries to update their role to `admin`.
+2. **Elevated Privilege Injection**: A `pharmacist` tries to add `'all'` permission to their own profile.
+3. **Shadow Field Injection**: Adding a `isSuperAdmin` field to a user profile.
+4. **ID Poisoning**: Creating a user with an ID that is a 2KB junk string.
+5. **PII Leak**: A `nurse` trying to list all users' private emails without admin privilege.
+6. **Self-Deletion**: A system `admin` trying to delete themselves (this is more of a logic check, but rules can block it).
+7. **Stateless Update**: Updating a user's `lastLogin` without owning the document or being an admin.
+8. **Malicious Log**: A non-authenticated user trying to write to `audit_logs`.
+9. **Log Deletion**: An `admin` trying to delete an audit log to hide tracks.
+10. **Role Escalation via Creation**: A `receptionist` calling `setDoc` to create an `admin` user.
+11. **Email Poisoning**: Updating a user email to a string of 5000 characters.
+12. **Status Bypass**: Changing `active` status to `'super_active'` (invalid enum).
 
-### 1. Privilege Escalation (User context)
-**Target:** `/users/my_id`
-**Payload:** `{"role": "admin", "permissions": ["all"]}`
-**Expected:** PERMISSION_DENIED (User cannot update their own role/permissions)
-
-### 2. Identity Spoofing (Creating user)
-**Target:** `/users/attacker_id`
-**Payload:** `{"id": "attacker_id", "username": "hack", "role": "admin", "permissions": ["all"], "status": "active"}`
-**Expected:** PERMISSION_DENIED (Only admins can create users)
-
-### 3. Orphaned Patient Record (Missing required fields)
-**Target:** `/patients/p-new`
-**Payload:** `{"name": "Incomplete"}`
-**Expected:** PERMISSION_DENIED (Missing `fileNumber`)
-
-### 4. Shadow Field Injection
-**Target:** `/doctors/d-1`
-**Payload:** `{"name": "Dr. Hack", "specialization": "Surgery", "departmentId": "dept-1", "is_super_admin": true}`
-**Expected:** PERMISSION_DENIED (Validation helper blocks extra keys)
-
-### 5. Accessing Clinical Data as Receptionist
-**Target:** `/clinical_visits/v-1`
-**Action:** `get`
-**Expected:** PERMISSION_DENIED (Receptionist role lacks `clinical` permission)
-
-### 6. Unauthorized Stock Reduction (Patient context)
-**Target:** `/pharmacy_items/item-1`
-**Payload:** `{"quantity": 0}`
-**Expected:** PERMISSION_DENIED (Only pharmacists/admins can update pharmacy items)
-
-### 7. Spoofing Creator ID
-**Target:** `/appointments/a-new`
-**Payload:** `{"patientId": "p-1", "doctorId": "d-1", "creatorId": "admin_id"}` (Requesting user ID is `user_id`)
-**Expected:** PERMISSION_DENIED (Creator ID must match `request.auth.uid`)
-
-### 8. Invalid ID Poisoning
-**Target:** `/patients/very-long-id-that-exceeds-128-characters-....................................................................................`
-**Action:** `create`
-**Expected:** PERMISSION_DENIED (`isValidId` check)
-
-### 9. Illegal State Transition (Bypassing status)
-**Target:** `/lab_tests/l-1`
-**Payload:** `{"status": "completed", "result": "Fake Result"}` (Current user is NOT lab_tech)
-**Expected:** PERMISSION_DENIED (Only lab_tech can update results)
-
-### 10. Temporal Integrity Violation (Future createdAt)
-**Target:** `/patients/p-10`
-**Payload:** `{"id": "p-10", "name": "Test", "fileNumber": "F10", "createdAt": "2099-01-01"}`
-**Expected:** PERMISSION_DENIED (Must use server timestamp)
-
-### 11. Overwriting Immutable ID
-**Target:** `/appointments/a-1`
-**Payload:** `{"id": "a-new-id"}`
-**Expected:** PERMISSION_DENIED (ID is immutable)
-
-### 12. PII Leak via Search
-**Target:** `/users`
-**Action:** `list` (As non-admin)
-**Expected:** PERMISSION_DENIED (Global user list is restricted)
+## Test Runner (Conceptual)
+All tests must verify `PERMISSION_DENIED` for cases where a non-admin touches another user's profile or where anyone tries to modify audit logs.

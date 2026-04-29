@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Trigger seeding if database is empty (since we are now an authorized admin)
             if (isAdminEmail) {
               const { dataStore } = await import('../services/dataService');
-              await dataStore.autoSeedIfNeeded();
+              await dataStore.autoSeed();
             }
           }
         } catch (error) {

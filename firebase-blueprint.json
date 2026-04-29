@@ -1,316 +1,137 @@
 {
   "entities": {
-    "doctor": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile data stored in Firestore, linked to Firebase Auth UID.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "doctor", "nurse", "pharmacist", "lab_tech", "receptionist"] },
+        "permissions": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "lastLogin": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "username", "name", "role", "permissions", "status"]
+    },
+    "Patient": {
+      "title": "Patient",
+      "description": "Patient records.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "age": { "type": "number" },
+        "gender": { "type": "string", "enum": ["male", "female"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Doctor": {
       "title": "Doctor",
-      "description": "Medical professional staff member",
+      "description": "Medical staff: Doctors.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
         "specialization": { "type": "string" },
-        "phone": { "type": "string" },
-        "departmentId": { "type": "string" },
-        "percentage": { "type": "integer" }
-      },
-      "required": ["id", "name", "specialization", "departmentId"]
-    },
-    "nurse": {
-      "title": "Nurse",
-      "description": "Nursing staff member",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "phone": { "type": "string" },
         "departmentId": { "type": "string" }
-      },
-      "required": ["id", "name", "departmentId"]
+      }
     },
-    "department": {
-      "title": "Department",
-      "description": "Hospital department (e.g., Cardiology)",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "description": { "type": "string" }
-      },
-      "required": ["id", "name"]
-    },
-    "clinic": {
-      "title": "Clinic",
-      "description": "Outpatient clinic within a department",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "departmentId": { "type": "string" }
-      },
-      "required": ["id", "name", "departmentId"]
-    },
-    "medical_service": {
-      "title": "Medical Service",
-      "description": "Consultation or medical service",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "price": { "type": "number" },
-        "departmentId": { "type": "string" }
-      },
-      "required": ["id", "name", "price"]
-    },
-    "master_medicine": {
-      "title": "Master Medicine",
-      "description": "Medicine catalog entry",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "tradeName": { "type": "string" },
-        "scientificName": { "type": "string" },
-        "category": { "type": "string" },
-        "price": { "type": "number" }
-      },
-      "required": ["name", "scientificName"]
-    },
-    "master_lab_test": {
-      "title": "Master Lab Test",
-      "description": "Laboratory test catalog entry",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "price": { "type": "number" }
-      },
-      "required": ["name", "price"]
-    },
-    "operation": {
-      "title": "Surgical Operation",
-      "description": "Surgical procedure with associated cost",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "cost": { "type": "number" },
-        "departmentId": { "type": "string" }
-      },
-      "required": ["id", "name", "cost"]
-    },
-    "companion": {
-      "title": "Companion",
-      "description": "Person accompanying an inpatient",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "idNumber": { "type": "string" },
-        "phone": { "type": "string" }
-      },
-      "required": ["id", "name"]
-    },
-    "inpatient": {
-      "title": "Inpatient Admission",
-      "description": "Patient admitted for hospital stay",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "patientName": { "type": "string" },
-        "roomNumber": { "type": "string" },
-        "bedNumber": { "type": "string" },
-        "department": { "type": "string" },
-        "admissionDate": { "type": "string" },
-        "status": { "type": "string", "enum": ["active", "discharged"] }
-      },
-      "required": ["id", "patientName", "roomNumber", "bedNumber", "status"]
-    },
-    "receipt": {
-      "title": "Consultation Receipt",
-      "description": "Financial transaction for a medical visit",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "patientName": { "type": "string" },
-        "date": { "type": "string" },
-        "serviceId": { "type": "string" },
-        "doctorId": { "type": "string" },
-        "amount": { "type": "number" },
-        "paymentMethod": { "type": "string", "enum": ["cash", "card", "insurance"] }
-      },
-      "required": ["id", "patientName", "date", "serviceId", "doctorId", "amount", "paymentMethod"]
-    },
-    "patient": {
-      "title": "Patient",
-      "description": "Electronic Medical Record (EMR) for a patient",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "fileNumber": { "type": "string" },
-        "name": { "type": "string" },
-        "dob": { "type": "string" },
-        "bloodGroup": { "type": "string" },
-        "phone": { "type": "string" },
-        "medicalHistory": { "type": "string" }
-      },
-      "required": ["id", "name", "fileNumber"]
-    },
-    "appointment": {
+    "Appointment": {
       "title": "Appointment",
-      "description": "Scheduled medical visit",
+      "description": "Patient appointments.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "patientId": { "type": "string" },
         "doctorId": { "type": "string" },
         "date": { "type": "string" },
-        "time": { "type": "string" },
-        "status": { "type": "string", "enum": ["scheduled", "confirmed", "cancelled", "completed"] }
-      },
-      "required": ["id", "patientId", "doctorId", "date", "time", "status"]
+        "status": { "type": "string", "enum": ["scheduled", "waiting", "in_consultation", "completed", "cancelled", "return"] }
+      }
     },
-    "pharmacy_item": {
+    "PharmacyItem": {
       "title": "Pharmacy Item",
-      "description": "Medicine or supply in the pharmacy inventory",
+      "description": "Medicine stock item.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "brandName": { "type": "string" },
-        "genericName": { "type": "string" },
-        "quantity": { "type": "integer" },
-        "expiryDate": { "type": "string" },
+        "name": { "type": "string" },
+        "stock": { "type": "number" },
         "price": { "type": "number" }
-      },
-      "required": ["id", "brandName", "quantity", "price"]
+      }
     },
-    "prescription": {
-      "title": "Prescription",
-      "description": "Doctor's medication order",
+    "Receipt": {
+      "title": "Receipt",
+      "description": "Billing receipt.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "patientId": { "type": "string" },
-        "doctorId": { "type": "string" },
-        "status": { "type": "string", "enum": ["active", "dispensed", "void"] }
-      },
-      "required": ["id", "patientId", "doctorId", "status"]
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["paid", "pending", "returned"] }
+      }
     },
-    "lab_test": {
-      "title": "Lab Test",
-      "description": "Laboratory investigation order and result",
+    "AuditLog": {
+      "title": "System Audit Log",
+      "description": "Records of system actions for security and tracking.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "patientId": { "type": "string" },
-        "status": { "type": "string", "enum": ["pending", "completed"] }
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "patientId", "status"]
-    },
-    "clinical_visit": {
-      "title": "Clinical Visit",
-      "description": "Record of a medical consultation",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "patientId": { "type": "string" },
-        "doctorId": { "type": "string" }
-      },
-      "required": ["id", "patientId", "doctorId"]
-    },
-    "dynamic_field": {
-      "title": "Dynamic Field",
-      "description": "Custom field definition for patients",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "type": { "type": "string", "enum": ["text", "number", "date", "select"] },
-        "required": { "type": "boolean" }
-      },
-      "required": ["id", "name", "type"]
-    },
-    "radiology_scan": {
-      "title": "Radiology Scan",
-      "description": "Imaging order and result",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "patientId": { "type": "string" },
-        "status": { "type": "string", "enum": ["pending", "completed"] }
-      },
-      "required": ["id", "patientId", "status"]
-    },
-    "fhir_patient": {
-      "title": "FHIR Patient",
-      "description": "FHIR R4 Compliant Patient Resource",
-      "type": "object",
-      "properties": {
-        "resourceType": { "type": "string", "enum": ["Patient"] },
-        "id": { "type": "string" },
-        "active": { "type": "boolean" },
-        "name": { "type": "array", "items": { "type": "object" } },
-        "telecom": { "type": "array", "items": { "type": "object" } },
-        "gender": { "type": "string", "enum": ["male", "female", "other", "unknown"] },
-        "birthDate": { "type": "string", "format": "date" }
-      },
-      "required": ["resourceType", "id", "name"]
-    },
-    "fhir_observation": {
-      "title": "FHIR Observation",
-      "description": "FHIR R4 Compliant Observation Resource (Vitals, Labs)",
-      "type": "object",
-      "properties": {
-        "resourceType": { "type": "string", "enum": ["Observation"] },
-        "id": { "type": "string" },
-        "status": { "type": "string" },
-        "category": { "type": "array", "items": { "type": "object" } },
-        "code": { "type": "object" },
-        "subject": { "type": "object" },
-        "effectiveDateTime": { "type": "string", "format": "date-time" },
-        "valueQuantity": { "type": "object" }
-      },
-      "required": ["resourceType", "id", "status", "code", "subject"]
-    },
-    "app_user": {
-      "title": "App User",
-      "description": "System user with role-based access",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "email": { "type": "string" },
-        "name": { "type": "string" },
-        "username": { "type": "string" },
-        "role": { "type": "string", "enum": ["admin", "doctor", "nurse", "receptionist", "pharmacist", "lab_tech"] },
-        "permissions": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "status": { "type": "string", "enum": ["active", "inactive"] }
-      },
-      "required": ["id", "username", "role", "permissions", "status"]
+      "required": ["id", "userId", "action", "timestamp"]
     }
   },
   "firestore": {
-    "/doctors/{doctorId}": { "schema": "doctor", "description": "Global list of doctors" },
-    "/nurses/{nurseId}": { "schema": "nurse", "description": "Global list of nurses" },
-    "/departments/{departmentId}": { "schema": "department", "description": "Hospital departments" },
-    "/clinics/{clinicId}": { "schema": "clinic", "description": "Hospital clinics" },
-    "/services/{serviceId}": { "schema": "medical_service", "description": "Medical services available" },
-    "/master_medicines/{id}": { "schema": "master_medicine", "description": "Global medicine catalog" },
-    "/master_lab_tests/{id}": { "schema": "master_lab_test", "description": "Global lab test catalog" },
-    "/operations/{operationId}": { "schema": "operation", "description": "Surgical operations" },
-    "/companions/{companionId}": { "schema": "companion", "description": "Registered companions" },
-    "/inpatients/{inpatientId}": { "schema": "inpatient", "description": "Current and past inpatient admissions" },
-    "/receipts/{receiptId}": { "schema": "receipt", "description": "Patient transaction receipts" },
-    "/patients/{patientId}": { "schema": "patient", "description": "Patient medical records" },
-    "/appointments/{appointmentId}": { "schema": "appointment", "description": "Patient appointments" },
-    "/pharmacy_items/{itemId}": { "schema": "pharmacy_item", "description": "Pharmacy inventory" },
-    "/prescriptions/{prescriptionId}": { "schema": "prescription", "description": "Patient prescriptions" },
-    "/lab_tests/{testId}": { "schema": "lab_test", "description": "Laboratory orders and results" },
-    "/radiology_scans/{scanId}": { "schema": "radiology_scan", "description": "Radiology orders and results" },
-    "/dynamic_fields/{fieldId}": { "schema": "dynamic_field", "description": "Custom patient field definitions" },
-    "/clinical_visits/{visitId}": { "schema": "clinical_visit", "description": "Medical consultation records" },
-    "/users/{userId}": { "schema": "app_user", "description": "System users and their roles" },
-    "/fhir_patients/{id}": { "schema": "fhir_patient", "description": "FHIR Patient resources" },
-    "/fhir_observations/{id}": { "schema": "fhir_observation", "description": "FHIR Observation resources" }
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles by UID"
+    },
+    "audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "System-wide activity logs"
+    },
+    "patients/{patientId}": {
+      "schema": "Patient",
+      "description": "Patient records"
+    },
+    "doctors/{doctorId}": {
+      "schema": "Doctor",
+      "description": "Doctor profiles"
+    },
+    "appointments/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "Medical appointments"
+    },
+    "pharmacy_items/{itemId}": {
+      "schema": "PharmacyItem",
+      "description": "Inventory of medicines"
+    },
+    "receipts/{receiptId}": {
+      "schema": "Receipt",
+      "description": "Financial receipts"
+    },
+    "departments/{deptId}": { "schema": "object", "description": "Hospital departments" },
+    "clinics/{clinicId}": { "schema": "object", "description": "Medical clinics" },
+    "services/{serviceId}": { "schema": "object", "description": "Hospital services" },
+    "lab_tests/{testId}": { "schema": "object", "description": "Laboratory tests and results" },
+    "prescriptions/{prescId}": { "schema": "object", "description": "Medical prescriptions" },
+    "clinical_visits/{visitId}": { "schema": "object", "description": "Clinical visit records" },
+    "nurses/{nurseId}": { "schema": "object", "description": "Nurse staff" },
+    "master_lab_tests/{itemId}": { "schema": "object", "description": "Master list of lab tests" },
+    "master_medicines/{itemId}": { "schema": "object", "description": "Master list of medicines" },
+    "pharmacy_sales/{saleId}": { "schema": "object", "description": "Pharmacy sales records" },
+    "dynamic_fields/{fieldId}": { "schema": "object", "description": "Custom dynamic form fields" },
+    "radiology_scans/{scanId}": { "schema": "object", "description": "Radiology scan records and results" },
+    "operations/{opId}": { "schema": "object", "description": "Surgical operation records" },
+    "inpatients/{patientId}": { "schema": "object", "description": "Inpatient admission records" }
   }
 }
