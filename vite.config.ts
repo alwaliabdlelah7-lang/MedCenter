@@ -23,7 +23,8 @@ export default defineConfig(({mode}) => {
       host: '0.0.0.0',
       port: 5173,
       allowedHosts: true,
-      hmr: process.env.DISABLE_HMR !== 'true',
+      // HMR WebSocket doesn't work through Replit's proxy — disable to prevent errors
+      hmr: false,
     },
   };
 });
