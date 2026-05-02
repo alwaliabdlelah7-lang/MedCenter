@@ -11,7 +11,7 @@
     "@tootallnate/once": "^3.0.1"
   },
   "scripts": {
-    "dev": "fuser -k 5000/tcp 2>/dev/null; tsx server.ts",
+    "dev": "tsx server.ts",
     "build": "vite build",
     "build:web": "vite build",
     "build:android": "vite build && npx cap sync android && npx cap open android",
