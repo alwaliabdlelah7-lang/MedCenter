@@ -12,7 +12,7 @@ export type StorageProvider = 'local' | 'firebase' | 'supabase';
 
 class DataService {
   private static instance: DataService;
-  private provider: StorageProvider = (localStorage.getItem('db_provider') as StorageProvider) || 'firebase';
+  private provider: StorageProvider = (localStorage.getItem('db_provider') as StorageProvider) || 'local';
   private listeners: (() => void)[] = [];
   
   private constructor() {}
@@ -351,12 +351,18 @@ class DataService {
         doctors: seedData.INITIAL_DOCTORS || [],
         patients: seedData.INITIAL_PATIENTS || [],
         appointments: seedData.INITIAL_APPOINTMENTS || [],
-        services: (seedData.YEMEN_SERVICES || []).map((s: any, i: number) => ({ id: `svc-${i}`, ...s })),
-        pharmacy_items: (seedData.YEMEN_MEDICINES || []).map((m: any, i: number) => ({ id: `pi-${i}`, ...m })),
-        master_lab_tests: (seedData.YEMEN_LAB_TESTS || []).map((t: any, i: number) => ({ id: `mlt-${i}`, ...t })),
-        master_medicines: (seedData.YEMEN_MEDICINES || []).map((m: any, i: number) => ({ id: `mm-${i}`, ...m })),
+        receipts: seedData.INITIAL_RECEIPTS || [],
+        lab_tests: seedData.INITIAL_LAB_TESTS || [],
+        radiology_scans: seedData.INITIAL_RADIOLOGY_SCANS || [],
+        clinical_visits: seedData.INITIAL_CLINICAL_VISITS || [],
+        prescriptions: seedData.INITIAL_PRESCRIPTIONS || [],
+        inpatients: seedData.INITIAL_INPATIENTS || [],
         nurses: seedData.INITIAL_NURSES || [],
         operations: seedData.INITIAL_OPERATIONS || [],
+        services: (seedData.YEMEN_SERVICES || []).map((s: any) => ({ departmentId: 'dept-1', revenueAccountId: 'rev-1', ...s })),
+        pharmacy_items: (seedData.YEMEN_MEDICINES || []).map((m: any, i: number) => ({ id: `pi-${i}`, stock: 100, expiryDate: '2027-12-31', ...m })),
+        master_lab_tests: (seedData.YEMEN_LAB_TESTS || []),
+        master_medicines: (seedData.YEMEN_MEDICINES || []),
       };
 
       for (const [col, items] of Object.entries(seedMap)) {
