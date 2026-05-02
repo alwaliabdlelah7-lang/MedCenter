@@ -12,7 +12,7 @@ export type StorageProvider = 'local' | 'firebase' | 'supabase';
 
 class DataService {
   private static instance: DataService;
-  private provider: StorageProvider = (localStorage.getItem('db_provider') as StorageProvider) || 'local';
+  private provider: StorageProvider = (localStorage.getItem('db_provider') as StorageProvider) || 'firebase';
   private listeners: (() => void)[] = [];
   
   private constructor() {}
@@ -337,9 +337,10 @@ class DataService {
 
   /**
    * Automatically seeds the database with initial reference data.
-   * Works for both cloud (Firebase/Supabase) and local (localStorage) providers.
    */
   public async autoSeed(): Promise<void> {
+    if (!this.isCloudEnabled()) return;
+
     try {
       console.log(`[DataService] Starting auto-seed for ${this.provider}...`);
       const seedData = await import('../data/seedData');
@@ -351,51 +352,23 @@ class DataService {
         doctors: seedData.INITIAL_DOCTORS || [],
         patients: seedData.INITIAL_PATIENTS || [],
         appointments: seedData.INITIAL_APPOINTMENTS || [],
-        receipts: seedData.INITIAL_RECEIPTS || [],
-        lab_tests: seedData.INITIAL_LAB_TESTS || [],
-        radiology_scans: seedData.INITIAL_RADIOLOGY_SCANS || [],
-        clinical_visits: seedData.INITIAL_CLINICAL_VISITS || [],
-        prescriptions: seedData.INITIAL_PRESCRIPTIONS || [],
-        inpatients: seedData.INITIAL_INPATIENTS || [],
-        nurses: seedData.INITIAL_NURSES || [],
-        operations: seedData.INITIAL_OPERATIONS || [],
-        services: (seedData.YEMEN_SERVICES || []).map((s: any) => ({ departmentId: 'dept-1', revenueAccountId: 'rev-1', ...s })),
-        pharmacy_items: (seedData.YEMEN_MEDICINES || []).map((m: any, i: number) => ({ id: `pi-${i}`, stock: 100, expiryDate: '2027-12-31', ...m })),
-        master_lab_tests: (seedData.YEMEN_LAB_TESTS || []),
-        master_medicines: (seedData.YEMEN_MEDICINES || []),
+        services: seedData.YEMEN_SERVICES || [],
+        pharmacy_items: (seedData.YEMEN_MEDICINES || []).map((m: any, i: number) => ({ id: `pi-${i}`, ...m })),
+        lab_tests: (seedData.YEMEN_LAB_TESTS || []).map((t: any, i: number) => ({ id: `lt-${i}`, ...t }))
       };
 
       for (const [col, items] of Object.entries(seedMap)) {
-        // For local: only seed if collection is empty
-        if (this.provider === 'local') {
-          const existing = this.getLocalAll(col);
-          if (existing.length > 0) continue;
-          this.saveLocalAll(col, items);
-          console.log(`[DataService] Local seeded ${col} (${items.length} items)`);
-        } else {
-          console.log(`[DataService] Cloud seeding ${col} (${items.length} items)...`);
-          for (const item of items) {
-            await this.addItem(col, item);
-          }
+        console.log(`[DataService] Seeding ${col} (${items.length} items)...`);
+        for (const item of items) {
+          await this.addItem(col, item);
         }
       }
 
-      localStorage.setItem('hospital_seeded', 'true');
       console.log(`[DataService] Auto-seed completed successfully for ${this.provider}.`);
     } catch (error: any) {
       console.error('[DataService] Auto-seed unexpected error:', error);
+      throw error;
     }
-  }
-
-  /**
-   * Seeds local storage once on first run. Call this at app startup.
-   */
-  public seedLocalIfEmpty(): void {
-    if (this.provider !== 'local') return;
-    const alreadySeeded = localStorage.getItem('hospital_seeded');
-    if (alreadySeeded) return;
-    // Trigger async seed without blocking
-    this.autoSeed().catch(console.error);
   }
 
   private getLocalAll<T>(key: string): T[] {

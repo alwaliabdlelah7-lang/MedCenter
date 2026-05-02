@@ -20,11 +20,9 @@ export default defineConfig(({mode}) => {
       },
     },
     server: {
-      host: '0.0.0.0',
-      port: 5173,
-      allowedHosts: true,
-      // HMR WebSocket doesn't work through Replit's proxy — disable to prevent errors
-      hmr: false,
+      // HMR is disabled in AI Studio via DISABLE_HMR env var.
+      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
+      hmr: process.env.DISABLE_HMR !== 'true',
     },
   };
 });

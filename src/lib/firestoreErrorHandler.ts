@@ -26,19 +26,15 @@ export interface FirestoreErrorInfo {
   }
 }
 
-/**
- * Logs a Firestore error for diagnostics.
- * Does NOT throw — caller must handle fallback logic.
- */
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
-      userId: auth.currentUser?.uid ?? null,
-      email: auth.currentUser?.email ?? null,
-      emailVerified: auth.currentUser?.emailVerified ?? null,
-      isAnonymous: auth.currentUser?.isAnonymous ?? null,
-      tenantId: auth.currentUser?.tenantId ?? null,
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
       providerInfo: auth.currentUser?.providerData?.map(provider => ({
         providerId: provider.providerId,
         email: provider.email,
@@ -46,13 +42,15 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     },
     operationType,
     path
-  };
-
-  console.warn('[Firestore] Permission error — falling back to localStorage:', `${operationType} ${path}`);
-
+  }
+  
+  // Log the specific error for diagnostics
+  console.error('Firestore Error: ', JSON.stringify(errInfo, null, 2));
+  
+  // Check for common connectivity errors to provide better user feedback
   if (errInfo.error.includes('Could not reach Cloud Firestore backend') || errInfo.error.includes('unavailable')) {
-    console.warn('[Firestore] Backend unreachable — check network or experimentalForceLongPolling config.');
+     console.warn('[Firestore] Backend unreachable. Check if experimentalForceLongPolling is enabled and databaseId is correct.');
   }
 
-  // Do NOT throw — let callers use localStorage fallback
+  throw new Error(JSON.stringify(errInfo));
 }
