@@ -6,8 +6,12 @@
   "author": "Alwali Abdlelah",
   "type": "module",
   "main": "electron-main.cjs",
+  "overrides": {
+    "uuid": "^14.0.0",
+    "@tootallnate/once": "^3.0.1"
+  },
   "scripts": {
-    "dev": "tsx server.ts",
+    "dev": "fuser -k 5000/tcp 2>/dev/null; tsx server.ts",
     "build": "vite build",
     "build:web": "vite build",
     "build:android": "vite build && npx cap sync android && npx cap open android",
