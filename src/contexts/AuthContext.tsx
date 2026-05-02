@@ -162,19 +162,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (firebaseError: any) {
       console.warn("Firebase Auth login failed, checking legacy admin:", firebaseError.message);
       
-      // 2. Legacy admin fallback (only if Firebase Auth fails and it matches the specific hardcoded credentials)
-      if (username === 'admin' && (!password || password === '123')) {
-         const adminData: User = {
-           id: 'u-1',
-           username: 'admin',
-           name: 'System Admin (Legacy)',
-           role: 'admin',
-           permissions: ['all' as Permission],
-           status: 'active'
-         };
-         setUser(adminData);
-         localStorage.setItem('hospital_current_user', JSON.stringify(adminData));
-         return true;
+      // 2. Legacy admin fallback (admin/123) — works fully offline
+      const localUsers: any[] = (() => {
+        try { return JSON.parse(localStorage.getItem('hospital_users') || '[]'); } catch { return []; }
+      })();
+      const localMatch = localUsers.find((u: any) =>
+        (u.username === username || u.email === username) && (u.password === password || (!password && u.password === '123'))
+      );
+      if (localMatch || (username === 'admin' && (!password || password === '123'))) {
+        const adminData: User = localMatch ? {
+          id: localMatch.id,
+          email: localMatch.email,
+          username: localMatch.username,
+          name: localMatch.name,
+          role: localMatch.role,
+          permissions: localMatch.permissions,
+          status: 'active',
+        } : {
+          id: 'u-1',
+          username: 'admin',
+          name: 'مدير النظام',
+          role: 'admin',
+          permissions: ['all' as Permission],
+          status: 'active',
+        };
+        setUser(adminData);
+        localStorage.setItem('hospital_current_user', JSON.stringify(adminData));
+        // Switch to local provider so all data reads use seeded localStorage
+        const { dataStore } = await import('../services/dataService');
+        if (dataStore.getProvider() !== 'local') {
+          dataStore.setProvider('local');
+        }
+        dataStore.seedLocalIfEmpty();
+        return true;
       }
       
       // If we are here, it's a real failure
