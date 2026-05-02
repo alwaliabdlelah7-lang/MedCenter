@@ -1,9 +1,12 @@
-import type { CapacitorConfig } from '@capacitor/cli';
+import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.alwali.medcenter',
+  appId: 'com.medcenter.his',
   appName: 'MedCenter HIS',
-  webDir: 'dist'
+  webDir: 'dist',
+  server: {
+    androidScheme: 'https'
+  }
 };
 
 export default config;
