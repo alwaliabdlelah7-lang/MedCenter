@@ -74,6 +74,11 @@ const PlaceholderPage = ({ title }: { title: string }) => (
 );
 
 export default function App() {
+  // Seed local data on first run (no-op if already seeded or cloud mode)
+  React.useEffect(() => {
+    dataStore.seedLocalIfEmpty();
+  }, []);
+
   return (
     <LanguageProvider>
       <AuthProvider>

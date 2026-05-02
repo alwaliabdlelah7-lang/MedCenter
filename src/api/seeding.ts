@@ -14,7 +14,7 @@ export async function performSeeding(db: any) {
       YEMEN_SERVICES,
       YEMEN_LAB_TESTS,
       YEMEN_MEDICINES
-    } = await import("../data/seedData.ts");
+    } = await import("../data/seedData");
 
     const seedTask = async (collection: string, data: any[]) => {
       const colRef = db.collection(collection);

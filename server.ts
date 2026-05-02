@@ -48,7 +48,7 @@ async function startServer() {
   try {
     const app = express();
     const httpServer = createServer(app);
-    const PORT = 3000;
+    const PORT = parseInt(process.env.PORT || '5000', 10);
 
     // Socket.io initialization
     const io = new Server(httpServer, {
@@ -87,7 +87,7 @@ async function startServer() {
     if (process.env.NODE_ENV !== "production") {
       const { createServer: createViteServer } = await import("vite");
       const vite = await createViteServer({
-        server: { middlewareMode: true },
+        server: { middlewareMode: true, allowedHosts: true, host: '0.0.0.0' },
         appType: "spa",
       });
       app.use(vite.middlewares);
