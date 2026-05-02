@@ -87,7 +87,13 @@ async function startServer() {
     if (process.env.NODE_ENV !== "production") {
       const { createServer: createViteServer } = await import("vite");
       const vite = await createViteServer({
-        server: { middlewareMode: true, allowedHosts: true, host: '0.0.0.0' },
+        server: {
+          middlewareMode: true,
+          allowedHosts: true,
+          host: '0.0.0.0',
+          // Disable HMR WebSocket — Replit's proxy doesn't support WS upgrades reliably
+          hmr: false,
+        },
         appType: "spa",
       });
       app.use(vite.middlewares);
@@ -98,6 +104,16 @@ async function startServer() {
         res.sendFile(path.join(distPath, 'index.html'));
       });
     }
+
+    httpServer.on("error", (err: NodeJS.ErrnoException) => {
+      if (err.code === "EADDRINUSE") {
+        console.error(`[Server] Port ${PORT} is already in use. Another instance may be running.`);
+        process.exit(1);
+      } else {
+        console.error("[Server] HTTP server error:", err);
+        process.exit(1);
+      }
+    });
 
     httpServer.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on http://localhost:${PORT}`);
