@@ -4,38 +4,51 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Nurse, Department, DynamicFieldDefinition } from '../../types';
 import { exportToCSV, printReport } from '../../lib/exportUtils';
 import { validateEmail } from '../../lib/validationUtils';
+import { dataStore } from '../../services/dataService';
 
 export default function NursesDirectory() {
-  const [nurses, setNurses] = useState<Nurse[]>(() => {
-    const saved = localStorage.getItem('hospital_nurses');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [nurses, setNurses] = useState<Nurse[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [departments] = useState<Department[]>(() => {
-    const saved = localStorage.getItem('hospital_departments');
-    return saved ? JSON.parse(saved) : [];
-  });
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [nursesData, deptsData] = await Promise.all([
+          dataStore.getAll<Nurse>('nurses'),
+          dataStore.getAll<Department>('departments')
+        ]);
+        setNurses(nursesData);
+        setDepartments(deptsData);
+      } catch (error) {
+        console.error("Failed to load nurses", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const [dynamicFields, setDynamicFields] = useState<DynamicFieldDefinition[]>([]);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
 
   useEffect(() => {
-    const saved = localStorage.getItem('hospital_dynamic_fields');
-    if (saved) {
-      const allFields: DynamicFieldDefinition[] = JSON.parse(saved);
-      setDynamicFields(allFields.filter(f => f.entity === 'nurse' && f.isActive));
-    }
+    const loadFields = async () => {
+      try {
+        const allFields = await dataStore.getAll<DynamicFieldDefinition>('dynamic_fields');
+        setDynamicFields(allFields.filter(f => f.entity === 'nurse' && f.isActive));
+      } catch (error) {
+        console.error("Failed to load dynamic fields", error);
+      }
+    };
+    loadFields();
   }, []);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingNurse, setEditingNurse] = useState<Nurse | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    localStorage.setItem('hospital_nurses', JSON.stringify(nurses));
-  }, [nurses]);
-
-  const handleAddOrUpdate = (e: React.FormEvent) => {
+  const handleAddOrUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
@@ -59,6 +72,7 @@ export default function NursesDirectory() {
         departmentId: formData.get('departmentId') as string,
         customFields: { ...editingNurse.customFields, ...customFieldValues }
       };
+      await dataStore.updateItem('nurses', editingNurse.id, updatedNurse);
       setNurses(nurses.map(n => n.id === editingNurse.id ? updatedNurse : n));
       setEditingNurse(null);
     } else {
@@ -74,6 +88,7 @@ export default function NursesDirectory() {
         departmentId: (formData.get('departmentId') as string) || departments[0]?.id || '',
         customFields: customFieldValues
       };
+      await dataStore.addItem('nurses', nurse);
       setNurses([...nurses, nurse]);
     }
     
@@ -239,8 +254,9 @@ export default function NursesDirectory() {
                      <Edit2 size={16}/>
                    </button>
                    <button 
-                    onClick={() => {
+                    onClick={async () => {
                       if(confirm('هل أنت متأكد من حذف هذا السجل بشكل نهائي؟')) {
+                        await dataStore.deleteItem('nurses', nurse.id);
                         setNurses(nurses.filter(n => n.id !== nurse.id));
                       }
                     }}

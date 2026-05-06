@@ -3,6 +3,8 @@ import { Bed, Plus, Search, User, Trash2, Home, ArrowRightLeft } from 'lucide-re
 import { motion, AnimatePresence } from 'motion/react';
 import { Department } from '../types';
 import { INITIAL_DEPARTMENTS } from '../data/seedData';
+import { dataStore } from '../services/dataService';
+import { notificationService } from '../services/notificationService';
 
 interface Inpatient {
   id: string;
@@ -15,30 +17,35 @@ interface Inpatient {
 }
 
 export default function InpatientManagement() {
-  const [inpatients, setInpatients] = useState<Inpatient[]>(() => {
-    const saved = localStorage.getItem('hospital_inpatients');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [departments] = useState<Department[]>(() => {
-    const saved = localStorage.getItem('hospital_departments');
-    if (saved) return JSON.parse(saved);
-    return INITIAL_DEPARTMENTS as Department[];
-  });
-
+  const [inpatients, setInpatients] = useState<Inpatient[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newInpatient, setNewInpatient] = useState<Partial<Inpatient>>({
     patientName: '',
     roomNumber: '',
     bedNumber: '',
-    departmentId: departments[0]?.id || '',
+    departmentId: '',
   });
 
   useEffect(() => {
-    localStorage.setItem('hospital_inpatients', JSON.stringify(inpatients));
-  }, [inpatients]);
+    const loadData = async () => {
+      const [patientsData, deptsData] = await Promise.all([
+        dataStore.getAll<Inpatient>('inpatients'),
+        dataStore.getAll<Department>('departments')
+      ]);
+      
+      setInpatients(patientsData);
+      const finalDepts = deptsData.length > 0 ? deptsData : INITIAL_DEPARTMENTS as Department[];
+      setDepartments(finalDepts);
+      
+      if (finalDepts.length > 0) {
+        setNewInpatient(prev => ({ ...prev, departmentId: finalDepts[0].id }));
+      }
+    };
+    loadData();
+  }, []);
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newInpatient.patientName || !newInpatient.roomNumber) return;
 
@@ -51,6 +58,15 @@ export default function InpatientManagement() {
       admissionDate: new Date().toLocaleDateString('ar-YE'),
       status: 'active'
     };
+
+    await dataStore.addItem('inpatients', admission);
+    
+    // Notification
+    await notificationService.sendNotification({
+      title: 'دخول مريض (رقود)',
+      desc: `تم تسجيل المريض ${admission.patientName} في القسم ${departments.find(d => d.id === admission.departmentId)?.name || ''} - غرفة ${admission.roomNumber}`,
+      type: 'info'
+    });
 
     setInpatients([admission, ...inpatients]);
     setShowAddModal(false);

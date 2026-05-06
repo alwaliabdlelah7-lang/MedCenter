@@ -2,22 +2,39 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Users, Phone, Trash2, Edit2, ShieldAlert, Tag } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Companion, DynamicFieldDefinition } from '../../types';
+import { dataStore } from '../../services/dataService';
 
 export default function CompanionsDirectory() {
-  const [companions, setCompanions] = useState<Companion[]>(() => {
-    const saved = localStorage.getItem('hospital_companions');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [companions, setCompanions] = useState<Companion[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const data = await dataStore.getAll<Companion>('companions');
+        setCompanions(data);
+      } catch (error) {
+        console.error("Failed to load companions", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const [dynamicFields, setDynamicFields] = useState<DynamicFieldDefinition[]>([]);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
 
   useEffect(() => {
-    const saved = localStorage.getItem('hospital_dynamic_fields');
-    if (saved) {
-      const allFields: DynamicFieldDefinition[] = JSON.parse(saved);
-      setDynamicFields(allFields.filter(f => f.entity === 'companion' && f.isActive));
-    }
+    const loadFields = async () => {
+      try {
+        const allFields = await dataStore.getAll<DynamicFieldDefinition>('dynamic_fields');
+        setDynamicFields(allFields.filter(f => f.entity === 'companion' && f.isActive));
+      } catch (error) {
+        console.error("Failed to load dynamic fields", error);
+      }
+    };
+    loadFields();
   }, []);
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -28,26 +45,30 @@ export default function CompanionsDirectory() {
     idNumber: '',
   });
 
-  useEffect(() => {
-    localStorage.setItem('hospital_companions', JSON.stringify(companions));
-  }, [companions]);
-
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCompanion.name) return;
     
     const companion: Companion = {
-      id: `C-MP-${Math.random().toString(36).substr(2, 6)}`,
+      id: `C-MP-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
       name: newCompanion.name!,
       phone: newCompanion.phone || '',
       idNumber: newCompanion.idNumber || '',
       customFields: customFieldValues
     };
     
+    await dataStore.addItem('companions', companion);
     setCompanions([...companions, companion]);
     setCustomFieldValues({});
     setShowAddModal(false);
     setNewCompanion({ name: '', phone: '', idNumber: '' });
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('هل أنت متأكد من حذف هذا المرافق؟')) {
+      await dataStore.deleteItem('companions', id);
+      setCompanions(companions.filter(c => c.id !== id));
+    }
   };
 
   const filteredCompanions = companions.filter(c => 
@@ -103,7 +124,7 @@ export default function CompanionsDirectory() {
                      <Edit2 size={16} />
                    </button>
                    <button 
-                    onClick={() => setCompanions(companions.filter(c => c.id !== comp.id))}
+                    onClick={() => handleDelete(comp.id)}
                     className="p-2 text-slate-400 hover:text-rose-400 transition-colors"
                    >
                      <Trash2 size={16} />

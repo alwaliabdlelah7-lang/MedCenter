@@ -104,8 +104,10 @@ class DataService {
   public async resetSystem(): Promise<void> {
     const collectionsToReset = [
       'patients', 'appointments', 'clinical_visits', 'clinical_notes', 
-      'prescriptions', 'lab_tests', 'receipts', 'pharmacy_items', 
-      'transactions', 'notifications', 'chat_messages'
+      'prescriptions', 'lab_tests', 'radiology_scans', 'receipts', 'pharmacy_items', 
+      'transactions', 'notifications', 'chat_messages', 'inpatients', 'nurses',
+      'doctors', 'departments', 'clinics', 'services', 'operations', 'users',
+      'settings', 'dynamic_fields', 'audit_logs', 'companions'
     ];
 
     console.log('[DataService] Resetting system...');

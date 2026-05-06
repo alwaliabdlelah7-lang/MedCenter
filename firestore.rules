@@ -32,7 +32,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && getUserData().role == 'admin';
+      return isSignedIn() && (getUserData().role == 'admin' || getUserData().permissions.hasAny(['all']));
     }
 
     function isOwner(userId) {
@@ -51,8 +51,8 @@ service cloud.firestore {
                && data.status in ['active', 'inactive'];
       }
 
-      allow get: if isOwner(userId) || isAdmin() || hasPermission('admin');
-      allow list: if isAdmin() || hasPermission('admin');
+      allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
 
       allow create: if (isAdmin() || (isSignedIn() && !exists(/databases/$(database)/documents/users/$(request.auth.uid))))
                       && isValidUser(incoming());
@@ -203,8 +203,18 @@ service cloud.firestore {
     }
 
     match /transactions/{id} {
-      allow read: if hasPermission('billing') || hasPermission('admin');
+      allow read: if hasPermission('billing') || isAdmin();
       allow write: if hasPermission('billing');
+    }
+
+    match /settings/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /companions/{id} {
+      allow read: if hasPermission('clinical') || hasPermission('registration') || isAdmin();
+      allow write: if hasPermission('registration') || isAdmin();
     }
 
     // --- Audit Log Rules ---

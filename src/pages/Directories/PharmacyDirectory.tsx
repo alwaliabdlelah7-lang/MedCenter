@@ -4,23 +4,41 @@ import { motion, AnimatePresence } from 'motion/react';
 import { YEMEN_MEDICINES as SEED_MEDS } from '../../data/seedData';
 import { MasterMedicine, DynamicFieldDefinition } from '../../types';
 import { cn } from '../../lib/utils';
+import { dataStore } from '../../services/dataService';
 
 export default function PharmacyDirectory() {
-  const [medicines, setMedicines] = useState<MasterMedicine[]>(() => {
-    const saved = localStorage.getItem('hospital_master_medicines');
-    if (saved) return JSON.parse(saved);
-    return SEED_MEDS.map((m, i) => ({
-      id: `MED-M-${i + 1}`,
-      tradeName: m.tradeName,
-      scientificName: m.scientificName,
-      category: 'أدوية عامة',
-      price: m.price,
-      unit: 'علبة',
-      dosageForm: 'حبوب',
-      totalQuantity: 100,
-      reorderPoint: 20
-    }));
-  });
+  const [medicines, setMedicines] = useState<MasterMedicine[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const data = await dataStore.getAll<MasterMedicine>('pharmacy_items');
+        if (data.length === 0) {
+          const seeded = SEED_MEDS.map((m, i) => ({
+            id: `MED-M-${i + 1}`,
+            tradeName: m.tradeName,
+            scientificName: m.scientificName,
+            category: 'أدوية عامة',
+            price: m.price,
+            unit: 'علبة',
+            dosageForm: 'حبوب',
+            totalQuantity: 100,
+            reorderPoint: 20
+          })) as MasterMedicine[];
+          setMedicines(seeded);
+          seeded.forEach(m => dataStore.addItem('pharmacy_items', m));
+        } else {
+          setMedicines(data);
+        }
+      } catch (error) {
+        console.error("Failed to load pharmacy items", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const [showModal, setShowModal] = useState(false);
   const [editingMed, setEditingMed] = useState<MasterMedicine | null>(null);
@@ -40,23 +58,25 @@ export default function PharmacyDirectory() {
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
 
   useEffect(() => {
-    const saved = localStorage.getItem('hospital_dynamic_fields');
-    if (saved) {
-      const allFields: DynamicFieldDefinition[] = JSON.parse(saved);
-      setDynamicFields(allFields.filter(f => f.entity === 'medicine' && f.isActive));
-    }
+    const loadFields = async () => {
+      try {
+        const allFields = await dataStore.getAll<DynamicFieldDefinition>('dynamic_fields');
+        setDynamicFields(allFields.filter(f => f.entity === 'medicine' && f.isActive));
+      } catch (error) {
+        console.error("Failed to load dynamic fields", error);
+      }
+    };
+    loadFields();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('hospital_master_medicines', JSON.stringify(medicines));
-  }, [medicines]);
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMed.tradeName || !newMed.scientificName) return;
     
     if (editingMed) {
-      setMedicines(medicines.map(m => m.id === editingMed.id ? { ...editingMed, ...newMed, customFields: customFieldValues } as MasterMedicine : m));
+      const updated = { ...editingMed, ...newMed, customFields: customFieldValues } as MasterMedicine;
+      await dataStore.updateItem('pharmacy_items', editingMed.id, updated);
+      setMedicines(medicines.map(m => m.id === editingMed.id ? updated : m));
     } else {
       const med: MasterMedicine = {
         id: `MED-${Date.now().toString().slice(-4)}`,
@@ -71,6 +91,7 @@ export default function PharmacyDirectory() {
         description: newMed.description,
         customFields: customFieldValues
       };
+      await dataStore.addItem('pharmacy_items', med);
       setMedicines([...medicines, med]);
     }
     
@@ -80,8 +101,9 @@ export default function PharmacyDirectory() {
     setCustomFieldValues({});
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('هل أنت متأكد من حذف هذا الصنف؟')) {
+      await dataStore.deleteItem('pharmacy_items', id);
       setMedicines(medicines.filter(m => m.id !== id));
     }
   };

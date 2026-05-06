@@ -143,10 +143,22 @@ export default function SettingsPage() {
     }
   };
 
-  const [dynamicFields, setDynamicFields] = useState<DynamicFieldDefinition[]>(() => {
-    const saved = localStorage.getItem('hospital_dynamic_fields');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [dynamicFields, setDynamicFields] = useState<DynamicFieldDefinition[]>([]);
+  const [loadingFields, setLoadingFields] = useState(true);
+
+  useEffect(() => {
+    const loadFields = async () => {
+      try {
+        const fields = await dataStore.getAll<DynamicFieldDefinition>('dynamic_fields');
+        setDynamicFields(fields);
+      } catch (error) {
+        console.error("Failed to load dynamic fields", error);
+      } finally {
+        setLoadingFields(false);
+      }
+    };
+    loadFields();
+  }, []);
 
   const [isAddingField, setIsAddingField] = useState(false);
   const [newField, setNewField] = useState<Partial<DynamicFieldDefinition>>({
@@ -160,11 +172,7 @@ export default function SettingsPage() {
 
   const [optionInput, setOptionInput] = useState('');
 
-  useEffect(() => {
-    localStorage.setItem('hospital_dynamic_fields', JSON.stringify(dynamicFields));
-  }, [dynamicFields]);
-
-  const handleAddField = () => {
+  const handleAddField = async () => {
     if (!newField.label) return;
     const field: DynamicFieldDefinition = {
       id: `field_${Date.now()}`,
@@ -175,33 +183,43 @@ export default function SettingsPage() {
       isActive: true,
       options: newField.options
     };
+    await dataStore.addItem('dynamic_fields', field);
     setDynamicFields([...dynamicFields, field]);
     setIsAddingField(false);
     setNewField({ label: '', type: 'text', required: false, entity: 'patient', isActive: true, options: [] });
   };
 
-  const deleteField = (id: string) => {
+  const deleteField = async (id: string) => {
+    await dataStore.deleteItem('dynamic_fields', id);
     setDynamicFields(dynamicFields.filter(f => f.id !== id));
   };
 
   useEffect(() => {
-    const saved = localStorage.getItem('hospital_settings');
-    if (saved) {
-      const settings = JSON.parse(saved);
-      setHospitalName(settings.hospitalName || 'إبداع الطبي');
-      setLegalName(settings.legalName || '');
-      setTaxNumber(settings.taxNumber || '');
-      setHospitalPhone(settings.hospitalPhone || '');
-      setHospitalAddress(settings.hospitalAddress || '');
-      setLogoUrl(settings.logoUrl || '');
-      setServerIp(settings.serverIp || '192.168.1.105');
-      setPrintAuto(settings.printAuto || false);
-      setIsRealtimeEnabled(settings.isRealtimeEnabled !== undefined ? settings.isRealtimeEnabled : true);
-    }
+    const loadSettings = async () => {
+      try {
+        const settings = await dataStore.getAll<any>('settings');
+        const s = settings[0]; // Assuming only one settings doc
+        if (s) {
+          setHospitalName(s.hospitalName || 'إبداع الطبي');
+          setLegalName(s.legalName || '');
+          setTaxNumber(s.taxNumber || '');
+          setHospitalPhone(s.hospitalPhone || '');
+          setHospitalAddress(s.hospitalAddress || '');
+          setLogoUrl(s.logoUrl || '');
+          setServerIp(s.serverIp || '192.168.1.105');
+          setPrintAuto(s.printAuto || false);
+          setIsRealtimeEnabled(s.isRealtimeEnabled !== undefined ? s.isRealtimeEnabled : true);
+        }
+      } catch (error) {
+        console.error("Failed to load settings", error);
+      }
+    };
+    loadSettings();
   }, []);
 
-  const handleSaveSettings = () => {
-    localStorage.setItem('hospital_settings', JSON.stringify({
+  const handleSaveSettings = async () => {
+    const settingsObj = {
+      id: 'main_settings',
       hospitalName,
       legalName,
       taxNumber,
@@ -211,9 +229,18 @@ export default function SettingsPage() {
       serverIp,
       isRealtimeEnabled,
       printAuto
-    }));
-    // Also save hospital name separately for easier access
+    };
+    
+    const existing = await dataStore.getAll<any>('settings');
+    if (existing.length > 0) {
+      await dataStore.updateItem('settings', existing[0].id, settingsObj);
+    } else {
+      await dataStore.addItem('settings', settingsObj);
+    }
+    
+    // Also save hospital name separately for easier access (legacy or UI header)
     localStorage.setItem('hospital_name', hospitalName);
+    alert('تم حفظ الإعدادات بنجاح');
   };
 
   const linkCurrentAccount = async () => {
@@ -413,10 +440,35 @@ export default function SettingsPage() {
                         <label className="text-[10px] font-black text-slate-500 mr-2">Anon Key</label>
                         <input type="password" value={supabaseKey} onChange={(e) => setSupabaseKey(e.target.value)} className="w-full px-5 py-3 glass bg-white/5 border border-white/10 rounded-xl text-white font-mono text-xs" placeholder="eyJhbG... (Anon Key)" />
                       </div>
-                      <div className="pt-2">
-                        <p className="text-[9px] text-slate-500 font-bold italic text-right mb-2 leading-relaxed">
-                          * ملاحظة: يجب أن تكون الجداول (Tables) منشأة مسبقاً في Supabase مع تفعيل صلاحيات RLS أو إيقافها للمزامنة المفتوحة.
-                        </p>
+                      <div className="pt-2 space-y-4">
+                        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
+                          <p className="text-[10px] text-emerald-400 font-black mb-2 uppercase">OAuth Redirect URL (لعناوين Google Consle):</p>
+                          <div className="flex items-center gap-2">
+                             <code className="text-[10px] text-white font-mono bg-black/30 p-2 rounded flex-1 overflow-x-auto whitespace-nowrap">
+                               {window.location.origin}
+                             </code>
+                             <button 
+                               onClick={() => {
+                                 navigator.clipboard.writeText(window.location.origin);
+                                 alert('تم نسخ الرابط');
+                               }}
+                               className="p-2 glass hover:bg-white/10 rounded-lg text-emerald-400 transition-all"
+                             >
+                               <Save size={12} />
+                             </button>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <p className="text-[9px] text-slate-500 font-bold italic text-right leading-relaxed">
+                            * ملاحظات هامة لـ Supabase:<br/>
+                            1. يجب تفعيل رابط الـ OpenID في إعدادات Supabase Auth.<br/>
+                            2. تأكد من إضافة {window.location.hostname} إلى Authorized Domains في لوحة تحكم Google Cloud.<br/>
+                            3. روابط Auth الخاصة بك حالياً:<br/>
+                            - Authorize: {supabaseUrl}/auth/v1/oauth/authorize<br/>
+                            - Token: {supabaseUrl}/auth/v1/oauth/token
+                          </p>
+                        </div>
                         <button onClick={saveSupabaseConfig} className="w-full py-3 bg-emerald-600 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20 hover:bg-emerald-500 transition-all">حفظ وتطبيق إعدادات Supabase</button>
                       </div>
                     </div>

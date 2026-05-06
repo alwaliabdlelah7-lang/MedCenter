@@ -1,39 +1,52 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Scissors, Trash2, Edit2, Building2, DollarSign, Tag } from 'lucide-react';
+import { Plus, Search, Scissors, Trash2, Edit2, Building2, DollarSign, Tag, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Operation, Department, DynamicFieldDefinition } from '../../types';
 import { INITIAL_DEPARTMENTS } from '../../data/seedData';
+import { dataStore } from '../../services/dataService';
 
 export default function OperationsDirectory() {
-  const [operations, setOperations] = useState<Operation[]>(() => {
-    const saved = localStorage.getItem('hospital_operations');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [operations, setOperations] = useState<Operation[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [departments] = useState<Department[]>(() => {
-    const saved = localStorage.getItem('hospital_departments');
-    return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
-  });
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [opsData, deptsData] = await Promise.all([
+          dataStore.getAll<Operation>('operations'),
+          dataStore.getAll<Department>('departments')
+        ]);
+        setOperations(opsData);
+        setDepartments(deptsData.length > 0 ? deptsData : INITIAL_DEPARTMENTS);
+      } catch (error) {
+        console.error("Failed to load operations", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const [dynamicFields, setDynamicFields] = useState<DynamicFieldDefinition[]>([]);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
 
   useEffect(() => {
-    const saved = localStorage.getItem('hospital_dynamic_fields');
-    if (saved) {
-      const allFields: DynamicFieldDefinition[] = JSON.parse(saved);
-      setDynamicFields(allFields.filter(f => f.entity === 'operation' && f.isActive));
-    }
+    const loadFields = async () => {
+      try {
+        const allFields = await dataStore.getAll<DynamicFieldDefinition>('dynamic_fields');
+        setDynamicFields(allFields.filter(f => f.entity === 'operation' && f.isActive));
+      } catch (error) {
+        console.error("Failed to load dynamic fields", error);
+      }
+    };
+    loadFields();
   }, []);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    localStorage.setItem('hospital_operations', JSON.stringify(operations));
-  }, [operations]);
-
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
@@ -46,9 +59,17 @@ export default function OperationsDirectory() {
       customFields: customFieldValues
     };
     
+    await dataStore.addItem('operations', operation);
     setOperations([...operations, operation]);
     setCustomFieldValues({});
     setShowAddModal(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('هل أنت متأكد من حذف هذه العملية؟')) {
+      await dataStore.deleteItem('operations', id);
+      setOperations(operations.filter(op => op.id !== id));
+    }
   };
 
   const filtered = operations.filter(op => 
@@ -110,7 +131,7 @@ export default function OperationsDirectory() {
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                    <button className="p-2.5 text-slate-400 hover:text-sky-400 glass-card rounded-xl"><Edit2 size={16}/></button>
                    <button 
-                    onClick={() => setOperations(operations.filter(o => o.id !== op.id))}
+                    onClick={() => handleDelete(op.id)}
                     className="p-2.5 text-slate-400 hover:text-rose-400 glass-card rounded-xl"
                    >
                      <Trash2 size={16} />

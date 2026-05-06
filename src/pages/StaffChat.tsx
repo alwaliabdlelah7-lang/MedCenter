@@ -23,6 +23,7 @@ import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
 import { askGemini } from '../services/geminiService';
 import { dataStore } from '../services/dataService';
+import { notificationService } from '../services/notificationService';
 
 export default function StaffChat() {
   const { user: authUser } = useAuth();
@@ -75,6 +76,16 @@ export default function StaffChat() {
     };
 
     socketRef.current.emit('send-message', newMessage);
+    
+    // Notify others
+    if (newMessage.senderId !== 'ai-bot') {
+      notificationService.sendNotification({
+        title: `رسالة جديدة في ${activeChat === 'general' ? 'العامة' : 'خاص'}`,
+        desc: `${authUser?.name || 'زميل'}: ${newMessage.content.substring(0, 50)}${newMessage.content.length > 50 ? '...' : ''}`,
+        type: 'info'
+      });
+    }
+
     setMessageText('');
 
     // AI Trigger

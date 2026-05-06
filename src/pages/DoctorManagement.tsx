@@ -42,18 +42,15 @@ export default function DoctorManagement() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [docsData, deptsData] = await Promise.all([
+        const [docsData, deptsData, fieldsData] = await Promise.all([
           dataStore.getAll<Doctor>('doctors'),
-          dataStore.getAll<Department>('departments')
+          dataStore.getAll<Department>('departments'),
+          dataStore.getAll<DynamicFieldDefinition>('dynamic_fields')
         ]);
         setDoctors(docsData.length > 0 ? docsData : INITIAL_DOCTORS);
         setDepartments(deptsData.length > 0 ? deptsData : INITIAL_DEPARTMENTS);
         
-        const savedFields = localStorage.getItem('hospital_dynamic_fields');
-        if (savedFields) {
-          const allFields: DynamicFieldDefinition[] = JSON.parse(savedFields);
-          setDynamicFields(allFields.filter(f => f.entity === 'doctor' && f.isActive));
-        }
+        setDynamicFields(fieldsData.filter(f => f.entity === 'doctor' && f.isActive));
       } catch (error) {
         console.error("Failed to load data", error);
       } finally {

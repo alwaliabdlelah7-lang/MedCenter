@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 export const getSupabaseClient = () => {
-  const supabaseUrl = localStorage.getItem('supabase_url') || import.meta.env.VITE_SUPABASE_URL || '';
+  const supabaseUrl = localStorage.getItem('supabase_url') || import.meta.env.VITE_SUPABASE_URL || 'https://mxbcwvtqglzlkniuynzu.supabase.co';
   const supabaseAnonKey = localStorage.getItem('supabase_key') || import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
   if (supabaseUrl && supabaseAnonKey) {

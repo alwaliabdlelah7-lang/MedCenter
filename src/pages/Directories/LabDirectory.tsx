@@ -53,16 +53,16 @@ export default function LabDirectory() {
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
 
   useEffect(() => {
-    const saved = localStorage.getItem('hospital_dynamic_fields');
-    if (saved) {
-      const allFields: DynamicFieldDefinition[] = JSON.parse(saved);
-      setDynamicFields(allFields.filter(f => f.entity === 'lab_test' && f.isActive));
-    }
+    const loadFields = async () => {
+      try {
+        const allFields = await dataStore.getAll<DynamicFieldDefinition>('dynamic_fields');
+        setDynamicFields(allFields.filter(f => f.entity === 'lab_test' && f.isActive));
+      } catch (error) {
+        console.error("Failed to load dynamic fields", error);
+      }
+    };
+    loadFields();
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem('hospital_master_lab_tests', JSON.stringify(tests));
-  }, [tests]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

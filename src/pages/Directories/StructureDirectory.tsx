@@ -20,18 +20,15 @@ export default function StructureDirectory() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [deptsData, clinicsData] = await Promise.all([
+        const [deptsData, clinicsData, fieldsData] = await Promise.all([
           dataStore.getAll<Department>('departments'),
-          dataStore.getAll<Clinic>('clinics')
+          dataStore.getAll<Clinic>('clinics'),
+          dataStore.getAll<DynamicFieldDefinition>('dynamic_fields')
         ]);
         setDepartments(deptsData.length > 0 ? deptsData : INITIAL_DEPARTMENTS);
         setClinics(clinicsData.length > 0 ? clinicsData : INITIAL_CLINICS);
         
-        const savedFields = localStorage.getItem('hospital_dynamic_fields');
-        if (savedFields) {
-          const allFields: DynamicFieldDefinition[] = JSON.parse(savedFields);
-          setDynamicFields(allFields.filter(f => f.entity === 'department' && f.isActive));
-        }
+        setDynamicFields(fieldsData.filter(f => f.entity === 'department' && f.isActive));
       } catch (error) {
         console.error("Failed to load structure data", error);
       } finally {
