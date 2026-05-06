@@ -209,8 +209,8 @@ export default function QueueManagement() {
     // Basic Speech Synthesis for Calling
     if ('speechSynthesis' in window) {
       const msg = new SpeechSynthesisUtterance();
-      msg.text = `Patient ${name}, please come to the clinic.`;
-      msg.lang = 'en-US';
+      msg.text = `المريض ${name}، يرجى التوجه لغرفة الكشف.`;
+      msg.lang = 'ar-SA';
       window.speechSynthesis.speak(msg);
     }
   };
@@ -383,7 +383,7 @@ export default function QueueManagement() {
                   </div>
                   <div>
                     <h3 className="text-xl font-black text-white">جلسة الكشف الطبي الذكية</h3>
-                    <p className="text-xs text-slate-500 font-bold uppercase mt-1 tracking-tighter">Patient: {activeVisit.patientName} • ID: {activeVisit.patientId}</p>
+                    <p className="text-xs text-slate-500 font-bold uppercase mt-1 tracking-tighter">المريض: {activeVisit.patientName} • المعرف: {activeVisit.patientId}</p>
                   </div>
                 </div>
                 <button onClick={() => setShowVisitModal(false)} className="p-2 text-slate-500 hover:text-white transition-colors">
@@ -422,7 +422,7 @@ export default function QueueManagement() {
                         {/* Vitals Section */}
                         <div className="space-y-4">
                           <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic flex items-center gap-2">
-                            <ActivityIcon size={14} className="text-rose-500" /> Vital Signs (المؤشرات الحيوية)
+                            <ActivityIcon size={14} className="text-rose-500" /> العلامات الحيوية (Vital Signs)
                           </h4>
                           <div className="grid grid-cols-3 gap-4">
                             <div className="p-4 glass bg-white/5 rounded-2xl border border-white/5">
@@ -443,7 +443,7 @@ export default function QueueManagement() {
                         {/* Diagnosis & Notes */}
                         <div className="space-y-4">
                            <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic flex items-center gap-2">
-                            <ClipboardList size={14} className="text-sky-500" /> Clinical Diagnosis (التشخيص الطبي)
+                            <ClipboardList size={14} className="text-sky-500" /> التشخيص السريري (Clinical Diagnosis)
                           </h4>
                           <textarea 
                             className="w-full h-32 p-6 glass bg-white/5 border border-white/10 rounded-[30px] text-white outline-none focus:border-sky-500 font-bold leading-relaxed pr-8"

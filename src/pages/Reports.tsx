@@ -144,7 +144,7 @@ export default function Reports() {
                  </div>
                  <div>
                     <h3 className="text-xl font-black text-white">تحليل المبيعات اليومي</h3>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black italic">Sales Performance - Last 15 Days</p>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-black italic">أداء المبيعات - آخر 15 يوماً</p>
                  </div>
               </div>
            </div>
@@ -214,7 +214,7 @@ export default function Reports() {
               </div>
               <div>
                  <h3 className="text-2xl font-black text-white tracking-tight">أداء الأطباء والمساهمات المالية</h3>
-                 <p className="text-xs text-slate-500 opacity-70 uppercase tracking-[4px] font-black italic">Physician Revenue & Commission Ledger</p>
+                 <p className="text-xs text-slate-500 opacity-70 uppercase tracking-[4px] font-black italic">كشف مستحقات وعمولات الأطباء</p>
               </div>
            </div>
            
@@ -262,7 +262,7 @@ export default function Reports() {
                     })}
                     {doctorRevenueData.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="py-20 text-center opacity-20 italic text-slate-500 font-black uppercase tracking-[15px]">No Data Records Found</td>
+                        <td colSpan={4} className="py-20 text-center opacity-20 italic text-slate-500 font-black uppercase tracking-[15px]">لا يوجد سجلات بيانات متاحة حالياً</td>
                       </tr>
                     )}
                  </tbody>
@@ -299,7 +299,7 @@ function StatCard({ icon: Icon, label, value, unit, color, trend }: { icon: any,
              <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg flex items-center gap-1">
                 <TrendingUp size={12} /> {trend}
              </span>
-             <span className="text-[9px] text-slate-600 font-black mt-1 uppercase italic tracking-widest">Growth Factor</span>
+             <span className="text-[9px] text-slate-600 font-black mt-1 uppercase italic tracking-widest">معدل النمو</span>
           </div>
        </div>
 

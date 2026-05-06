@@ -165,7 +165,7 @@ export default function StaffChat() {
                <div>
                   <h4 className="font-bold text-white">{activeChat === 'general' ? 'القناة العامة' : 'محادثة الموظف'}</h4>
                   <p className="text-[10px] text-emerald-400 flex items-center gap-1 mt-0.5">
-                     <Circle size={8} className="fill-current" /> 14 موظف نشط حالياً
+                     <Circle size={8} className="fill-current" /> {users.filter(u => u.status === 'active').length} موظف متصل حالياً
                   </p>
                </div>
             </div>

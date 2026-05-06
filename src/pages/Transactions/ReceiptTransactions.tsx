@@ -216,12 +216,12 @@ export default function ReceiptTransactions() {
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
             <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-md" onClick={() => setShowAddModal(false)} />
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative w-full max-w-2xl bg-white rounded-[40px] shadow-2xl p-12 border border-white/10">
-              <h3 className="text-2xl font-black mb-10 text-slate-900 border-r-8 border-sky-500 pr-6 uppercase tracking-tighter">Issue New Financial Receipt</h3>
+              <h3 className="text-2xl font-black mb-10 text-slate-900 border-r-8 border-sky-500 pr-6 uppercase tracking-tighter">إصدار سند استعلامات مالي جديد</h3>
               <form onSubmit={handleAdd} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 italic">
-                       Patient Identification
+                       تحديد المريض
                     </label>
                     <select 
                       required 
@@ -237,12 +237,12 @@ export default function ReceiptTransactions() {
                         });
                       }}
                     >
-                      <option value="">Choose Patient...</option>
+                      <option value="">اختر المريض...</option>
                       {patients.map(p => <option key={p.id} value={p.id}>{p.name} - #{p.id}</option>)}
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Patient Name (Editable)</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">اسم المريض (قابل للتعديل)</label>
                     <input 
                       type="text"
                       required
@@ -255,7 +255,7 @@ export default function ReceiptTransactions() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Patient Age</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">عمر المريض</label>
                     <input 
                       type="number"
                       required
@@ -265,9 +265,9 @@ export default function ReceiptTransactions() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Service Selection</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">اختيار الخدمة</label>
                     <select required className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-sky-500/10 font-bold" value={newReceipt.serviceId} onChange={(e) => setNewReceipt({...newReceipt, serviceId: e.target.value})}>
-                      <option value="">Select Service...</option>
+                      <option value="">اختر الخدمة...</option>
                       {services.map(s => <option key={s.id} value={s.id}>{s.name} ({s.price} ر.ي)</option>)}
                     </select>
                   </div>
@@ -276,15 +276,15 @@ export default function ReceiptTransactions() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 italic">
-                       Attending Physician
+                       الطبيب المعالج
                     </label>
                     <select required className="w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 focus:ring-sky-500/10 font-bold" value={newReceipt.doctorId} onChange={(e) => setNewReceipt({...newReceipt, doctorId: e.target.value})}>
-                      <option value="">Select Doctor...</option>
+                      <option value="">اختر الطبيب...</option>
                       {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Payment Gateway</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">طريقة الدفع</label>
                     <div className="flex gap-4">
                        {['cash', 'credit'].map(method => (
                          <button
@@ -293,7 +293,7 @@ export default function ReceiptTransactions() {
                            onClick={() => setNewReceipt({...newReceipt, paymentMethod: method as any})}
                            className={`flex-1 py-5 rounded-2xl font-black border-2 transition-all text-[10px] uppercase tracking-widest ${newReceipt.paymentMethod === method ? 'bg-sky-50 border-sky-500 text-sky-600 shadow-lg shadow-sky-500/10' : 'bg-slate-50 border-transparent text-slate-400'}`}
                          >
-                           {method === 'cash' ? 'Cash Basis' : 'Insurance / Credit'}
+                           {method === 'cash' ? 'نقدي' : 'تأمين / آجل'}
                          </button>
                        ))}
                     </div>
@@ -301,8 +301,8 @@ export default function ReceiptTransactions() {
                 </div>
 
                 <div className="flex gap-4 pt-10">
-                  <button type="submit" className="flex-1 bg-sky-600 text-white py-6 rounded-[30px] font-black shadow-2xl shadow-sky-600/30 hover:bg-sky-500 transition-all uppercase tracking-widest text-xs">Execute Transaction</button>
-                  <button type="button" onClick={() => setShowAddModal(false)} className="px-10 py-6 bg-slate-100 text-slate-500 rounded-[30px] font-black hover:bg-slate-200 transition-all uppercase tracking-widest text-xs">Terminate</button>
+                  <button type="submit" className="flex-1 bg-sky-600 text-white py-6 rounded-[30px] font-black shadow-2xl shadow-sky-600/30 hover:bg-sky-500 transition-all uppercase tracking-widest text-xs">إتمام المعاملة المالية</button>
+                  <button type="button" onClick={() => setShowAddModal(false)} className="px-10 py-6 bg-slate-100 text-slate-500 rounded-[30px] font-black hover:bg-slate-200 transition-all uppercase tracking-widest text-xs">إلغاء</button>
                 </div>
               </form>
             </motion.div>

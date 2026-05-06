@@ -430,8 +430,8 @@ export default function UsersManagement() {
                              <input required className="w-full h-14 px-6 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-bold text-right" value={formState.name} onChange={(e) => setFormState({...formState, name: e.target.value})} placeholder="الاسم الكامل" />
                           </div>
                           <div className="space-y-2">
-                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mr-2 text-right block">المعرف (username)</label>
-                             <input required disabled={!!editingUser} className="w-full h-14 px-6 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 font-mono disabled:opacity-50 disabled:cursor-not-allowed text-right" value={formState.username} onChange={(e) => setFormState({...formState, username: e.target.value})} placeholder="username" />
+                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mr-2 text-right block">اسم المستخدم (username)</label>
+                             <input required disabled={!!editingUser} className="w-full h-14 px-6 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:border-indigo-500 font-mono disabled:opacity-50 disabled:cursor-not-allowed text-right" value={formState.username} onChange={(e) => setFormState({...formState, username: e.target.value})} placeholder="اسم المستخدم" />
                           </div>
                        </div>
 
@@ -483,10 +483,10 @@ export default function UsersManagement() {
                                <ul className="space-y-2 text-slate-400 text-right">
                                   <li><b className="text-white">وصول مطلق:</b> التحكم الكامل في النظام والإعدادات.</li>
                                   <li><b className="text-white">قراءة فقط:</b> مشاهدة البيانات دون تعديلها.</li>
-                                  <li><b className="text-white">ملفات طبية:</b> الوصول للسجلات السريرية والتشخيص.</li>
-                                  <li><b className="text-white">الصيدلية:</b> صرف الأدوية وإدارة المخزن.</li>
-                                  <li><b className="text-white">المختبر:</b> إدخال نتائج الفحوصات والتحاليل.</li>
-                                  <li><b className="text-white">التسجيل:</b> إضافة المرضى وإدارة المواعيد.</li>
+                                  <li><b className="text-white">العيادة (Clinical):</b> الوصول للسجلات السريرية والتشخيص.</li>
+                                  <li><b className="text-white">الصيدلية (Pharmacy):</b> صرف الأدوية وإدارة المخزن.</li>
+                                  <li><b className="text-white">المختبر (Lab):</b> إدخال نتائج الفحوصات والتحاليل.</li>
+                                  <li><b className="text-white">التسجيل (Registration):</b> إضافة المرضى وإدارة المواعيد.</li>
                                </ul>
                             </div>
                          </div>
@@ -509,7 +509,7 @@ export default function UsersManagement() {
                               )}
                             >
                                <div className="flex flex-col items-end gap-1 text-right">
-                                  <span className="text-xs font-black">{perm === 'all' ? 'وصول مطلق' : perm === 'read_only' ? 'للقراءة فقط' : perm === 'clinical' ? 'ملفات طبية' : perm === 'pharmacy' ? 'نظام الصيدلية' : perm === 'lab' ? 'نظام المختبر' : perm === 'admin' ? 'إعدادات النظام' : perm === 'registration' ? 'التسجيل' : 'الفوترة'}</span>
+                                  <span className="text-xs font-black">{perm === 'all' ? 'وصول مطلق' : perm === 'read_only' ? 'للقراءة فقط' : perm === 'clinical' ? 'العيادة (Clinical)' : perm === 'pharmacy' ? 'الصيدلية (Pharmacy)' : perm === 'lab' ? 'المختبر (Lab)' : perm === 'admin' ? 'الإدارة (Admin)' : perm === 'registration' ? 'التسجيل (Registration)' : 'المالية (Billing)'}</span>
                                   <span className="text-[9px] opacity-60">صلاحية وصول لنظام ال{perm}</span>
                                </div>
                                <div className={cn(

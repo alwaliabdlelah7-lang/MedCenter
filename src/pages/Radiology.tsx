@@ -223,7 +223,7 @@ export default function Radiology() {
         ) : (
           <div className="col-span-full py-24 flex flex-col items-center justify-center text-slate-600 border-2 border-dashed border-white/5 rounded-[40px] glass bg-white/5">
             <ImageIcon size={64} className="mb-4 opacity-10" />
-            <p className="font-bold opacity-30 uppercase tracking-[5px] text-xs">No Imaging Requests</p>
+            <p className="font-bold opacity-30 uppercase tracking-[5px] text-xs">لا توجد طلبات أشعة حالياً</p>
           </div>
         )}
       </div>

@@ -441,11 +441,11 @@ export default function Pharmacy() {
           <table className="w-full text-right">
             <thead>
               <tr className="bg-white/5 text-slate-400 text-[10px] uppercase font-black italic border-b border-white/5">
-                <th className="px-8 py-6">ID</th>
-                <th className="px-8 py-6">Item Name</th>
-                <th className="px-8 py-6">Quantity</th>
-                <th className="px-8 py-6">Total Amount</th>
-                <th className="px-8 py-6">Time</th>
+                <th className="px-8 py-6">المعرف</th>
+                <th className="px-8 py-6">اسم الصنف</th>
+                <th className="px-8 py-6">الكمية</th>
+                <th className="px-8 py-6">إجمالي المبلغ</th>
+                <th className="px-8 py-6">وقت العملية</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -460,7 +460,7 @@ export default function Pharmacy() {
                ))}
                {sales.length === 0 && (
                  <tr>
-                    <td colSpan={5} className="py-20 text-center text-slate-700 font-black uppercase tracking-[10px]">No Sales Records</td>
+                    <td colSpan={5} className="py-20 text-center text-slate-700 font-black uppercase tracking-[10px]">لا توجد سجلات مبيعات</td>
                  </tr>
                )}
             </tbody>
