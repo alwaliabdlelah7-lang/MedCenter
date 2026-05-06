@@ -99,8 +99,28 @@ class DataService {
   }
 
   /**
-   * Wipes a specific collection (Careful!)
+   * Wipes all collections to reset the system
    */
+  public async resetSystem(): Promise<void> {
+    const collectionsToReset = [
+      'patients', 'appointments', 'clinical_visits', 'clinical_notes', 
+      'prescriptions', 'lab_tests', 'receipts', 'pharmacy_items', 
+      'transactions', 'notifications', 'chat_messages'
+    ];
+
+    console.log('[DataService] Resetting system...');
+    
+    const promises = collectionsToReset.map(col => this.wipeCollection(col));
+    await Promise.all(promises);
+    
+    // Also clear local cache
+    collectionsToReset.forEach(col => {
+      localStorage.removeItem(`hospital_${col}`);
+    });
+
+    console.log('[DataService] System reset complete.');
+    this.notify();
+  }
   public async wipeCollection(collectionName: string): Promise<void> {
     if (this.provider === 'local') {
       localStorage.removeItem(`hospital_${collectionName}`);

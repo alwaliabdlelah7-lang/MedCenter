@@ -5,6 +5,7 @@ import { PharmacyItem, MasterMedicine, Prescription } from '../types';
 import { YEMEN_MEDICINES } from '../data/seedData';
 import { cn } from '../lib/utils';
 import { dataStore } from '../services/dataService';
+import { notificationService } from '../services/notificationService';
 import { exportToCSV, printReport } from '../lib/exportUtils';
 
 export default function Pharmacy() {
@@ -111,6 +112,14 @@ export default function Pharmacy() {
 
       // 2. Update prescription status
       await dataStore.updateItem('prescriptions', prescription.id, { status: 'dispensed' });
+      
+      // Send Notification: Dispense
+      await notificationService.sendNotification({
+        title: 'صرف وصفة طبية',
+        desc: `تم صرف الأدوية للمريض ${prescription.patientName} بنجاح.`,
+        type: 'success'
+      });
+
       setPrescriptions(prescriptions.map(p => p.id === prescription.id ? { ...p, status: 'dispensed' } : p));
 
       // 3. Add to sales
@@ -152,6 +161,15 @@ export default function Pharmacy() {
       // 1. Update Stock
       const newStock = item.stock - quantity;
       await dataStore.updateItem('pharmacy_items', item.id, { stock: newStock });
+      
+      if (newStock < 10) {
+        await notificationService.sendNotification({
+          title: 'تنبيه مخزون منخفض',
+          desc: `الصنف ${item.name} وصل إلى مستوى منخفض (${newStock} وحدة). يرجى التوريد.`,
+          type: 'warning'
+        });
+      }
+
       setInventory(inventory.map(i => i.id === item.id ? { ...i, stock: newStock } : i));
 
       // 2. Record Sale

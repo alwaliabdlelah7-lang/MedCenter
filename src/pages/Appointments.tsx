@@ -30,6 +30,7 @@ import { Appointment, Doctor, Clinic, Patient } from '../types';
 import { cn } from '../lib/utils';
 import { INITIAL_PATIENTS } from '../data/seedData';
 import { dataStore } from '../services/dataService';
+import { notificationService } from '../services/notificationService';
 import { 
   format, 
   startOfMonth, 
@@ -116,6 +117,14 @@ export default function Appointments() {
     };
     
     await dataStore.addItem('appointments', appointment);
+    
+    // Send Real-time Notification
+    await notificationService.sendNotification({
+      title: 'موعد جديد',
+      desc: `تم حجز موعد جديد للمريض ${appointment.patientName} عند الدكتور ${selectedDoctor?.name || ''}`,
+      type: 'info'
+    });
+
     setAppointments([...appointments, appointment]);
     setShowAddModal(false);
     setNewAppointment({

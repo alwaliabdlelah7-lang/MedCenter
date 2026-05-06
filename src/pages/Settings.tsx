@@ -511,11 +511,15 @@ export default function SettingsPage() {
                              const code = prompt('يرجى كتابة كلمة "RESET" للتأكيد:');
                              if (code === 'RESET') {
                                setIsRefreshingStats(true);
-                               for(const col of collectionsList) {
-                                  await dataStore.wipeCollection(col);
+                               try {
+                                 await dataStore.resetSystem();
+                                 alert('تم تصفير كافة أنظمة وبيانات المستشفى بالكامل بنجاح.');
+                                 refreshDbStats();
+                               } catch (error: any) {
+                                 alert('فشل تصفير النظام: ' + error.message);
+                               } finally {
+                                 setIsRefreshingStats(false);
                                }
-                               alert('تم تصفير قاعدة البيانات بالكامل.');
-                               refreshDbStats();
                              }
                            }
                          }}

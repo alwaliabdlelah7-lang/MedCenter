@@ -105,6 +105,21 @@
         "status": { "type": "string", "enum": ["pending", "completed", "cancelled"] }
       },
       "required": ["id", "patientId", "serviceId", "price", "status"]
+    },
+    "Notification": {
+      "title": "System Notification",
+      "description": "System-wide or user-specific real-time notifications.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "desc": { "type": "string" },
+        "type": { "type": "string", "enum": ["info", "warning", "success", "danger"] },
+        "read": { "type": "boolean" },
+        "time": { "type": "object" },
+        "userId": { "type": "string" }
+      },
+      "required": ["title", "desc", "type", "read", "time"]
     }
   },
   "firestore": {
@@ -150,6 +165,10 @@
     "radiology_scans/{scanId}": { "schema": "object", "description": "Radiology scan records and results" },
     "operations/{opId}": { "schema": "object", "description": "Surgical operation records" },
     "inpatients/{patientId}": { "schema": "object", "description": "Inpatient admission records" },
-    "service_orders/{orderId}": { "schema": "ServiceOrder", "description": "Service order records" }
+    "service_orders/{orderId}": { "schema": "ServiceOrder", "description": "Service order records" },
+    "notifications/{notifId}": { "schema": "Notification", "description": "Real-time notifications" },
+    "chat_messages/{msgId}": { "schema": "object", "description": "Real-time chat messages" },
+    "transactions/{txId}": { "schema": "object", "description": "Financial transactions" },
+    "clinical_notes/{noteId}": { "schema": "object", "description": "Clinical progress notes" }
   }
 }

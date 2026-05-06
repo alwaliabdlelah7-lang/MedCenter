@@ -69,6 +69,10 @@ async function startServer() {
     io.on("connection", (socket) => {
       socket.on("join-chat", (chatId) => socket.join(chatId));
       socket.on("send-message", (msg) => io.to(msg.chatId).emit("receive-message", msg));
+      
+      socket.on("broadcast-notification", (notif) => {
+        socket.broadcast.emit("notification-received", notif);
+      });
     });
 
     // Performance/API logging

@@ -3,6 +3,7 @@ import { Plus, Search, Image as ImageIcon, FileText, Trash2, Camera, User, Clock
 import { motion, AnimatePresence } from 'motion/react';
 import { RadiologyScan, Doctor, Patient } from '../types';
 import { dataStore } from '../services/dataService';
+import { notificationService } from '../services/notificationService';
 
 export default function Radiology() {
   const [scans, setScans] = useState<RadiologyScan[]>([]);
@@ -58,6 +59,14 @@ export default function Radiology() {
     };
     
     await dataStore.addItem('radiology_scans', scan);
+    
+    // Send Notification: Radiology Request
+    await notificationService.sendNotification({
+      title: 'طلب أشعة جديد',
+      desc: `تم طلب ${scan.scanType} للمريض ${scan.patientName}`,
+      type: 'info'
+    });
+
     setScans([...scans, scan]);
     setShowAddModal(false);
     setNewScan({ ...newScan, patientId: '', patientName: '' });
@@ -70,6 +79,17 @@ export default function Radiology() {
       imageUrl: `https://picsum.photos/seed/${id}/400/300?grayscale` 
     };
     await dataStore.updateItem<RadiologyScan>('radiology_scans', id, updates);
+    
+    // Send Notification: Radiology Result
+    const scan = scans.find(s => s.id === id);
+    if (scan) {
+      await notificationService.sendNotification({
+        title: 'تقرير أشعة جاهز',
+        desc: `تقرير ${scan.scanType} للمريض ${scan.patientName} مكتمل الآن.`,
+        type: 'success'
+      });
+    }
+
     setScans(scans.map(s => s.id === id ? { ...s, ...updates } : s));
   };
 

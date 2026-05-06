@@ -5,6 +5,7 @@ import { Permission } from '../types';
 import { dataStore } from '../services/dataService';
 
 // ... rest of imports ...
+import { notificationService } from '../services/notificationService';
 import { 
   BarChart3, 
   Users, 
@@ -84,6 +85,7 @@ export default function Layout() {
   const { user, logout, hasPermission } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(window.innerWidth < 1024);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [hospitalName, setHospitalName] = useState('إبداع الطبي');
   const [isCloudMode, setIsCloudMode] = useState(dataStore.isCloudEnabled());
@@ -99,8 +101,13 @@ export default function Layout() {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = dataStore.subscribe(() => {
+    const unsubscribeData = dataStore.subscribe(() => {
       setIsCloudMode(dataStore.isCloudEnabled());
+    });
+
+    // Real-time notifications listener
+    const unsubscribeNotifications = notificationService.onNotifications((newNotifications: any[]) => {
+      setNotifications(newNotifications);
     });
 
     const saved = localStorage.getItem('hospital_settings');
@@ -130,7 +137,8 @@ export default function Layout() {
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      unsubscribe();
+      unsubscribeData();
+      unsubscribeNotifications();
     };
   }, [isSearchOpen]);
 
@@ -349,30 +357,22 @@ export default function Layout() {
               </div>
 
               <div className="flex-1 space-y-4 overflow-y-auto custom-scrollbar pr-2">
-                <NotificationItem 
-                  title="مريض جديد بالانتظار" 
-                  desc="الاسم: عبدالله محمد - عيادة القلب" 
-                  time="منذ دقيقة" 
-                  type="info"
-                />
-                <NotificationItem 
-                  title="طلب تحليل مخبري" 
-                  desc="غرفة الطوارئ 04 - فحص شامل" 
-                  time="منذ 5 دقائق" 
-                  type="warning"
-                />
-                <NotificationItem 
-                  title="تم سداد سند استعلام" 
-                  desc="المبلغ: 5,000 ر.ي - كود 442" 
-                  time="منذ 12 دقيقة" 
-                  type="success"
-                />
-                <NotificationItem 
-                  title="انخفاض مخزون أدوية" 
-                  desc="مادة 'أوميبرازول' شارفت على النفاد" 
-                  time="منذ ساعة" 
-                  type="danger"
-                />
+                {notifications.length > 0 ? (
+                  notifications.map((notif: any, idx: number) => (
+                    <NotificationItem 
+                      key={notif.id || idx}
+                      title={notif.title} 
+                      desc={notif.desc} 
+                      time={notif.time instanceof Date ? notif.time.toLocaleTimeString('ar-YE', { hour: '2-digit', minute: '2-digit' }) : 'الآن'} 
+                      type={notif.type}
+                    />
+                  ))
+                ) : (
+                  <div className="text-center py-12">
+                    <Bell className="mx-auto text-slate-700 mb-4" size={48} />
+                    <p className="text-slate-500 text-sm">لا توجد تنبيهات جديدة حالياً</p>
+                  </div>
+                )}
               </div>
 
               <button className="mt-6 py-4 glass-card text-sky-400 text-xs font-bold rounded-2xl hover:bg-white/5 transition-colors">
@@ -386,7 +386,15 @@ export default function Layout() {
   );
 }
 
-function NotificationItem({ title, desc, time, type }: { title: string, desc: string, time: string, type: 'info' | 'warning' | 'success' | 'danger' }) {
+interface NotificationItemProps {
+  key?: any;
+  title: string;
+  desc: string;
+  time: string;
+  type: 'info' | 'warning' | 'success' | 'danger';
+}
+
+const NotificationItem = ({ title, desc, time, type }: NotificationItemProps) => {
   const iconMap = {
     info: <ActivityIcon className="text-sky-400" size={16} />,
     warning: <Clock className="text-amber-400" size={16} />,

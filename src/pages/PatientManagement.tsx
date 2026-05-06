@@ -31,6 +31,7 @@ import { cn } from '../lib/utils';
 import { useSearchParams } from 'react-router-dom';
 import { INITIAL_PATIENTS, YEMEN_LAB_TESTS, YEMEN_SERVICES } from '../data/seedData';
 import { dataStore } from '../services/dataService';
+import { notificationService } from '../services/notificationService';
 
 export default function PatientManagement() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -167,6 +168,14 @@ export default function PatientManagement() {
     };
     
     await dataStore.addItem('patients', newPatient);
+    
+    // Send Notification: New Patient
+    await notificationService.sendNotification({
+      title: 'مريض جديد',
+      desc: `تم تسجيل مريض جديد: ${newPatient.name} في النظام.`,
+      type: 'info'
+    });
+
     setPatients([newPatient, ...patients]);
     setShowAddModal(false);
     setNewPatientCustomFields({});

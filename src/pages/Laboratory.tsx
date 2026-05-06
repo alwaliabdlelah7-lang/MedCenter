@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { LabTest, Doctor, MasterLabItem, Patient } from '../types';
 import { YEMEN_LAB_TESTS } from '../data/seedData';
 import { dataStore } from '../services/dataService';
+import { notificationService } from '../services/notificationService';
 import { exportToCSV, printReport } from '../lib/exportUtils';
 import { cn } from '../lib/utils';
 
@@ -71,6 +72,14 @@ export default function Laboratory() {
         status: 'pending' as const
       };
       await dataStore.addItem('lab_tests', newTest);
+      
+      // Send Notification: Lab Request
+      await notificationService.sendNotification({
+        title: 'طلب فحص مخبري',
+        desc: `تم طلب فحص ${newTest.testType} للمريض ${newTest.patientName}`,
+        type: 'info'
+      });
+
       setTests([...tests, newTest]);
     }
     
@@ -81,6 +90,17 @@ export default function Laboratory() {
   const updateResults = async (id: string) => {
     const updates = { status: 'completed' as const, parameterResults: resultParams };
     await dataStore.updateItem<LabTest>('lab_tests', id, updates);
+    
+    // Send Notification: Lab Results
+    const test = tests.find(t => t.id === id);
+    if (test) {
+      await notificationService.sendNotification({
+        title: 'نتيجة فحص جاهزة',
+        desc: `نتائج فحص ${test.testType} للمريض ${test.patientName} أصبحت جاهزة الآن.`,
+        type: 'success'
+      });
+    }
+
     setTests(tests.map(t => t.id === id ? { ...t, ...updates } : t));
     setShowResultModal(null);
     setResultParams({});
