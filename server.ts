@@ -124,7 +124,10 @@ async function startServer() {
     });
 
     httpServer.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`[Server] Initialization complete.`);
+      console.log(`[Server] Mode: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`[Server] Admin App: ${!!adminApp ? 'Connected' : 'Missing (Check FIREBASE_SERVICE_ACCOUNT)'}`);
+      console.log(`[Server] Listening on http://0.0.0.0:${PORT}`);
     });
   } catch (err) {
     console.error("Error during server setup:", err);
