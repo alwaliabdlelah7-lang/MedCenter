@@ -1,5 +1,16 @@
 import express from "express";
 import path from "path";
+
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION AT TOP LEVEL:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('UNHANDLED REJECTION AT TOP LEVEL:', reason);
+  process.exit(1);
+});
+
 import { fileURLToPath } from "url";
 import { Server } from "socket.io";
 import { createServer } from "http";
@@ -63,12 +74,17 @@ async function startServer() {
     // Performance/API logging
     app.use((req, res, next) => {
       if (req.path.startsWith('/api')) {
-        console.log(`[API Request] ${new Date().toISOString()} ${req.method} ${req.path} (x-user-id: ${req.headers['x-user-id']})`);
+        console.log(`[API Request] ${new Date().toISOString()} ${req.method} ${req.path}`);
       }
       next();
     });
 
     app.use(express.json());
+
+    // Simple health check for Cloud Run
+    app.get("/health", (req, res) => {
+      res.status(200).send("OK");
+    });
 
     // Test route on main app
     app.get("/api-test", (req, res) => {
@@ -98,6 +114,10 @@ async function startServer() {
         res.sendFile(path.join(distPath, 'index.html'));
       });
     }
+
+    httpServer.on("error", (err) => {
+      console.error("HTTP Server Error:", err);
+    });
 
     httpServer.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on http://localhost:${PORT}`);

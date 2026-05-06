@@ -46,9 +46,15 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4MB
-        }
+        },
       })
     ],
+    build: {
+      rollupOptions: {
+        output: {
+        }
+      }
+    },
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
     },
