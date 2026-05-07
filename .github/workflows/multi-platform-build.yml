@@ -21,7 +21,7 @@ jobs:
       - name: Build Web Application
         run: npm run build
       - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: web-build
           path: dist/
@@ -58,7 +58,7 @@ jobs:
         run: |
           cd android && ./gradlew assembleDebug
       - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
@@ -78,7 +78,7 @@ jobs:
       - name: Build Windows Executable
         run: npm run desktop:build:win
       - name: Upload Windows Build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-application
           path: dist_desktop/

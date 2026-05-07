@@ -17,7 +17,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Upload Web Build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: web-build
           path: dist/
@@ -43,7 +43,7 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug
       - name: Upload Android APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
@@ -70,7 +70,7 @@ jobs:
           fi
         shell: bash
       - name: Upload Desktop Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-${{ matrix.os }}
           path: dist_desktop/
