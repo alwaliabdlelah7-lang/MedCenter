@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import rateLimit from "express-rate-limit";
 
 process.on('uncaughtException', (err) => {
   console.error('UNCAUGHT EXCEPTION AT TOP LEVEL:', err);
@@ -60,6 +61,12 @@ async function startServer() {
     const app = express();
     const httpServer = createServer(app);
     const PORT = 3000;
+    const spaLimiter = rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 300,
+      standardHeaders: true,
+      legacyHeaders: false,
+    });
 
     // Socket.io initialization
     const io = new Server(httpServer, {
@@ -114,7 +121,7 @@ async function startServer() {
     } else {
       const distPath = path.join(process.cwd(), 'dist');
       app.use(express.static(distPath));
-      app.get('*', (req, res) => {
+      app.get('*', spaLimiter, (req, res) => {
         res.sendFile(path.join(distPath, 'index.html'));
       });
     }
