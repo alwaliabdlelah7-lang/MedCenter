@@ -47,9 +47,9 @@ export default function ClinicalVisits() {
   }, []);
 
   const filteredVisits = visits.filter(v => 
-    v.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    v.diagnosis.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    v.id.toLowerCase().includes(searchQuery.toLowerCase())
+    (v.patientName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (v.diagnosis || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (v.id || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleExportCSV = () => {

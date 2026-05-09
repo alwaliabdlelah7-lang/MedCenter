@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const newUserProfile: User = {
           id: fbUser.uid,
           email: fbUser.email || '',
-          username: fbUser.email?.split('@')[0] || fbUser.displayName?.split(' ')[0]?.toLowerCase() || 'user',
+          username: fbUser.email?.split('@')?.[0] || fbUser.displayName?.split(' ')?.[0]?.toLowerCase() || 'user',
           name: fbUser.displayName || 'جديد موظف',
           role: isAdminEmail ? 'admin' : 'receptionist',
           permissions: isAdminEmail ? ['all' as Permission] : ['registration' as Permission],
@@ -103,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const newUserProfile: User = {
           id: sbUser.id,
           email: sbUser.email || '',
-          username: sbUser.email?.split('@')[0] || sbUser.user_metadata?.full_name?.split(' ')[0]?.toLowerCase() || 'user',
+          username: sbUser.email?.split('@')?.[0] || sbUser.user_metadata?.full_name?.split(' ')?.[0]?.toLowerCase() || 'user',
           name: sbUser.user_metadata?.full_name || 'جديد موظف',
           role: isAdminEmail ? 'admin' : 'receptionist',
           permissions: isAdminEmail ? ['all' as Permission] : ['registration' as Permission],

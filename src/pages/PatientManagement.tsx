@@ -136,9 +136,9 @@ export default function PatientManagement() {
   const [editPatientData, setEditPatientData] = useState<Patient | null>(null);
 
   const filtered = patients.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.phone.includes(searchQuery) ||
-    p.id.toLowerCase().includes(searchQuery.toLowerCase())
+    (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (p.phone || '').includes(searchQuery) ||
+    (p.id || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const patientAppointments = selectedPatient ? appointments.filter(a => a.patientId === selectedPatient.id) : [];
@@ -783,7 +783,7 @@ export default function PatientManagement() {
                         </div>
                         <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2 text-right">
                            {masterLabTests
-                             .filter(t => t.name.toLowerCase().includes(searchQuery.toLowerCase()) || t.category.toLowerCase().includes(searchQuery.toLowerCase()))
+                             .filter(t => (t.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (t.category || '').toLowerCase().includes(searchQuery.toLowerCase()))
                              .map(test => {
                                 const isSelected = selectedOrderTests.find(s => s.id === test.id);
                                 return (

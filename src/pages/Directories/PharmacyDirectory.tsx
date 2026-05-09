@@ -116,8 +116,8 @@ export default function PharmacyDirectory() {
   };
 
   const filtered = medicines.filter(m => 
-    m.tradeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    m.scientificName.toLowerCase().includes(searchQuery.toLowerCase())
+    (m.tradeName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (m.scientificName || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (

@@ -100,8 +100,8 @@ export default function Radiology() {
   };
 
   const filtered = scans.filter(s => 
-    s.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.scanType.toLowerCase().includes(searchQuery.toLowerCase())
+    (s.patientName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (s.scanType || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (

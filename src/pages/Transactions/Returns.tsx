@@ -53,8 +53,8 @@ export default function Returns() {
   };
 
   const filteredReceipts = receipts.filter(r => 
-    r.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.id.toLowerCase().includes(searchQuery.toLowerCase())
+    (r.patientName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (r.id || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (

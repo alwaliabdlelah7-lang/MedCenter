@@ -97,8 +97,8 @@ export default function NursesDirectory() {
   };
 
   const filteredNurses = nurses.filter(n => 
-    n.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    n.id.toLowerCase().includes(searchQuery.toLowerCase())
+    (n.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (n.id || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const stats = {

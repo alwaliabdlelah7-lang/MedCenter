@@ -1,6 +1,5 @@
 import express from "express";
 import path from "path";
-import rateLimit from "express-rate-limit";
 
 process.on('uncaughtException', (err) => {
   console.error('UNCAUGHT EXCEPTION AT TOP LEVEL:', err);
@@ -61,12 +60,6 @@ async function startServer() {
     const app = express();
     const httpServer = createServer(app);
     const PORT = 3000;
-    const spaLimiter = rateLimit({
-      windowMs: 15 * 60 * 1000,
-      max: 300,
-      standardHeaders: true,
-      legacyHeaders: false,
-    });
 
     // Socket.io initialization
     const io = new Server(httpServer, {
@@ -120,11 +113,35 @@ async function startServer() {
       app.use(vite.middlewares);
     } else {
       const distPath = path.join(process.cwd(), 'dist');
+      const indexPath = path.join(distPath, 'index.html');
+      
+      console.log(`[Production] Serving static files from: ${distPath}`);
+      
+      import('fs').then(fs => {
+        if (fs.existsSync(indexPath)) {
+          console.log(`[Production] index.html found at: ${indexPath}`);
+        } else {
+          console.error(`[Production] CRITICAL: index.html NOT FOUND at: ${indexPath}`);
+          console.log(`[Production] Files in ${distPath}:`, fs.readdirSync(distPath));
+        }
+      }).catch(err => console.error("Error checking index.html:", err));
+
       app.use(express.static(distPath));
-      app.get('*', spaLimiter, (req, res) => {
-        res.sendFile(path.join(distPath, 'index.html'));
+      app.get('*', (req, res) => {
+        res.sendFile(indexPath, (err) => {
+          if (err) {
+            console.error(`Error sending index.html:`, err);
+            res.status(500).send("Error loading app. Please check server logs.");
+          }
+        });
       });
     }
+
+    // Error handler
+    app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+      console.error("Express Unhandled Error:", err);
+      res.status(500).json({ error: "Internal Server Error" });
+    });
 
     httpServer.on("error", (err) => {
       console.error("HTTP Server Error:", err);

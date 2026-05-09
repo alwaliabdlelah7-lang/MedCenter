@@ -100,7 +100,7 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
     const lowQuery = q.toLowerCase();
 
     const ptResults: SearchResult[] = patients
-      .filter(p => p.name.toLowerCase().includes(lowQuery) || p.phone.includes(q))
+      .filter(p => (p.name || '').toLowerCase().includes(lowQuery) || (p.phone || '').includes(q))
       .map(p => ({
         id: p.id,
         title: p.name,
@@ -111,7 +111,7 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
       }));
 
     const dctResults: SearchResult[] = doctors
-      .filter(d => d.name.toLowerCase().includes(lowQuery) || d.specialization.toLowerCase().includes(lowQuery))
+      .filter(d => (d.name || '').toLowerCase().includes(lowQuery) || (d.specialization || '').toLowerCase().includes(lowQuery))
       .map(d => ({
         id: d.id,
         title: d.name,
@@ -122,7 +122,7 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
       }));
 
     const aptResults: SearchResult[] = appointments
-      .filter(a => a.patientName.toLowerCase().includes(lowQuery) || a.id.toLowerCase().includes(lowQuery))
+      .filter(a => (a.patientName || '').toLowerCase().includes(lowQuery) || (a.id || '').toLowerCase().includes(lowQuery))
       .map(a => ({
         id: a.id,
         title: `موعد: ${a.patientName}`,
@@ -133,7 +133,7 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
       }));
 
     const rctResults: SearchResult[] = receipts
-      .filter(r => r.patientName.toLowerCase().includes(lowQuery) || r.id.toLowerCase().includes(lowQuery))
+      .filter(r => (r.patientName || '').toLowerCase().includes(lowQuery) || (r.id || '').toLowerCase().includes(lowQuery))
       .map(r => ({
         id: r.id,
         title: `سند قبض: ${r.patientName}`,
@@ -144,7 +144,7 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
       }));
 
     const labResultsList: SearchResult[] = labTests
-      .filter(l => l.patientName.toLowerCase().includes(lowQuery) || l.testType.toLowerCase().includes(lowQuery))
+      .filter(l => (l.patientName || '').toLowerCase().includes(lowQuery) || (l.testType || '').toLowerCase().includes(lowQuery))
       .map(l => ({
         id: l.id,
         title: `فحص: ${l.patientName}`,
@@ -155,7 +155,7 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
       }));
 
     const medResults: SearchResult[] = medicines
-      .filter(m => m.tradeName.toLowerCase().includes(lowQuery) || m.scientificName.toLowerCase().includes(lowQuery))
+      .filter(m => (m.tradeName || '').toLowerCase().includes(lowQuery) || (m.scientificName || '').toLowerCase().includes(lowQuery))
       .map(m => ({
         id: m.id,
         title: m.tradeName,
@@ -166,7 +166,7 @@ export default function CommandSearch({ isOpen, onClose }: { isOpen: boolean; on
       }));
 
     const pgResults: SearchResult[] = searchPages
-      .filter(p => p.title.toLowerCase().includes(lowQuery))
+      .filter(p => (p.title || '').toLowerCase().includes(lowQuery))
       .map(p => ({
         id: p.path,
         title: p.title,

@@ -41,7 +41,15 @@ export default function StaffChat() {
     loadUsers();
 
     // Initialize socket
-    socketRef.current = io();
+    socketRef.current = io(window.location.origin, {
+      transports: ['polling', 'websocket'],
+      reconnectionAttempts: 5,
+      timeout: 10000,
+    });
+
+    socketRef.current.on('connect_error', (err) => {
+      console.warn('Chat socket connection error:', err.message);
+    });
 
     socketRef.current.on('receive-message', (msg: Message) => {
       setMessages(prev => {
@@ -89,7 +97,7 @@ export default function StaffChat() {
     setMessageText('');
 
     // AI Trigger
-    if (content.toLowerCase().startsWith('@ai')) {
+    if ((content || '').toLowerCase().startsWith('@ai')) {
       const prompt = content.slice(3).trim() || "كيف يمكنني مساعدتك اليوم؟";
       
       // Add loading message

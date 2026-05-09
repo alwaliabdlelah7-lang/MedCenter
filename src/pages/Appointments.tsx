@@ -207,7 +207,7 @@ export default function Appointments() {
 
   const filtered = appointments.filter(a => 
     (activeTab === 'all' || a.status === activeTab) &&
-    (a.patientName.toLowerCase().includes(searchQuery.toLowerCase()) || a.id.toLowerCase().includes(searchQuery.toLowerCase()))
+    ((a.patientName || '').toLowerCase().includes(searchQuery.toLowerCase()) || (a.id || '').toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   // Calendar Logic

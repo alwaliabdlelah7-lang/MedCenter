@@ -131,9 +131,9 @@ export default function DoctorManagement() {
   };
 
   const filtered = doctors.filter(d => 
-    d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    d.specialization.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    d.id.toLowerCase().includes(searchQuery.toLowerCase())
+    (d.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (d.specialization || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (d.id || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const stats = {

@@ -2,7 +2,15 @@ import { collection, query, where, orderBy, limit, onSnapshot, addDoc, serverTim
 import { db, auth } from '../lib/firebase';
 import { io } from 'socket.io-client';
 
-const socket = io(window.location.origin);
+const socket = io(window.location.origin, {
+  transports: ['polling', 'websocket'],
+  reconnectionAttempts: 5,
+  timeout: 10000,
+});
+
+socket.on('connect_error', (err) => {
+  console.warn('Socket connection error:', err.message);
+});
 
 export type NotificationType = 'info' | 'warning' | 'success' | 'danger';
 

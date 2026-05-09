@@ -73,7 +73,7 @@ export default function OperationsDirectory() {
   };
 
   const filtered = operations.filter(op => 
-    op.name.toLowerCase().includes(searchQuery.toLowerCase())
+    (op.name || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (

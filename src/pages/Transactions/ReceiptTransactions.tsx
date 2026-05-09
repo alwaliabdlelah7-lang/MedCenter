@@ -133,8 +133,8 @@ export default function ReceiptTransactions() {
   };
 
   const filteredReceipts = receipts.filter(r => 
-    r.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.id.toLowerCase().includes(searchQuery.toLowerCase())
+    (r.patientName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (r.id || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (

@@ -126,9 +126,9 @@ export default function Laboratory() {
   };
 
   const filtered = tests.filter(t => 
-    t.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    t.testType.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    t.id.toLowerCase().includes(searchQuery.toLowerCase())
+    (t.patientName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (t.testType || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (t.id || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const stats = {

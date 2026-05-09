@@ -85,8 +85,8 @@ export default function StructureDirectory() {
   };
 
   const filtered = departments.filter(d => 
-    d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    d.id.toLowerCase().includes(searchQuery.toLowerCase())
+    (d.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (d.id || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const stats = {

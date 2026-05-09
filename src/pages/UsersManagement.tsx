@@ -166,8 +166,8 @@ export default function UsersManagement() {
   const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2);
 
   const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.username.toLowerCase().includes(searchQuery.toLowerCase())
+    (u.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (u.username || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (

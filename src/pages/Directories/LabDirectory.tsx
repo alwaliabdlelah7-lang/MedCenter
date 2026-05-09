@@ -137,8 +137,8 @@ export default function LabDirectory() {
   };
 
   const filtered = tests.filter(t => 
-    t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    t.category.toLowerCase().includes(searchQuery.toLowerCase())
+    (t.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (t.category || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
