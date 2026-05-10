@@ -6,6 +6,11 @@
   "author": "Alwali Abdlelah",
   "type": "module",
   "main": "electron-main.cjs",
+  "overrides": {
+    "fast-xml-builder": "^1.2.0",
+    "fast-uri": "^3.1.2",
+    "@babel/plugin-transform-modules-systemjs": "^7.29.4"
+  },
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build",
