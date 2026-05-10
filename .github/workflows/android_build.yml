@@ -24,11 +24,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20
           cache: 'npm'
 
       - name: Install Project Dependencies
-        run: npm ci
+        run: |
+          # Use npm install instead of npm ci if there are architecture mismatches for native binaries
+          # Adding --include=optional to ensure tailwind oxide is included if needed
+          npm install --include=optional
 
       - name: Build Web Application
         run: npm run build

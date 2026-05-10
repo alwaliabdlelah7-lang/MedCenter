@@ -14,7 +14,7 @@
     "lint": "tsc --noEmit",
     "start": "NODE_ENV=production node server-dist.js",
     "mobile:sync": "npx cap sync",
-    "mobile:build": "npm run build && npx cap sync && cd android && ./gradlew assembleDebug",
+    "mobile:build": "npm run build && npx cap sync android && cd android && chmod +x gradlew && ./gradlew assembleDebug",
     "desktop:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
     "desktop:build:win": "npm run build && electron-builder --win",
     "desktop:build:mac": "npm run build && electron-builder --mac",

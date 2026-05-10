@@ -19,6 +19,11 @@ npm run build
 
 # 3. Sync with Android
 echo "📲 Step 3: Syncing with Capacitor Android..."
+# Ensure the android platform is added if missing
+if [ ! -d "android" ]; then
+    echo "🏗️ Android platform not found, adding it..."
+    npx cap add android
+fi
 npx cap sync android
 
 # 4. Permissions check
