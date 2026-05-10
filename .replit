@@ -1,4 +1,8 @@
 modules = ["nodejs-20"]
+
+[nix]
+channel = "stable-25_05"
+
 [agent]
 expertMode = true
 
@@ -13,6 +17,3 @@ externalPort = 80
 [deployment]
 deploymentTarget = "static"
 publicDir = "dist/public"
-
-[nix]
-channel = "stable-25_05"
