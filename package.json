@@ -8,11 +8,11 @@
   "main": "electron-main.cjs",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=esm --target=node20 --outfile=server-dist.js --external:express --external:firebase-admin --external:socket.io --external:dotenv --external:path-to-regexp --external:vite --external:fsevents",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=esm --target=node20 --outfile=server-dist.js --external:firebase-admin --external:vite --external:fsevents",
     "preview": "vite preview",
     "clean": "rm -rf dist server-dist.js",
     "lint": "tsc --noEmit",
-    "start": "node server-dist.js",
+    "start": "NODE_ENV=production node server-dist.js",
     "mobile:sync": "npx cap sync",
     "mobile:build": "npm run build && npx cap sync && cd android && ./gradlew assembleDebug",
     "desktop:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
@@ -36,11 +36,11 @@
     }
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=20.0.0"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.1",
-    "@capacitor/cli": "^8.3.1",
+    "@capacitor/cli": "^6.2.1",
     "@capacitor/core": "^6.2.1",
     "@google/genai": "^1.50.1",
     "@supabase/supabase-js": "^2.105.1",

@@ -16,7 +16,7 @@ import { Server } from "socket.io";
 import { createServer } from "http";
 import "dotenv/config";
 import admin from "firebase-admin";
-import { createApiRouter } from "./src/api/routes.ts";
+import { createApiRouter } from "./src/api/routes";
 import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
@@ -112,33 +112,49 @@ async function startServer() {
 
     // Vite middleware for development
     if (process.env.NODE_ENV !== "production") {
-      const { createServer: createViteServer } = await import("vite");
-      const vite = await createViteServer({
-        server: { middlewareMode: true },
-        appType: "spa",
-      });
-      app.use(vite.middlewares);
+      console.log("[Server] Development mode detected. Loading Vite...");
+      try {
+        const { createServer: createViteServer } = await import("vite");
+        const vite = await createViteServer({
+          server: { middlewareMode: true },
+          appType: "spa",
+        });
+        app.use(vite.middlewares);
+        console.log("[Server] Vite middleware mounted.");
+      } catch (e: any) {
+        console.error("[Server] Failed to load Vite. This is expected in production if NODE_ENV is not set correctly.", e.message);
+      }
     } else {
       const distPath = path.join(process.cwd(), 'dist');
       const indexPath = path.join(distPath, 'index.html');
       
       console.log(`[Production] Serving static files from: ${distPath}`);
       
-      import('fs').then(fs => {
+      // Inline FS check for debugging
+      try {
+        const fs = await import('fs');
         if (fs.existsSync(indexPath)) {
-          console.log(`[Production] index.html found at: ${indexPath}`);
+          console.log(`[Production] index.html confirmed at: ${indexPath}`);
         } else {
-          console.error(`[Production] CRITICAL: index.html NOT FOUND at: ${indexPath}`);
-          console.log(`[Production] Files in ${distPath}:`, fs.readdirSync(distPath));
+          console.error(`[Production] CRITICAL ERROR: index.html missing at ${indexPath}`);
+          if (fs.existsSync(distPath)) {
+            console.log(`[Production] Contents of ${distPath}:`, fs.readdirSync(distPath));
+          } else {
+            console.error(`[Production] dist directory itself is missing!`);
+          }
         }
-      }).catch(err => console.error("Error checking index.html:", err));
+      } catch (fsErr) {
+        console.error("[Server] Error checking file system:", fsErr);
+      }
 
       app.use(express.static(distPath));
       app.get('*', (req, res) => {
         res.sendFile(indexPath, (err) => {
           if (err) {
-            console.error(`Error sending index.html:`, err);
-            res.status(500).send("Error loading app. Please check server logs.");
+            console.error(`[Server] Error sending index.html:`, err);
+            if (!res.headersSent) {
+              res.status(500).send("Error loading application assets. Please check server logs.");
+            }
           }
         });
       });
