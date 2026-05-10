@@ -43,6 +43,11 @@ jobs:
         run: |
           npx cap sync android
 
+      - name: Repair Gradle Wrapper (Force Refresh)
+        run: |
+          cd android
+          gradle wrapper
+
       - name: Make Gradlew Executable
         run: chmod +x android/gradlew
 

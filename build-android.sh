@@ -26,10 +26,21 @@ if [ ! -d "android" ]; then
 fi
 npx cap sync android
 
-# 4. Permissions check
-echo "🔑 Step 4: Setting executable permissions for Gradle..."
+# 4. Permissions and Wrapper check
+echo "🔑 Step 4: Setting executable permissions for Gradle and checking wrapper..."
 if [ -d "android" ]; then
     chmod +x android/gradlew
+    
+    # Try to detect if wrapper is broken and fix if gradle is available
+    if ! (cd android && ./gradlew --version > /dev/null 2>&1); then
+        echo "⚠️ Gradle wrapper seems broken. Attempting to repair..."
+        if command -v gradle >/dev/null 2>&1; then
+            (cd android && gradle wrapper)
+            chmod +x android/gradlew
+        else
+            echo "❌ Error: Gradle wrapper is broken and 'gradle' command not found. Please install Gradle."
+        fi
+    fi
 else
     echo "❌ Error: 'android' directory not found. Please run 'npx cap add android' first."
     exit 1
