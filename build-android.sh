@@ -1,31 +1,57 @@
 #!/bin/bash
 
 # Script to build Android App locally
+# This script automates the process of building the web assets and syncing them with the Android project.
+
+set -e # Exit on any error
+
+echo "------------------------------------------"
 echo "🚀 Starting Android Build Process..."
+echo "------------------------------------------"
 
 # 1. Install dependencies
-echo "📦 Installing npm dependencies..."
+echo "📦 Step 1: Checking/Installing npm dependencies..."
 npm install
 
 # 2. Build Web Assets
-echo "🏗️ Building web project..."
+echo "🏗️ Step 2: Building web project (Vite)..."
 npm run build
 
 # 3. Sync with Android
-echo "Syncing with Capacitor Android..."
+echo "📲 Step 3: Syncing with Capacitor Android..."
 npx cap sync android
 
-# 4. Open Android Studio (Optional)
-echo "✅ Build complete! You can now open Android Studio to generate the APK:"
-echo "npx cap open android"
+# 4. Permissions check
+echo "🔑 Step 4: Setting executable permissions for Gradle..."
+if [ -d "android" ]; then
+    chmod +x android/gradlew
+else
+    echo "❌ Error: 'android' directory not found. Please run 'npx cap add android' first."
+    exit 1
+fi
 
-# 5. Build APK via Command Line (Requires Gradle)
-echo "🛠️ Attempting to build APK via Gradle..."
+# 5. Build APK via Command Line
+echo "🛠️ Step 5: Building Debug APK via Gradle..."
 cd android
+
+# Check if JAVA_HOME is set
+if [ -z "$JAVA_HOME" ]; then
+    echo "⚠️ Warning: JAVA_HOME is not set. The build might fail if Java is not in your PATH."
+fi
+
 ./gradlew assembleDebug
 
 if [ $? -eq 0 ]; then
-    echo "🎉 Success! APK generated at: android/app/build/outputs/apk/debug/app-debug.apk"
+    echo "------------------------------------------"
+    echo "🎉 Success! Android build completed."
+    echo "📂 APK generated at: android/app/build/outputs/apk/debug/app-debug.apk"
+    echo "------------------------------------------"
+    echo "💡 To open the project in Android Studio, run:"
+    echo "   npx cap open android"
 else
-    echo "❌ Gradle build failed. Please ensure Android SDK and JDK are installed."
+    echo "------------------------------------------"
+    echo "❌ Error: Gradle build failed."
+    echo "Check if you have Android SDK and JDK 17 installed."
+    echo "------------------------------------------"
 fi
+

@@ -17,6 +17,11 @@ import { createServer } from "http";
 import "dotenv/config";
 import admin from "firebase-admin";
 import { createApiRouter } from "./src/api/routes.ts";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+// Use require for CJS modules if needed for better compatibility in bundled ESM
+// but esbuild will handle the imports if we mark them as external and use import statements.
 
 // Initialize Firebase Admin lazily/conditionally
 let adminApp: admin.app.App | null = null;
@@ -60,6 +65,8 @@ async function startServer() {
     const app = express();
     const httpServer = createServer(app);
     const PORT = 3000;
+    
+    console.log(`[Server] Attempting to start on port ${PORT}...`);
 
     // Socket.io initialization
     const io = new Server(httpServer, {
@@ -152,6 +159,15 @@ async function startServer() {
       console.log(`[Server] Mode: ${process.env.NODE_ENV || 'development'}`);
       console.log(`[Server] Admin App: ${!!adminApp ? 'Connected' : 'Missing (Check FIREBASE_SERVICE_ACCOUNT)'}`);
       console.log(`[Server] Listening on http://0.0.0.0:${PORT}`);
+    });
+    
+    httpServer.on('error', (err: any) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`[Server] Error: Port ${PORT} is already in use.`);
+      } else {
+        console.error(`[Server] HTTP Server error:`, err);
+      }
+      process.exit(1);
     });
   } catch (err) {
     console.error("Error during server setup:", err);
