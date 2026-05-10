@@ -1,4 +1,8 @@
 modules = ["nodejs-20"]
+
+[nix]
+channel = "stable-25_05"
+
 [agent]
 expertMode = true
 
@@ -14,5 +18,6 @@ externalPort = 80
 deploymentTarget = "static"
 publicDir = "dist/public"
 
-[nix]
-channel = "stable-25_05"
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 120000
