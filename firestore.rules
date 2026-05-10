@@ -141,6 +141,22 @@ service cloud.firestore {
       allow write: if hasPermission('admin');
     }
 
+    match /service_orders/{id} {
+      function isValidServiceOrder(data) {
+        return data.keys().hasAll(['id', 'patientId', 'serviceId', 'price', 'status'])
+               && data.id is string && data.id.size() <= 64
+               && data.patientId is string && data.patientId.size() <= 64
+               && data.serviceId is string && data.serviceId.size() <= 64
+               && data.price is number
+               && data.status in ['pending', 'completed', 'cancelled'];
+      }
+
+      allow read: if hasPermission('clinical') || hasPermission('billing') || hasPermission('admin');
+      allow create: if (hasPermission('clinical') || hasPermission('admin')) && isValidServiceOrder(incoming());
+      allow update: if (hasPermission('clinical') || hasPermission('admin')) && isValidServiceOrder(incoming());
+      allow delete: if hasPermission('admin');
+    }
+
     // Operations & Inpatients
     match /operations/{id} {
       allow read: if hasPermission('clinical');

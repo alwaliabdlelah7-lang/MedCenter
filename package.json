@@ -7,37 +7,29 @@
   "type": "module",
   "main": "electron-main.cjs",
   "overrides": {
-    "uuid": "^14.0.0",
-    "@tootallnate/once": "^3.0.1"
+    "fast-xml-builder": "^1.2.0",
+    "fast-uri": "^3.1.2",
+    "@babel/plugin-transform-modules-systemjs": "^7.29.4"
   },
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build",
-    "build:web": "vite build",
-    "build:android": "vite build && npx cap sync android && npx cap open android",
-    "build:android:apk": "vite build && npx cap sync android",
-    "build:windows": "vite build && electron-builder --win --portable",
-    "build:linux": "vite build && electron-builder --linux",
-    "build:mac": "vite build && electron-builder --mac",
-    "build:all": "vite build && npx cap sync android",
     "preview": "vite preview",
-    "clean": "rm -rf dist dist_desktop",
+    "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "start": "tsx server.ts",
-    "desktop:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5000 && electron .\"",
+    "mobile:sync": "npx cap sync",
+    "mobile:build": "npm run build && npx cap sync && cd android && ./gradlew assembleDebug",
+    "desktop:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
     "desktop:build:win": "npm run build && electron-builder --win",
     "desktop:build:mac": "npm run build && electron-builder --mac",
-    "desktop:build:linux": "npm run build && electron-builder --linux",
-    "mobile:sync": "npx cap sync",
-    "mobile:android": "npx cap run android"
+    "desktop:build:linux": "npm run build && electron-builder --linux"
   },
   "build": {
     "appId": "com.alwali.medcenter",
-    "productName": "ايداع الطبي - MedCenter HIS",
-    "copyright": "© 2026 Alwali Abdlelah",
+    "productName": "MedCenter HIS",
     "directories": {
-      "output": "dist_desktop",
-      "buildResources": "public"
+      "output": "dist_desktop"
     },
     "files": [
       "dist/**/*",
@@ -45,17 +37,7 @@
       "package.json"
     ],
     "win": {
-      "target": [{ "target": "portable", "arch": ["x64"] }],
-      "icon": "public/logo512.png"
-    },
-    "linux": {
-      "target": ["AppImage", "deb"],
-      "icon": "public/logo512.png",
-      "category": "Office"
-    },
-    "mac": {
-      "target": "dmg",
-      "icon": "public/logo512.png"
+      "target": "portable"
     }
   },
   "dependencies": {
@@ -82,7 +64,8 @@
     "socket.io-client": "^4.8.3",
     "tailwind-merge": "^3.5.0",
     "tsx": "^4.21.0",
-    "vite": "^6.4.2"
+    "vite": "^6.4.2",
+    "vite-plugin-pwa": "^1.2.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.4",
@@ -90,6 +73,8 @@
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
     "concurrently": "^9.2.1",
+    "electron": "^41.5.0",
+    "electron-builder": "^26.8.1",
     "tailwindcss": "^4.1.14",
     "typescript": "~5.8.2",
     "wait-on": "^9.0.5"

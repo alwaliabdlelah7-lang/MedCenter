@@ -28,27 +28,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Safety timeout — if Firebase does not respond within 6 s, fall back to
-    // the locally-cached session (or null) so the spinner never hangs forever.
-    const fallbackTimer = setTimeout(() => {
-      console.warn('[Auth] Firebase auth timeout — falling back to localStorage session.');
-      try {
-        const cached = localStorage.getItem('hospital_current_user');
-        if (cached) setUser(JSON.parse(cached));
-      } catch (_) {}
-      setIsLoading(false);
-    }, 6000);
-
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
-      clearTimeout(fallbackTimer);
       if (fbUser) {
         try {
           // Try to get user from Firestore
           const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
           if (userDoc.exists()) {
-            const profile = { id: userDoc.id, ...userDoc.data() } as User;
-            setUser(profile);
-            localStorage.setItem('hospital_current_user', JSON.stringify(profile));
+            setUser({ id: userDoc.id, ...userDoc.data() } as User);
           } else {
             // Check if it's the bootstrapped admin
             const isAdminEmail = fbUser.email === 'alwaliabdlelah7@gmail.com';
@@ -66,7 +52,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Persist the user profile in Firestore
             await setDoc(doc(db, 'users', fbUser.uid), newUserProfile);
             setUser(newUserProfile);
-            localStorage.setItem('hospital_current_user', JSON.stringify(newUserProfile));
             
             // Trigger seeding if database is empty (since we are now an authorized admin)
             if (isAdminEmail) {
@@ -84,10 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     });
 
-    return () => {
-      clearTimeout(fallbackTimer);
-      unsub();
-    };
+    return () => unsub();
   }, []);
 
   const loginWithGoogle = async () => {
@@ -162,39 +144,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (firebaseError: any) {
       console.warn("Firebase Auth login failed, checking legacy admin:", firebaseError.message);
       
-      // 2. Legacy admin fallback (admin/123) — works fully offline
-      const localUsers: any[] = (() => {
-        try { return JSON.parse(localStorage.getItem('hospital_users') || '[]'); } catch { return []; }
-      })();
-      const localMatch = localUsers.find((u: any) =>
-        (u.username === username || u.email === username) && (u.password === password || (!password && u.password === '123'))
-      );
-      if (localMatch || (username === 'admin' && (!password || password === '123'))) {
-        const adminData: User = localMatch ? {
-          id: localMatch.id,
-          email: localMatch.email,
-          username: localMatch.username,
-          name: localMatch.name,
-          role: localMatch.role,
-          permissions: localMatch.permissions,
-          status: 'active',
-        } : {
-          id: 'u-1',
-          username: 'admin',
-          name: 'مدير النظام',
-          role: 'admin',
-          permissions: ['all' as Permission],
-          status: 'active',
-        };
-        setUser(adminData);
-        localStorage.setItem('hospital_current_user', JSON.stringify(adminData));
-        // Switch to local provider so all data reads use seeded localStorage
-        const { dataStore } = await import('../services/dataService');
-        if (dataStore.getProvider() !== 'local') {
-          dataStore.setProvider('local');
-        }
-        dataStore.seedLocalIfEmpty();
-        return true;
+      // 2. Legacy admin fallback (only if Firebase Auth fails and it matches the specific hardcoded credentials)
+      if (username === 'admin' && (!password || password === '123')) {
+         const adminData: User = {
+           id: 'u-1',
+           username: 'admin',
+           name: 'System Admin (Legacy)',
+           role: 'admin',
+           permissions: ['all' as Permission],
+           status: 'active'
+         };
+         setUser(adminData);
+         localStorage.setItem('hospital_current_user', JSON.stringify(adminData));
+         return true;
       }
       
       // If we are here, it's a real failure

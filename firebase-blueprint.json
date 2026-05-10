@@ -88,6 +88,23 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "userId", "action", "timestamp"]
+    },
+    "ServiceOrder": {
+      "title": "Service Order",
+      "description": "Records of medical services ordered for patients.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "patientId": { "type": "string" },
+        "patientName": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "serviceName": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["pending", "completed", "cancelled"] }
+      },
+      "required": ["id", "patientId", "serviceId", "price", "status"]
     }
   },
   "firestore": {
@@ -132,6 +149,7 @@
     "dynamic_fields/{fieldId}": { "schema": "object", "description": "Custom dynamic form fields" },
     "radiology_scans/{scanId}": { "schema": "object", "description": "Radiology scan records and results" },
     "operations/{opId}": { "schema": "object", "description": "Surgical operation records" },
-    "inpatients/{patientId}": { "schema": "object", "description": "Inpatient admission records" }
+    "inpatients/{patientId}": { "schema": "object", "description": "Inpatient admission records" },
+    "service_orders/{orderId}": { "schema": "ServiceOrder", "description": "Service order records" }
   }
 }

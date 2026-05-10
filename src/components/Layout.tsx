@@ -82,11 +82,21 @@ const sidebarItems: { icon?: any, label: string, path?: string, type?: 'header',
 export default function Layout() {
   const navigate = useNavigate();
   const { user, logout, hasPermission } = useAuth();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(window.innerWidth < 1024);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [hospitalName, setHospitalName] = useState('إبداع الطبي');
   const [isCloudMode, setIsCloudMode] = useState(dataStore.isCloudEnabled());
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        setIsCollapsed(true);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = dataStore.subscribe(() => {
