@@ -200,7 +200,7 @@ export default function Reports() {
                      <div className="w-3 h-3 rounded-full shadow-[0_0_10px_rgba(0,0,0,0.5)]" style={{ backgroundColor: item.color }} />
                      <span className="text-xs font-black text-slate-400 group-hover:text-white transition-colors">{item.name}</span>
                   </div>
-                  <span className="text-sm font-black text-white font-mono">{item.value.toLocaleString()} <small className="text-[10px] text-slate-600 font-normal">ر.ي</small></span>
+                  <span className="text-sm font-black text-white font-mono">{(item.value || 0).toLocaleString()} <small className="text-[10px] text-slate-600 font-normal">ر.ي</small></span>
                 </div>
               ))}
            </div>
@@ -242,7 +242,7 @@ export default function Reports() {
                               </div>
                            </td>
                            <td className="py-6 text-center">
-                              <span className="font-black text-sky-400 font-mono tracking-tight">{doc.revenue.toLocaleString()}</span>
+                              <span className="font-black text-sky-400 font-mono tracking-tight">{(doc.revenue || 0).toLocaleString()}</span>
                               <span className="text-[10px] text-slate-600 mr-1 italic">ر.ي</span>
                            </td>
                            <td className="py-6 text-center">
@@ -253,7 +253,7 @@ export default function Reports() {
                            </td>
                            <td className="py-6 text-left pl-6">
                               <div className="text-lg font-black text-white font-mono tracking-tighter">
-                                 {doc.doctorShare.toLocaleString()}
+                                 {(doc.doctorShare || 0).toLocaleString()}
                                  <small className="text-[10px] text-slate-500 mr-2 not-italic font-black">ر.ي</small>
                               </div>
                            </td>
@@ -306,7 +306,7 @@ function StatCard({ icon: Icon, label, value, unit, color, trend }: { icon: any,
        <div className="relative z-10">
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-[3px] mb-2 italic">{label}</p>
           <h3 className="text-3xl font-black text-white tracking-tighter flex items-baseline gap-2">
-             {value.toLocaleString()}
+             {(value || 0).toLocaleString()}
              <small className="text-xs font-bold text-slate-500 not-italic uppercase opacity-50">{unit}</small>
           </h3>
        </div>

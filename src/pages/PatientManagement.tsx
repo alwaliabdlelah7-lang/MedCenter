@@ -734,7 +734,7 @@ export default function PatientManagement() {
                                          <tr key={`bill-lab-${l.id}`} className="hover:bg-white/5 transition-colors group">
                                             <td className="p-6 text-slate-400 font-mono italic text-xs tracking-widest">{l.date}</td>
                                             <td className="p-6 font-black text-white group-hover:text-emerald-400 transition-colors uppercase italic text-xs">Lab Test: {l.testType}</td>
-                                            <td className="p-6 text-emerald-400 font-black font-mono">{l.price ? l.price.toLocaleString() : '3,500'} YER</td>
+                                            <td className="p-6 text-emerald-400 font-black font-mono">{(l.price || 3500).toLocaleString()} YER</td>
                                             <td className="p-6"><span className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest border border-emerald-500/30">CLEARED</span></td>
                                          </tr>
                                        ))}
@@ -745,7 +745,7 @@ export default function PatientManagement() {
                                  <div className="absolute inset-0 bg-gradient-to-l from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                  <div className="text-right relative z-10">
                                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-[4px] mb-2 font-mono">إجمالي المستحقات المسددة</p>
-                                    <h5 className="text-4xl font-black text-white italic tracking-tighter">{(5000 + patientServiceOrders.reduce((sum, so) => sum + so.price,0) + patientLabs.reduce((sum, l) => sum + (l.price || 3500), 0)).toLocaleString()} <small className="text-sm text-slate-500 not-italic font-mono uppercase">YER</small></h5>
+                                    <h5 className="text-4xl font-black text-white italic tracking-tighter">{(5000 + patientServiceOrders.reduce((sum, so) => sum + (so.price || 0),0) + patientLabs.reduce((sum, l) => sum + (l.price || 3500), 0)).toLocaleString()} <small className="text-sm text-slate-500 not-italic font-mono uppercase">YER</small></h5>
                                  </div>
                                  <div className="p-6 bg-emerald-500/10 rounded-[30px] text-emerald-400 shadow-2xl relative z-10">
                                     <TrendingUp size={48} className="group-hover:translate-x-2 transition-transform" />
@@ -815,7 +815,7 @@ export default function PatientManagement() {
                                           <p className="text-[10px] text-slate-500 italic mt-0.5">{test.category}</p>
                                        </div>
                                     </div>
-                                    <p className="text-xs font-black font-mono text-emerald-400">{test.price.toLocaleString()} ر.ي</p>
+                                    <p className="text-xs font-black font-mono text-emerald-400">{(test.price || 0).toLocaleString()} ر.ي</p>
                                  </button>
                                 );
                              })}
@@ -831,7 +831,7 @@ export default function PatientManagement() {
                              <div key={`sel-${test.id}`} className="flex items-center justify-between p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl">
                                 <span className="text-xs font-black text-white uppercase">{test.name}</span>
                                 <div className="flex items-center gap-3">
-                                   <span className="text-[10px] font-black font-mono text-indigo-400">{test.price.toLocaleString()} ر.ي</span>
+                                   <span className="text-[10px] font-black font-mono text-indigo-400">{(test.price || 0).toLocaleString()} ر.ي</span>
                                    <button onClick={() => setSelectedOrderTests(selectedOrderTests.filter(s => s.id !== test.id))} className="text-rose-500 hover:text-white transition-colors">
                                       <X size={14} />
                                    </button>
@@ -848,7 +848,7 @@ export default function PatientManagement() {
                            <div className="flex items-center justify-between">
                               <p className="text-xs font-black text-slate-500 uppercase tracking-widest italic">Total Amount</p>
                               <p className="text-2xl font-black text-white italic font-mono tracking-tighter">
-                                 {selectedOrderTests.reduce((sum, t) => sum + t.price, 0).toLocaleString()} <span className="text-xs text-slate-500">YER</span>
+                                 {(selectedOrderTests.reduce((sum, t) => sum + (t.price || 0), 0) || 0).toLocaleString()} <span className="text-xs text-slate-500">YER</span>
                               </p>
                            </div>
                            <button 
@@ -907,7 +907,7 @@ export default function PatientManagement() {
                                       <p className="text-[10px] text-slate-500 italic mt-0.5">{service.category}</p>
                                    </div>
                                 </div>
-                                <p className="text-xs font-black font-mono text-emerald-400">{service.price.toLocaleString()} ر.ي</p>
+                                <p className="text-xs font-black font-mono text-emerald-400">{(service.price || 0).toLocaleString()} ر.ي</p>
                              </button>
                            ))}
                         </div>
@@ -921,7 +921,7 @@ export default function PatientManagement() {
                              </div>
                              <div className="text-right">
                                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-[3px] mb-1 font-mono italic">Price Point</p>
-                                <p className="text-xl font-black text-emerald-400 italic font-mono">{selectedOrderService.price.toLocaleString()} <small className="text-[10px] not-italic opacity-50">YER</small></p>
+                                <p className="text-xl font-black text-emerald-400 italic font-mono">{(selectedOrderService.price || 0).toLocaleString()} <small className="text-[10px] not-italic opacity-50">YER</small></p>
                              </div>
                           </div>
                        </motion.div>

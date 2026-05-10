@@ -94,14 +94,14 @@ export default function DoctorCommissions() {
                  </div>
                  <div className="flex justify-between items-center text-sm">
                     <span className="text-slate-500 font-bold">إجمالي الإيراد:</span>
-                    <span className="text-white font-black font-mono">{doc.totalRevenue.toLocaleString()} <small className="text-[10px] opacity-50">ر.ي</small></span>
+                    <span className="text-white font-black font-mono">{(doc.totalRevenue || 0).toLocaleString()} <small className="text-[10px] opacity-50">ر.ي</small></span>
                  </div>
                  <div className="pt-4 border-t border-white/5 flex justify-between items-center">
                     <span className="text-emerald-400 font-black text-xs flex items-center gap-2">
                        <DollarSign size={14} /> صافي المستحقات
                     </span>
                     <span className="text-2xl font-black text-white font-mono tracking-tighter">
-                       {doc.commissionAmount.toLocaleString()}
+                       {(doc.commissionAmount || 0).toLocaleString()}
                     </span>
                  </div>
               </div>

@@ -107,7 +107,7 @@ export default function ServicesDirectory() {
             <div className="mt-8 flex items-end justify-between pt-6 border-t border-white/5 relative z-10">
               <div className="flex flex-col">
                 <span className="text-[9px] text-slate-500 font-black uppercase mb-1 tracking-tighter italic">سعر الخدمة</span>
-                <span className="text-xl font-black text-white">{service.price.toLocaleString()} <small className="text-[10px] font-bold text-slate-500">ر.ي</small></span>
+                <span className="text-xl font-black text-white">{(service.price || 0).toLocaleString()} <small className="text-[10px] font-bold text-slate-500">ر.ي</small></span>
               </div>
               <div className="flex flex-col items-end">
                 <span className="text-[9px] text-slate-500 font-black uppercase mb-1 tracking-tighter italic">حساب الإيراد</span>

@@ -205,7 +205,7 @@ export default function PharmacyDirectory() {
               <div className="space-y-1">
                  <p className="text-[10px] text-slate-500 font-bold uppercase">السعر المعتمد</p>
                  <div className="flex items-center gap-1">
-                    <span className="text-lg font-black text-white">{med.price.toLocaleString()}</span>
+                    <span className="text-lg font-black text-white">{(med.price || 0).toLocaleString()}</span>
                     <span className="text-[10px] text-slate-400 font-bold">ر.ي</span>
                  </div>
               </div>

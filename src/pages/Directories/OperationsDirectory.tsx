@@ -151,7 +151,7 @@ export default function OperationsDirectory() {
                   <span className="text-[9px] text-slate-500 font-black uppercase mb-1 tracking-tighter italic">تكلفة العملية</span>
                   <div className="flex items-center gap-2 text-white font-black text-xs">
                     <DollarSign size={12} className="text-emerald-500" />
-                    <span>{op.cost.toLocaleString()} ر.ي</span>
+                    <span>{(op.cost || 0).toLocaleString()} ر.ي</span>
                   </div>
                 </div>
               </div>

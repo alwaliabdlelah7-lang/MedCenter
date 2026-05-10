@@ -291,8 +291,8 @@ export default function Pharmacy() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
              <StatCard label="إجمالي الأصناف" value={inventory.length} color="sky" icon={ListFilter} />
              <StatCard label="أصناف منخفضة المخزون" value={inventory.filter(i => i.stock < 10).length} color="amber" icon={AlertTriangle} />
-             <StatCard label="قيمة المخزون" value={`${inventory.reduce((acc, i) => acc + (i.price * i.stock), 0).toLocaleString()} ر.ي`} color="emerald" icon={DollarSign} />
-             <StatCard label="إجمالي المبيعات" value={`${sales.reduce((acc, s) => acc + s.total, 0).toLocaleString()} ر.ي`} color="rose" icon={History} />
+             <StatCard label="قيمة المخزون" value={`${(inventory.reduce((acc, i) => acc + ((i.price || 0) * (i.stock || 0)), 0) || 0).toLocaleString()} ر.ي`} color="emerald" icon={DollarSign} />
+             <StatCard label="إجمالي المبيعات" value={`${(sales.reduce((acc, s) => acc + (s.total || 0), 0) || 0).toLocaleString()} ر.ي`} color="rose" icon={History} />
           </div>
 
           <div className="glass rounded-[32px] overflow-hidden border border-white/5 shadow-2xl" id="pharmacy-inventory-table">
@@ -330,7 +330,7 @@ export default function Pharmacy() {
                         <td className="px-8 py-5">
                           <span className="px-3 py-1 rounded-lg bg-white/5 border border-white/5 text-[10px] font-black text-slate-400">{item.category}</span>
                         </td>
-                        <td className="px-8 py-5 font-black text-emerald-400">{item.price.toLocaleString()}</td>
+                        <td className="px-8 py-5 font-black text-emerald-400">{(item.price || 0).toLocaleString()}</td>
                         <td className="px-8 py-5">
                           <div className="flex items-center gap-2">
                              <div className={cn(
@@ -454,7 +454,7 @@ export default function Pharmacy() {
                    <td className="px-8 py-4 font-mono text-[10px] text-slate-500">#{sale.id}</td>
                    <td className="px-8 py-4 text-white font-bold">{sale.itemName}</td>
                    <td className="px-8 py-4 text-slate-300">{sale.quantity}</td>
-                   <td className="px-8 py-4 text-emerald-400 font-bold">{sale.total.toLocaleString()}</td>
+                   <td className="px-8 py-4 text-emerald-400 font-bold">{(sale.total || 0).toLocaleString()}</td>
                    <td className="px-8 py-4 text-slate-500 text-[10px]">{new Date(sale.date).toLocaleString('ar-YE')}</td>
                  </tr>
                ))}

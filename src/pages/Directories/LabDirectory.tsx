@@ -243,7 +243,7 @@ export default function LabDirectory() {
             <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <DollarSign size={16} className="text-emerald-500" />
-                <span className="text-xl font-black text-white">{test.price.toLocaleString()}</span>
+                <span className="text-xl font-black text-white">{(test.price || 0).toLocaleString()}</span>
                 <span className="text-[10px] text-slate-400">ر.ي</span>
               </div>
               <div className="flex items-center gap-2">

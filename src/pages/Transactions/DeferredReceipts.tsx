@@ -59,7 +59,7 @@ export default function DeferredReceipts() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <StatItem label="إجمالي المبالغ المستحقة" value={`${receipts.reduce((acc, r) => acc + r.amount, 0).toLocaleString()} ر.ي`} icon={AlertTriangle} color="amber" />
+        <StatItem label="إجمالي المبالغ المستحقة" value={`${(receipts.reduce((acc, r) => acc + (r.amount || 0), 0) || 0).toLocaleString()} ر.ي`} icon={AlertTriangle} color="amber" />
         <StatItem label="عدد السندات المعلقة" value={receipts.length} icon={Clock} color="rose" />
         <StatItem label="نسبة التحصيل" value="14.2%" icon={CheckCircle} color="sky" />
       </div>
@@ -81,7 +81,7 @@ export default function DeferredReceipts() {
               <tr key={r.id} className="hover:bg-white/[0.02] transition-colors group">
                 <td className="px-8 py-5 font-mono text-xs font-bold text-slate-500">#{r.id}</td>
                 <td className="px-8 py-5 font-black text-white">{r.patientName}</td>
-                <td className="px-8 py-5 font-black text-rose-400 font-mono italic">{r.amount.toLocaleString()} ر.ي</td>
+                <td className="px-8 py-5 font-black text-rose-400 font-mono italic">{(r.amount || 0).toLocaleString()} ر.ي</td>
                 <td className="px-8 py-5 text-slate-400 text-xs font-bold">{r.date}</td>
                 <td className="px-8 py-5">
                    <span className="px-3 py-1 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-full text-[10px] font-black uppercase italic tracking-widest">

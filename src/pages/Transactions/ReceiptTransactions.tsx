@@ -123,7 +123,7 @@ export default function ReceiptTransactions() {
             <div><span class="label">الخدمة:</span> ${service?.name}</div>
             <div><span class="label">الطبيب:</span> ${doctor?.name}</div>
           </div>
-          <div class="total">الإجمالي: ${receipt.amount.toLocaleString()} ر.ي</div>
+          <div class="total">الإجمالي: ${(receipt.amount || 0).toLocaleString()} ر.ي</div>
           <div class="footer">شكراً لزيارتكم - نتمنى لكم الشفاء العاجل</div>
         </body>
       </html>
@@ -190,7 +190,7 @@ export default function ReceiptTransactions() {
                   <div className="text-xs font-black text-sky-600 uppercase italic tracking-tighter">{services.find(s => s.id === receipt.serviceId)?.name}</div>
                   <div className="text-[10px] text-slate-500 font-bold">د. {doctors.find(d => d.id === receipt.doctorId)?.name}</div>
                 </td>
-                <td className="px-8 py-5 font-black text-slate-800 font-mono">{receipt.amount.toLocaleString()} <small className="text-[10px] text-slate-400">ر.ي</small></td>
+                <td className="px-8 py-5 font-black text-slate-800 font-mono">{(receipt.amount || 0).toLocaleString()} <small className="text-[10px] text-slate-400">ر.ي</small></td>
                 <td className="px-8 py-5 text-slate-500 text-xs font-mono">{receipt.date}</td>
                 <td className="px-8 py-5">
                    <div className="flex gap-2 justify-center">

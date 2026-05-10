@@ -166,7 +166,7 @@ export default function Dashboard() {
   const stats = [
     { 
       label: 'إجمالي المرضى', 
-      value: patients.length.toLocaleString(), 
+      value: (patients.length || 0).toLocaleString(), 
       trend: `+${patients.filter(p => new Date(p.createdAt) > new Date(Date.now() - 86400000 * 7)).length}`, 
       trendUp: true, 
       icon: Users, 
@@ -174,7 +174,7 @@ export default function Dashboard() {
     },
     { 
       label: 'إيرادات اليوم (المحصلة)', 
-      value: `${actualRevenueToday.toLocaleString()} ر.ي`, 
+      value: `${(actualRevenueToday || 0).toLocaleString()} ر.ي`, 
       trend: `${receipts.filter(r => r.date === currentTime.toLocaleDateString('ar-YE')).length} سند`, 
       trendUp: true, 
       icon: TrendingUp, 

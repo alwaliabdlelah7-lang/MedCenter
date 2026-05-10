@@ -195,7 +195,7 @@ export default function DoctorManagement() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <SummaryCard icon={UserIcon} label="إجمالي الأطباء" value={stats.total} color="sky" />
         <SummaryCard icon={Stethoscope} label="تخصص طبي" value={stats.activeSpecializations} color="pink" />
-        <SummaryCard icon={DollarSign} label="متوسط الكشفية" value={`${stats.avgFee.toLocaleString()} ر.ي`} color="emerald" />
+        <SummaryCard icon={DollarSign} label="متوسط الكشفية" value={`${(stats.avgFee || 0).toLocaleString()} ر.ي`} color="emerald" />
       </div>
 
       <div id="doctors-report-list" className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -248,7 +248,7 @@ export default function DoctorManagement() {
               </div>
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-10 relative z-10">
-                 <StatItem icon={DollarSign} label="رسم المعاينة" value={`${doctor.consultationFee.toLocaleString()} ر.ي`} color="emerald" />
+                 <StatItem icon={DollarSign} label="رسم المعاينة" value={`${(doctor.consultationFee || 0).toLocaleString()} ر.ي`} color="emerald" />
                  <StatItem icon={Clock} label="ساعات العمل" value={`${doctor.workingHours.start} - ${doctor.workingHours.end}`} color="amber" />
                  <StatItem icon={Calendar} label="أيام العمل" value={`${doctor.workingDays.length} أيام`} color="sky" />
                  <StatItem icon={ActivityIcon} label="نسبة الطبيب" value={`${doctor.percentage}%`} color="indigo" />

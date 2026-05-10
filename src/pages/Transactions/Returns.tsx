@@ -96,7 +96,7 @@ export default function Returns() {
                   <div className="font-bold text-slate-800">{receipt.patientName}</div>
                   <div className="text-[10px] text-slate-400 font-mono">UID: {receipt.patientId}</div>
                 </td>
-                <td className="px-8 py-5 font-black text-slate-800 font-mono">{receipt.amount.toLocaleString()} <small className="text-[10px] text-slate-400">ر.ي</small></td>
+                <td className="px-8 py-5 font-black text-slate-800 font-mono">{(receipt.amount || 0).toLocaleString()} <small className="text-[10px] text-slate-400">ر.ي</small></td>
                 <td className="px-8 py-5 text-slate-500 text-xs font-mono">{receipt.date}</td>
                 <td className="px-8 py-5">
                    <div className="flex gap-2 justify-center">
@@ -142,7 +142,7 @@ export default function Returns() {
                 </div>
                 <div className="flex justify-between text-base font-black pt-3 border-t border-slate-200">
                   <span className="text-slate-400">مبلغ الإرجاع:</span>
-                  <span className="text-rose-600 font-mono">{selectedReceipt.amount.toLocaleString()} ر.ي</span>
+                  <span className="text-rose-600 font-mono">{(selectedReceipt.amount || 0).toLocaleString()} ر.ي</span>
                 </div>
               </div>
 
