@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import rateLimit from "express-rate-limit";
 
 process.on('uncaughtException', (err) => {
   console.error('UNCAUGHT EXCEPTION AT TOP LEVEL:', err);
@@ -148,7 +149,13 @@ async function startServer() {
       }
 
       app.use(express.static(distPath));
-      app.get('*', (req, res) => {
+      const spaFallbackLimiter = rateLimit({
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 100, // limit each IP to 100 requests per window
+        standardHeaders: true,
+        legacyHeaders: false,
+      });
+      app.get('*', spaFallbackLimiter, (req, res) => {
         res.sendFile(indexPath, (err) => {
           if (err) {
             console.error(`[Server] Error sending index.html:`, err);
