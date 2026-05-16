@@ -1,4 +1,4 @@
-package Com.YEM.APP;
+package com.medcenter.his;
 
 import com.getcapacitor.BridgeActivity;
 
