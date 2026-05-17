@@ -65,7 +65,7 @@ async function startServer() {
   try {
     const app = express();
     const httpServer = createServer(app);
-    const PORT = 3000;
+    const PORT = parseInt(process.env.PORT || '5000', 10);
     
     console.log(`[Server] Attempting to start on port ${PORT}...`);
 
@@ -107,7 +107,7 @@ async function startServer() {
     app.use("/api", createApiRouter(adminApp ? adminApp.firestore() : null));
 
     // Catch unmatched /api calls before SPA fallback
-    app.all("/api/*", (req, res) => {
+    app.all("/api/*path", (req, res) => {
       res.status(404).json({ error: `API route not found: ${req.method} ${req.path}` });
     });
 
