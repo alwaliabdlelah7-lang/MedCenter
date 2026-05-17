@@ -4,7 +4,11 @@ import {
   Check, X, ShieldCheck, Mail, Briefcase, 
   Activity, MoreVertical, Lock, Unlock, 
   Settings, UserPlus, Fingerprint, Calendar,
-  History, ShieldAlert
+  History, ShieldAlert, LayoutGrid, LayoutDashboard,
+  FileHeart, CalendarDays, ListOrdered, ClipboardList,
+  MessageSquare, Stethoscope, UsersRound, Building2,
+  FlaskConical, Pill, Image as ImageIcon, BarChart3,
+  Receipt, Sparkles, Bed
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User as UserType, Permission, AuditLog } from '../types';
@@ -36,12 +40,72 @@ const ROLE_PERMISSIONS: Record<UserType['role'], Permission[]> = {
   receptionist: ['registration', 'billing', 'read_only']
 };
 
+const ROLE_LABELS: Record<UserType['role'], string> = {
+  admin: 'مدير النظام',
+  doctor: 'طبيب',
+  nurse: 'ممرض',
+  pharmacist: 'صيدلاني',
+  lab_tech: 'فني مختبر',
+  receptionist: 'استقبال'
+};
+
+const ROLE_COLORS: Record<UserType['role'], { bg: string; border: string; text: string; dot: string }> = {
+  admin:        { bg: 'bg-rose-500/10',    border: 'border-rose-500/30',    text: 'text-rose-400',    dot: 'bg-rose-500' },
+  doctor:       { bg: 'bg-sky-500/10',     border: 'border-sky-500/30',     text: 'text-sky-400',     dot: 'bg-sky-500' },
+  nurse:        { bg: 'bg-teal-500/10',    border: 'border-teal-500/30',    text: 'text-teal-400',    dot: 'bg-teal-500' },
+  pharmacist:   { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-400', dot: 'bg-emerald-500' },
+  lab_tech:     { bg: 'bg-indigo-500/10',  border: 'border-indigo-500/30',  text: 'text-indigo-400',  dot: 'bg-indigo-500' },
+  receptionist: { bg: 'bg-slate-500/10',   border: 'border-slate-500/30',   text: 'text-slate-400',   dot: 'bg-slate-500' }
+};
+
+const PERMISSION_LABELS: Record<Permission, { label: string; desc: string }> = {
+  all:          { label: 'وصول مطلق',      desc: 'التحكم الكامل بجميع أقسام النظام' },
+  read_only:    { label: 'قراءة فقط',       desc: 'مشاهدة البيانات دون صلاحية التعديل' },
+  clinical:     { label: 'العيادة',         desc: 'السجلات السريرية، الزيارات، والتشخيص' },
+  pharmacy:     { label: 'الصيدلية',        desc: 'صرف الأدوية وإدارة مخزن الصيدلية' },
+  lab:          { label: 'المختبر',         desc: 'إدارة تحاليل المختبر وإدخال النتائج' },
+  admin:        { label: 'الإدارة',         desc: 'الأدلة والإعدادات ولوحة التقارير' },
+  registration: { label: 'التسجيل',         desc: 'تسجيل المرضى وإدارة المواعيد' },
+  billing:      { label: 'المالية',         desc: 'سندات الاستعلامات والتحصيل المالي' }
+};
+
+type SystemModule = {
+  icon: any;
+  label: string;
+  path: string;
+  requiredPerms: Permission[];
+};
+
+const SYSTEM_MODULES: SystemModule[] = [
+  { icon: LayoutDashboard,  label: 'لوحة التحكم',          path: '/',                         requiredPerms: ['all'] },
+  { icon: FileHeart,        label: 'إدارة المرضى (EMR)',    path: '/patients',                  requiredPerms: ['clinical', 'registration'] },
+  { icon: CalendarDays,     label: 'المواعيد والحجوزات',    path: '/appointments',              requiredPerms: ['clinical', 'registration'] },
+  { icon: ListOrdered,      label: 'قائمة الانتظار',        path: '/queue',                    requiredPerms: ['clinical', 'registration'] },
+  { icon: ClipboardList,    label: 'أرشيف الزيارات',        path: '/clinical-visits',           requiredPerms: ['clinical'] },
+  { icon: MessageSquare,    label: 'محادثات الموظفين',       path: '/chat',                     requiredPerms: ['all'] },
+  { icon: Sparkles,         label: 'مساعد التشخيص الذكي',   path: '/diagnosis-assistant',      requiredPerms: ['clinical'] },
+  { icon: Pill,             label: 'الصيدلية والمخزن',       path: '/pharmacy',                 requiredPerms: ['pharmacy'] },
+  { icon: FlaskConical,     label: 'المختبرات والتحاليل',    path: '/laboratory',               requiredPerms: ['lab'] },
+  { icon: ImageIcon,        label: 'الأشعة والتصوير',        path: '/radiology',                requiredPerms: ['clinical'] },
+  { icon: Bed,              label: 'إدارة الرقود',           path: '/inpatient',                requiredPerms: ['clinical'] },
+  { icon: Stethoscope,      label: 'دليل الأطباء',           path: '/directories/doctors',      requiredPerms: ['admin'] },
+  { icon: UsersRound,       label: 'دليل الممرضين',          path: '/directories/nurses',       requiredPerms: ['admin'] },
+  { icon: Building2,        label: 'دليل الأقسام',           path: '/directories/departments',  requiredPerms: ['admin'] },
+  { icon: FlaskConical,     label: 'دليل بنود المختبر',       path: '/directories/lab',          requiredPerms: ['admin'] },
+  { icon: Pill,             label: 'دليل أصناف الصيدلية',    path: '/directories/pharmacy',     requiredPerms: ['admin'] },
+  { icon: Receipt,          label: 'سندات الاستعلامات',      path: '/transactions/receipts',    requiredPerms: ['billing', 'admin'] },
+  { icon: BarChart3,        label: 'نسب الأطباء',            path: '/reports/doctor-commissions', requiredPerms: ['admin'] },
+  { icon: Settings,         label: 'إعدادات النظام',          path: '/settings',                 requiredPerms: ['admin'] },
+];
+
 export default function UsersManagement() {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserType[]>([]);
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'users' | 'activity'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'activity' | 'permissions'>('users');
+  const [rolePerms, setRolePerms] = useState<Record<UserType['role'], Permission[]>>({ ...ROLE_PERMISSIONS });
+  const [permsSaved, setPermsSaved] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
@@ -186,11 +250,11 @@ export default function UsersManagement() {
           </p>
         </div>
 
-        <div className="flex items-center gap-4 bg-white/5 p-2 rounded-2xl border border-white/10 no-print">
+        <div className="flex items-center gap-2 bg-white/5 p-2 rounded-2xl border border-white/10 no-print flex-wrap">
           <button 
             onClick={() => setActiveTab('users')}
             className={cn(
-              "px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2",
+              "px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2",
               activeTab === 'users' ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-white"
             )}
           >
@@ -198,9 +262,19 @@ export default function UsersManagement() {
             المستخدمين
           </button>
           <button 
+            onClick={() => setActiveTab('permissions')}
+            className={cn(
+              "px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2",
+              activeTab === 'permissions' ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-white"
+            )}
+          >
+            <LayoutGrid size={18} />
+            مصفوفة الصلاحيات
+          </button>
+          <button 
             onClick={() => setActiveTab('activity')}
             className={cn(
-              "px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2",
+              "px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2",
               activeTab === 'activity' ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-white"
             )}
           >
@@ -211,7 +285,280 @@ export default function UsersManagement() {
       </div>
 
       <AnimatePresence mode="wait">
-        {activeTab === 'users' ? (
+        {activeTab === 'permissions' ? (
+          <motion.div
+            key="permissions-tab"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="space-y-8"
+          >
+            {/* Role cards summary */}
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+              {ROLES.map(role => {
+                const c = ROLE_COLORS[role];
+                const perms = rolePerms[role];
+                const count = users.filter(u => u.role === role).length;
+                return (
+                  <div key={role} className={cn("glass rounded-3xl p-5 border text-center space-y-3", c.border)}>
+                    <div className={cn("w-10 h-10 rounded-2xl mx-auto flex items-center justify-center", c.bg)}>
+                      <Shield size={20} className={c.text} />
+                    </div>
+                    <div>
+                      <p className={cn("font-black text-sm", c.text)}>{ROLE_LABELS[role]}</p>
+                      <p className="text-[10px] text-slate-500 font-mono mt-0.5">{count} مستخدم</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1 justify-center">
+                      {perms.map(p => (
+                        <span key={p} className={cn("text-[8px] px-2 py-0.5 rounded-full font-black uppercase border", c.bg, c.border, c.text)}>
+                          {PERMISSION_LABELS[p]?.label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Permissions matrix table */}
+            <div className="glass rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
+              <div className="bg-white/5 px-8 py-5 border-b border-white/10 flex items-center justify-between flex-row-reverse">
+                <div className="flex items-center gap-3 text-right">
+                  <div className="p-2 bg-indigo-600/20 rounded-xl"><LayoutGrid className="text-indigo-400" size={20} /></div>
+                  <div>
+                    <h3 className="font-black text-white text-base">مصفوفة الصلاحيات حسب الدور</h3>
+                    <p className="text-slate-500 text-[10px] font-mono">انقر على أي خلية لتفعيل أو إلغاء الصلاحية للدور المقابل</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setRolePerms({ ...ROLE_PERMISSIONS }); setPermsSaved(false); }}
+                  className="px-4 py-2 glass text-slate-400 hover:text-white rounded-xl text-xs font-bold transition-all border border-white/10"
+                >
+                  إعادة تعيين
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-right min-w-[700px]">
+                  <thead>
+                    <tr className="bg-[#0f172a] border-b border-white/5">
+                      <th className="px-6 py-4 text-slate-500 text-[10px] font-black uppercase tracking-widest w-56">الصلاحية</th>
+                      {ROLES.map(role => {
+                        const c = ROLE_COLORS[role];
+                        return (
+                          <th key={role} className="px-4 py-4 text-center">
+                            <div className={cn("inline-flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl border", c.bg, c.border)}>
+                              <div className={cn("w-2 h-2 rounded-full", c.dot)} />
+                              <span className={cn("text-[10px] font-black whitespace-nowrap", c.text)}>{ROLE_LABELS[role]}</span>
+                            </div>
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {PERMISSIONS.map((perm, pi) => (
+                      <motion.tr
+                        key={perm}
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: pi * 0.04 }}
+                        className="hover:bg-white/[0.03] transition-colors group"
+                      >
+                        <td className="px-6 py-4">
+                          <div className="text-right">
+                            <p className="font-black text-white text-sm">{PERMISSION_LABELS[perm]?.label}</p>
+                            <p className="text-slate-500 text-[10px] mt-0.5 font-mono">{PERMISSION_LABELS[perm]?.desc}</p>
+                          </div>
+                        </td>
+                        {ROLES.map(role => {
+                          const c = ROLE_COLORS[role];
+                          const hasIt = rolePerms[role].includes(perm);
+                          const isAll = rolePerms[role].includes('all');
+                          const grantedByAll = perm !== 'all' && isAll;
+                          return (
+                            <td key={role} className="px-4 py-4 text-center">
+                              <button
+                                onClick={() => {
+                                  if (grantedByAll) return;
+                                  setRolePerms(prev => {
+                                    const cur = prev[role];
+                                    const next = cur.includes(perm)
+                                      ? cur.filter(p => p !== perm)
+                                      : [...cur, perm];
+                                    return { ...prev, [role]: next };
+                                  });
+                                  setPermsSaved(false);
+                                }}
+                                title={grantedByAll ? 'ممنوح بواسطة صلاحية الوصول المطلق' : hasIt ? 'انقر لإلغاء' : 'انقر لتفعيل'}
+                                className={cn(
+                                  "w-9 h-9 rounded-xl mx-auto flex items-center justify-center transition-all border-2",
+                                  grantedByAll
+                                    ? "bg-rose-500/10 border-rose-500/30 cursor-default"
+                                    : hasIt
+                                      ? cn("border-current shadow-lg hover:scale-110 active:scale-95", c.bg, c.border)
+                                      : "bg-white/3 border-white/5 opacity-30 hover:opacity-70 hover:border-white/20"
+                                )}
+                              >
+                                {grantedByAll
+                                  ? <Key size={13} className="text-rose-400" />
+                                  : hasIt
+                                    ? <Check size={14} className={cn(c.text)} strokeWidth={3} />
+                                    : <X size={12} className="text-slate-600" />
+                                }
+                              </button>
+                            </td>
+                          );
+                        })}
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="px-8 py-4 bg-white/3 border-t border-white/5 flex items-center justify-between flex-row-reverse">
+                <div className="flex items-center gap-6 text-[10px] text-slate-500 font-mono">
+                  <span className="flex items-center gap-2"><span className="w-4 h-4 rounded bg-indigo-500/20 border border-indigo-500/40 inline-flex items-center justify-center"><Check size={9} className="text-indigo-400" /></span> صلاحية مفعّلة</span>
+                  <span className="flex items-center gap-2"><span className="w-4 h-4 rounded bg-rose-500/10 border border-rose-500/30 inline-flex items-center justify-center"><Key size={9} className="text-rose-400" /></span> ممنوح بالوصول المطلق</span>
+                  <span className="flex items-center gap-2"><span className="w-4 h-4 rounded bg-white/3 border border-white/10 inline-flex items-center justify-center"><X size={9} className="text-slate-600" /></span> غير مفعّل</span>
+                </div>
+                <button
+                  onClick={() => setPermsSaved(true)}
+                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-2"
+                >
+                  {permsSaved ? <><Check size={16} /> تم الحفظ</> : <><Shield size={16} /> حفظ الإعدادات</>}
+                </button>
+              </div>
+            </div>
+
+            {/* Module access matrix */}
+            <div className="glass rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
+              <div className="bg-white/5 px-8 py-5 border-b border-white/10 flex items-center gap-3 flex-row-reverse">
+                <div className="p-2 bg-sky-600/20 rounded-xl"><LayoutDashboard className="text-sky-400" size={20} /></div>
+                <div className="text-right">
+                  <h3 className="font-black text-white text-base">أقسام النظام المتاحة لكل دور</h3>
+                  <p className="text-slate-500 text-[10px] font-mono">يتم حساب الوصول تلقائياً بناءً على الصلاحيات المُعيّنة أعلاه</p>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-right min-w-[700px]">
+                  <thead>
+                    <tr className="bg-[#0f172a] border-b border-white/5">
+                      <th className="px-6 py-4 text-slate-500 text-[10px] font-black uppercase tracking-widest w-64">القسم / الوحدة</th>
+                      {ROLES.map(role => {
+                        const c = ROLE_COLORS[role];
+                        return (
+                          <th key={role} className="px-4 py-3 text-center">
+                            <span className={cn("text-[10px] font-black", c.text)}>{ROLE_LABELS[role]}</span>
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {SYSTEM_MODULES.map((mod, mi) => {
+                      const Icon = mod.icon;
+                      return (
+                        <motion.tr
+                          key={mod.path}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: mi * 0.025 }}
+                          className="hover:bg-white/[0.03] transition-colors"
+                        >
+                          <td className="px-6 py-3">
+                            <div className="flex items-center gap-3 flex-row-reverse">
+                              <div className="p-2 glass rounded-xl border border-white/5">
+                                <Icon size={14} className="text-slate-400" />
+                              </div>
+                              <span className="text-sm font-bold text-slate-300">{mod.label}</span>
+                            </div>
+                          </td>
+                          {ROLES.map(role => {
+                            const c = ROLE_COLORS[role];
+                            const permsForRole = rolePerms[role];
+                            const hasAccess = permsForRole.includes('all') ||
+                              mod.requiredPerms.some(rp => permsForRole.includes(rp));
+                            return (
+                              <td key={role} className="px-4 py-3 text-center">
+                                {hasAccess
+                                  ? <div className={cn("w-7 h-7 rounded-xl mx-auto flex items-center justify-center", c.bg, "border", c.border)}>
+                                      <Check size={13} className={c.text} strokeWidth={3} />
+                                    </div>
+                                  : <div className="w-7 h-7 rounded-xl mx-auto flex items-center justify-center bg-white/3 border border-white/5 opacity-25">
+                                      <X size={11} className="text-slate-600" />
+                                    </div>
+                                }
+                              </td>
+                            );
+                          })}
+                        </motion.tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Per-user permissions summary */}
+            <div className="glass rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
+              <div className="bg-white/5 px-8 py-5 border-b border-white/10 flex items-center gap-3 flex-row-reverse">
+                <div className="p-2 bg-emerald-600/20 rounded-xl"><User className="text-emerald-400" size={20} /></div>
+                <div className="text-right">
+                  <h3 className="font-black text-white text-base">صلاحيات المستخدمين المُخصَّصة</h3>
+                  <p className="text-slate-500 text-[10px] font-mono">المستخدمون الذين يملكون صلاحيات تختلف عن افتراضي دورهم الوظيفي</p>
+                </div>
+              </div>
+              <div className="divide-y divide-white/5">
+                {users.length === 0
+                  ? <div className="px-8 py-10 text-center text-slate-500 text-sm font-medium">لا توجد بيانات مستخدمين بعد</div>
+                  : users.map((u, idx) => {
+                      const c = ROLE_COLORS[u.role];
+                      const defaultPerms = ROLE_PERMISSIONS[u.role] || [];
+                      const isCustom = JSON.stringify([...u.permissions].sort()) !== JSON.stringify([...defaultPerms].sort());
+                      return (
+                        <motion.div
+                          key={u.id}
+                          initial={{ opacity: 0, x: 10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.04 }}
+                          className={cn("px-8 py-4 flex items-center justify-between flex-row-reverse hover:bg-white/[0.02] transition-colors", isCustom && "bg-amber-500/5")}
+                        >
+                          <div className="flex items-center gap-4 flex-row-reverse">
+                            <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center font-black text-sm border", c.bg, c.border, c.text)}>
+                              {u.name ? u.name[0] : '?'}
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-white text-sm">{u.name}</p>
+                              <p className="text-slate-500 text-[10px] font-mono">@{u.username} · <span className={c.text}>{ROLE_LABELS[u.role]}</span></p>
+                            </div>
+                            {isCustom && (
+                              <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[9px] font-black rounded-full uppercase tracking-wider">
+                                صلاحيات مخصصة
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 flex-wrap justify-end">
+                            {u.permissions.map(p => (
+                              <span key={p} className={cn("px-3 py-1 rounded-xl text-[9px] font-black uppercase border", c.bg, c.border, c.text)}>
+                                {PERMISSION_LABELS[p]?.label || p}
+                              </span>
+                            ))}
+                            <button
+                              onClick={() => { setEditingUser(u); setFormState(u); setShowAddModal(true); }}
+                              className="p-2 glass text-slate-500 hover:text-sky-400 rounded-xl transition-all border border-white/5"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                          </div>
+                        </motion.div>
+                      );
+                    })
+                }
+              </div>
+            </div>
+          </motion.div>
+        ) : activeTab === 'users' ? (
           <motion.div 
             key="users-tab"
             initial={{ opacity: 0, y: 20 }}
