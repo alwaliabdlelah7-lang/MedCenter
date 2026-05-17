@@ -1,44 +1,60 @@
-name: Build Android & Windows
+name: Build MedCenter for Web, Android, Windows
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
-  android:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-      - run: npm install
-      - run: npm run build
-      - run: rm -rf android
-      - run: npx cap add android
-      - run: npx cap sync android
-      - uses: actions/setup-java@v4
+          node-version: 20
+      - run: npm ci
+
+      # 1. بناء الويب
+      - name: Build web
+        run: npm run build
+
+      - name: Upload web artifact
+        uses: actions/upload-artifact@v4
         with:
-          distribution: 'temurin'
-          java-version: '21'
-      - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
-      - uses: actions/upload-artifact@v4
+          name: MedCenter-Web
+          path: dist/
+
+      # 2. إعداد Capacitor وبناء Android APK
+      - name: Setup Capacitor
+        run: |
+          npm install @capacitor/android @capacitor/cli
+          npx cap init MedCenter com.medcenter.app --web-dir=dist
+          npx cap add android
+      - name: Build Android APK
+        run: |
+          npm run build
+          npx cap sync
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+          cd ..
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
         with:
-          name: medcenter-android
+          name: MedCenter-Android
           path: android/app/build/outputs/apk/debug/app-debug.apk
 
-  windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      # 3. بناء تطبيق Windows باستخدام Electron
+      - name: Install electron-builder
+        run: npm install electron electron-builder --save-dev
+      - name: Build Windows exe
+        run: npm run build:electron
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Windows exe
+        uses: actions/upload-artifact@v4
         with:
-          node-version: 22
-      - run: npm install
-      - run: npm run build
-      - run: npm run desktop:build:win
-      - uses: actions/upload-artifact@v4
-        with:
-          name: medcenter-windows
-          path: dist_desktop/
+          name: MedCenter-Windows
+          path: dist_electron/*.exe
