@@ -1,12 +1,23 @@
 import { GoogleGenAI } from "@google/genai";
 
-// Initialize the API with our environment variable
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const apiKey = process.env.GEMINI_API_KEY;
+
+let ai: GoogleGenAI | null = null;
+if (apiKey) {
+  try {
+    ai = new GoogleGenAI({ apiKey });
+  } catch (e) {
+    console.warn("[Gemini] Failed to initialize:", e);
+  }
+}
+
+const NOT_AVAILABLE = "خدمة الذكاء الاصطناعي غير متاحة حالياً. يرجى إضافة مفتاح GEMINI_API_KEY.";
 
 export const geminiService = {
   askGemini: async (prompt: string, context?: string) => {
+    if (!ai) return NOT_AVAILABLE;
     try {
-      const fullPrompt = context 
+      const fullPrompt = context
         ? `Context: ${context}\n\nUser Question: ${prompt}\n\nProvide a concise and helpful response as a medical assistant.`
         : prompt;
 
@@ -26,9 +37,10 @@ export const geminiService = {
   },
 
   suggestDiagnosis: async (symptoms: string[]) => {
+    if (!ai) throw new Error(NOT_AVAILABLE);
     try {
       const prompt = `Based on the following symptoms: ${symptoms.join(', ')}, suggest possible diagnoses and recommended first steps. Provide the response in Arabic.`;
-      
+
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: prompt,
