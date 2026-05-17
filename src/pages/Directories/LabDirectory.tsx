@@ -23,7 +23,7 @@ export default function LabDirectory() {
             isProfile: t.isProfile || false,
             parameters: t.parameters || []
           }));
-          setTests(seeded);
+          setTests(seeded as MasterLabItem[]);
           // Optional: Add to DB if empty
           seeded.forEach(item => dataStore.addItem('master_lab_tests', item));
         } else {

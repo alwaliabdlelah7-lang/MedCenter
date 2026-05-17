@@ -84,7 +84,7 @@ export default function PatientManagement() {
           isProfile: t.isProfile || false,
           parameters: t.parameters || []
         }));
-        setMasterLabTests(seeded);
+        setMasterLabTests(seeded as MasterLabItem[]);
       } else {
         setMasterLabTests(masterLabsData);
       }
@@ -212,6 +212,7 @@ export default function PatientManagement() {
     const visit: ClinicalVisit = {
       id: `VIS-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
       patientId: selectedPatient.id,
+      patientName: selectedPatient.name,
       doctorId: 'D-ADMIN',
       date: new Date().toISOString(),
       ...newVisit,
@@ -245,7 +246,7 @@ export default function PatientManagement() {
       await dataStore.addItem('lab_tests', order);
     }
     
-    setLabTests([...labTests, ...newOrders]);
+    setLabTests([...labTests, ...newOrders] as any);
     setShowLabOrderModal(false);
     setSelectedOrderTests([]);
   };

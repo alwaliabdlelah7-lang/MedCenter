@@ -42,3 +42,9 @@ externalPort = 80
 deploymentTarget = "autoscale"
 run = ["node", "server-dist.js"]
 build = ["npm", "run", "build"]
+
+[userenv]
+
+[userenv.shared]
+VITE_SUPABASE_URL = "https://mxbcwvtqglzlkniuynzu.supabase.co"
+VITE_GOOGLE_CLIENT_ID = "372654458229-c4kviq9uhi0326ohrpl0r1sp5c0b6p14.apps.googleusercontent.com"

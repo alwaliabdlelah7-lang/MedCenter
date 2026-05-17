@@ -71449,7 +71449,7 @@ async function startServer() {
   try {
     const app = (0, import_express2.default)();
     const httpServer = createServer(app);
-    const PORT = 3e3;
+    const PORT = parseInt(process.env.PORT || "5000", 10);
     console.log(`[Server] Attempting to start on port ${PORT}...`);
     const io2 = new Server(httpServer, {
       cors: { origin: "*" }
@@ -71475,7 +71475,7 @@ async function startServer() {
       res.json({ message: "API server is healthy", cloudDatabaseConnected: !!adminApp });
     });
     app.use("/api", createApiRouter(adminApp ? adminApp.firestore() : null));
-    app.all("/api/*", (req, res) => {
+    app.all("/api/*path", (req, res) => {
       res.status(404).json({ error: `API route not found: ${req.method} ${req.path}` });
     });
     if (process.env.NODE_ENV !== "production") {

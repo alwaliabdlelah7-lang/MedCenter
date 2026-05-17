@@ -15,6 +15,7 @@ export interface Patient {
 
 export interface DynamicFieldDefinition {
   id: string;
+  name?: string;
   label: string;
   type: 'text' | 'number' | 'date' | 'select' | 'boolean';
   options?: string[];
@@ -76,6 +77,7 @@ export interface Service {
   id: string;
   name: string;
   departmentId: string;
+  category?: string;
   price: number;
   revenueAccountId: string;
   customFields?: Record<string, any>;
@@ -171,6 +173,7 @@ export interface LabTest {
   doctorId: string;
   date: string;
   status: 'pending' | 'completed';
+  price?: number;
   result?: string; // Summary result
   parameterResults?: Record<string, string>; // Individual results for parameters
 }
@@ -208,6 +211,7 @@ export interface ClinicalVisit {
   patientId: string;
   patientName: string;
   doctorId: string;
+  clinicId?: string;
   date: string;
   reason: string;
   vitals: {
@@ -261,6 +265,7 @@ export interface Message {
 export interface AuditLog {
   id: string;
   userId: string;
+  userName?: string;
   action: string;
   details: string;
   timestamp: string;

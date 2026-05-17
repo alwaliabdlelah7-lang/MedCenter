@@ -201,7 +201,7 @@ export default function Appointments() {
     };
 
     await dataStore.updateItem<Appointment>('appointments', showRescheduleModal.id, updates);
-    setAppointments(appointments.map(a => a.id === showRescheduleModal.id ? { ...a, ...updates } : a));
+    setAppointments(appointments.map(a => a.id === showRescheduleModal.id ? { ...a, ...updates } : a) as Appointment[]);
     setShowRescheduleModal(null);
   };
 

@@ -31,7 +31,7 @@ export default function Laboratory() {
         ]);
         setTests(testsData);
         setDoctors(doctorsData);
-        setMasterTests(masterData.length > 0 ? masterData : YEMEN_LAB_TESTS);
+        setMasterTests((masterData.length > 0 ? masterData : YEMEN_LAB_TESTS) as MasterLabItem[]);
         setPatients(patientsData);
       } catch (error) {
         console.error("Failed to load lab data", error);
