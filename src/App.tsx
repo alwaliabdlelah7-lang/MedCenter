@@ -5,7 +5,6 @@ import PrivateRoute from './components/PrivateRoute';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 
-// تحميل غير متزامن للصفحات (lazy loading)
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Appointments = lazy(() => import('./pages/Appointments'));
 const Patients = lazy(() => import('./pages/Patients'));
@@ -14,8 +13,6 @@ const LabDirectory = lazy(() => import('./pages/Directories/LabDirectory'));
 const OperationsDirectory = lazy(() => import('./pages/Directories/OperationsDirectory'));
 const RadiologyDirectory = lazy(() => import('./pages/Directories/RadiologyDirectory'));
 const PharmacyDirectory = lazy(() => import('./pages/Directories/PharmacyDirectory'));
-const MedicalRecords = lazy(() => import('./pages/MedicalRecords'));
-const Billing = lazy(() => import('./pages/Billing'));
 const Settings = lazy(() => import('./pages/Settings'));
 
 const LoadingFallback = () => (
@@ -40,8 +37,6 @@ function App() {
                 <Route path="/operations" element={<OperationsDirectory />} />
                 <Route path="/radiology" element={<RadiologyDirectory />} />
                 <Route path="/pharmacy" element={<PharmacyDirectory />} />
-                <Route path="/records" element={<MedicalRecords />} />
-                <Route path="/billing" element={<Billing />} />
                 <Route path="/settings" element={<Settings />} />
               </Route>
             </Route>
