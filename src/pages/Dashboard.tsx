@@ -136,7 +136,7 @@ export default function Dashboard() {
             const d = new Date(p.date);
             return d.getHours() === h && d.toDateString() === now.toDateString();
           }).length;
-          return { label, appts: appts || Math.floor(Math.random() * 6), labs: labs || Math.floor(Math.random() * 3), rx: rx || Math.floor(Math.random() * 4) };
+          return { label, appts, labs, rx };
         });
         setHourlyTrafficData(hourlyData);
 
@@ -156,7 +156,7 @@ export default function Dashboard() {
           return { name: dayName, revenue: dayRevenue, appointments: dayAppts, rawDate: d };
         }).reverse();
 
-        setDashboardChartData(last7Days.length > 0 ? last7Days : chartData);
+        setDashboardChartData(last7Days);
 
         // Calculate Patient Type Distribution
         const visitTypes = {
@@ -171,7 +171,7 @@ export default function Dashboard() {
           }
         });
 
-        const dist = Object.values(visitTypes).map(t => ({ name: t.name, value: t.count || 5, color: t.color })); // Fallback to 5 for viz if empty
+        const dist = Object.values(visitTypes).map(t => ({ name: t.name, value: t.count, color: t.color }));
         setPatientTypeDistribution(dist);
 
       } catch (error) {
@@ -671,24 +671,40 @@ export default function Dashboard() {
 
            <div className="glass p-6 rounded-3xl border border-white/5">
               <div className="flex items-center justify-between mb-6">
-                 <h3 className="text-white font-bold text-sm">أطباء متاحون حالياً</h3>
-                 <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full font-black">اونلاين</span>
+                 <h3 className="text-white font-bold text-sm">الأطباء المسجلون</h3>
+                 <span className="text-[10px] bg-sky-500/10 text-sky-400 px-2 py-0.5 rounded-full font-black border border-sky-500/20">{doctors.length} طبيب</span>
               </div>
-              <div className="space-y-4">
-                 {[1, 2, 3].map(i => (
-                   <div key={i} className="flex items-center gap-3 p-3 glass-card rounded-2xl border border-white/5 hover:bg-white/5 transition-all">
-                      <div className="relative">
-                         <img src={`https://picsum.photos/seed/doc${i}/40/40`} className="w-10 h-10 rounded-xl" referrerPolicy="no-referrer" />
-                         <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-[#1e293b] rounded-full" />
+              {doctors.length === 0 ? (
+                <div className="text-center py-8 text-slate-600 text-xs font-bold italic">لا يوجد أطباء مسجلون بعد</div>
+              ) : (
+                <div className="space-y-3">
+                  {doctors.slice(0, 4).map(doc => {
+                    const initials = doc.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2);
+                    const colors = ['bg-sky-500', 'bg-indigo-500', 'bg-teal-500', 'bg-purple-500'];
+                    const ci = doctors.indexOf(doc) % colors.length;
+                    return (
+                      <div key={doc.id} className="flex items-center gap-3 p-3 glass-card rounded-2xl border border-white/5 hover:bg-white/5 transition-all">
+                        <div className="relative">
+                          <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-sm", colors[ci])}>
+                            {initials}
+                          </div>
+                          <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-[#1e293b] rounded-full" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-white leading-tight truncate">{doc.name}</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 italic font-medium truncate">{doc.specialization}</p>
+                        </div>
+                        <ChevronRight size={14} className="text-slate-600 flex-shrink-0" />
                       </div>
-                      <div className="flex-1">
-                         <p className="text-xs font-bold text-white leading-tight">د. أحمد الشامي</p>
-                         <p className="text-[10px] text-slate-500 mt-1 italic font-medium">استشاري باطنية</p>
-                      </div>
-                      <ChevronRight size={14} className="text-slate-600" />
-                   </div>
-                 ))}
-              </div>
+                    );
+                  })}
+                  {doctors.length > 4 && (
+                    <button onClick={() => navigate('/directories/doctors')} className="w-full text-center text-[10px] text-indigo-400 font-black hover:underline py-1">
+                      + {doctors.length - 4} طبيب آخر
+                    </button>
+                  )}
+                </div>
+              )}
            </div>
 
            <div className="glass p-6 rounded-3xl border border-white/5">

@@ -32,8 +32,10 @@ import { useSearchParams } from 'react-router-dom';
 import { INITIAL_PATIENTS, YEMEN_LAB_TESTS, YEMEN_SERVICES } from '../data/seedData';
 import { dataStore } from '../services/dataService';
 import { notificationService } from '../services/notificationService';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function PatientManagement() {
+  const { user: currentUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [prefilledName, setPrefilledName] = useState('');
@@ -213,7 +215,7 @@ export default function PatientManagement() {
       id: `VIS-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
       patientId: selectedPatient.id,
       patientName: selectedPatient.name,
-      doctorId: 'D-ADMIN',
+      doctorId: currentUser?.id || '',
       date: new Date().toISOString(),
       ...newVisit,
       prescriptions: [],
@@ -234,6 +236,8 @@ export default function PatientManagement() {
     const newOrders = selectedOrderTests.map(test => ({
       id: `LAB-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
       patientId: selectedPatient.id,
+      patientName: selectedPatient.name,
+      doctorId: currentUser?.id || '',
       testType: test.name,
       testId: test.id,
       date: new Date().toISOString().split('T')[0],

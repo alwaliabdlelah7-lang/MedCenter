@@ -31,6 +31,7 @@ import { cn } from '../lib/utils';
 import { INITIAL_PATIENTS } from '../data/seedData';
 import { dataStore } from '../services/dataService';
 import { notificationService } from '../services/notificationService';
+import { useAuth } from '../contexts/AuthContext';
 import { 
   format, 
   startOfMonth, 
@@ -50,6 +51,7 @@ import {
 import { ar } from 'date-fns/locale';
 
 export default function Appointments() {
+  const { user: currentUser } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [clinics, setClinics] = useState<Clinic[]>([]);
@@ -104,7 +106,7 @@ export default function Appointments() {
 
     const appointment: Appointment = {
       id: `APT-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
-      patientId: newAppointment.patientId || `P-${Math.random().toString(36).substr(2, 4)}`,
+      patientId: newAppointment.patientId || '',
       patientName: newAppointment.patientName!,
       doctorId: (newAppointment.doctorId || doctors[0]?.id || '') as string,
       clinicId: (newAppointment.clinicId || clinics[0]?.id || '') as string,
