@@ -25,10 +25,7 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "types": [
-      "vite/client",
-      "react",
-      "react-dom",
-      "node"
+      "vite/client"
     ]
   },
   "exclude": [

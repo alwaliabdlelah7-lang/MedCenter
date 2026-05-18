@@ -254,9 +254,9 @@ export default function StructureDirectory() {
                           <label className="text-[10px] font-black text-slate-500 uppercase italic">{field.label}</label>
                           <input 
                             type={field.type}
-                            defaultValue={editingDept?.customFields?.[field.name ?? field.id]}
+                            defaultValue={editingDept?.customFields?.[field.name]}
                             required={field.required}
-                            onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [field.name ?? field.id]: e.target.value }))}
+                            onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [field.name]: e.target.value }))}
                             className="w-full px-5 py-4 glass bg-white/5 border border-white/10 rounded-2xl text-white outline-none font-bold focus:border-indigo-500" 
                           />
                         </div>

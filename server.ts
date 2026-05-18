@@ -1,6 +1,5 @@
 import express from "express";
 import path from "path";
-import rateLimit from "express-rate-limit";
 
 process.on('uncaughtException', (err) => {
   console.error('UNCAUGHT EXCEPTION AT TOP LEVEL:', err);
@@ -65,7 +64,7 @@ async function startServer() {
   try {
     const app = express();
     const httpServer = createServer(app);
-    const PORT = parseInt(process.env.PORT || '5000', 10);
+    const PORT = 3000;
     
     console.log(`[Server] Attempting to start on port ${PORT}...`);
 
@@ -107,7 +106,7 @@ async function startServer() {
     app.use("/api", createApiRouter(adminApp ? adminApp.firestore() : null));
 
     // Catch unmatched /api calls before SPA fallback
-    app.all("/api/*path", (req, res) => {
+    app.all("/api/*", (req, res) => {
       res.status(404).json({ error: `API route not found: ${req.method} ${req.path}` });
     });
 
@@ -149,13 +148,7 @@ async function startServer() {
       }
 
       app.use(express.static(distPath));
-      const spaFallbackLimiter = rateLimit({
-        windowMs: 15 * 60 * 1000, // 15 minutes
-        max: 100, // limit each IP to 100 requests per window
-        standardHeaders: true,
-        legacyHeaders: false,
-      });
-      app.get('*', spaFallbackLimiter, (req, res) => {
+      app.get('*', (req, res) => {
         res.sendFile(indexPath, (err) => {
           if (err) {
             console.error(`[Server] Error sending index.html:`, err);

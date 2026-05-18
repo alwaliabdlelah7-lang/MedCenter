@@ -16,7 +16,7 @@ export default function AIDiagnosisAssistant() {
     setError(null);
     try {
       const result = await geminiService.suggestDiagnosis(symptoms.split(','));
-      setAnalysis(result ?? null);
+      setAnalysis(result);
     } catch (err: any) {
       setError(err.message || 'حدث خطأ أثناء الاتصال بالذكاء الاصطناعي');
     } finally {

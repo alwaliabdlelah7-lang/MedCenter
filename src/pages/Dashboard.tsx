@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   Activity as ActivityIcon, 
@@ -17,12 +17,7 @@ import {
   Database,
   Smartphone,
   Monitor,
-  CreditCard,
-  Pill,
-  Zap,
-  HeartPulse,
-  ListOrdered,
-  RefreshCw
+  CreditCard
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -42,7 +37,7 @@ import {
 } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
-import { Appointment, Patient, User, Doctor, PharmacyItem, Receipt, LabTest, Prescription } from '../types';
+import { Appointment, Patient, User, Doctor, PharmacyItem, Receipt } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { dataStore } from '../services/dataService';
 import { INITIAL_PATIENTS, INITIAL_APPOINTMENTS } from '../data/seedData';
@@ -76,11 +71,6 @@ export default function Dashboard() {
   const [medicines, setMedicines] = useState<PharmacyItem[]>([]);
   const [isCloudMode, setIsCloudMode] = useState(dataStore.isCloudEnabled());
   const [loading, setLoading] = useState(true);
-  const [labTests, setLabTests] = useState<LabTest[]>([]);
-  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
-  const [hourlyTrafficData, setHourlyTrafficData] = useState<any[]>([]);
-  const [liveTick, setLiveTick] = useState(0);
-  const [lastRefreshed, setLastRefreshed] = useState(new Date());
 
   // Dynamic Chart Data
   const [dashboardChartData, setDashboardChartData] = useState<any[]>([]);
@@ -93,14 +83,12 @@ export default function Dashboard() {
 
     const loadData = async () => {
       try {
-        const [apptsData, receiptsData, patientsData, doctorsData, medsData, labData, rxData] = await Promise.all([
+        const [apptsData, receiptsData, patientsData, doctorsData, medsData] = await Promise.all([
           dataStore.getAll<Appointment>('appointments'),
           dataStore.getAll<Receipt>('receipts'),
           dataStore.getAll<Patient>('patients'),
           dataStore.getAll<Doctor>('doctors'),
-          dataStore.getAll<PharmacyItem>('pharmacy_items'),
-          dataStore.getAll<LabTest>('lab_tests'),
-          dataStore.getAll<Prescription>('prescriptions')
+          dataStore.getAll<PharmacyItem>('pharmacy_items')
         ]);
 
         const currentAppts = apptsData.length > 0 ? apptsData : INITIAL_APPOINTMENTS;
@@ -112,33 +100,6 @@ export default function Dashboard() {
         setPatients(currentPatients);
         setDoctors(doctorsData);
         setMedicines(medsData);
-        setLabTests(labData);
-        setPrescriptions(rxData);
-        setLastRefreshed(new Date());
-
-        // Build hourly traffic for last 12 hours
-        const now = new Date();
-        const hourlyData = Array.from({ length: 12 }, (_, i) => {
-          const h = (now.getHours() - 11 + i + 24) % 24;
-          const label = `${h.toString().padStart(2, '0')}:00`;
-          const appts = currentAppts.filter(a => {
-            if (!a.time) return false;
-            const ah = parseInt(a.time.split(':')[0]);
-            return ah === h;
-          }).length;
-          const labs = labData.filter(l => {
-            if (!l.date) return false;
-            const d = new Date(l.date);
-            return d.getHours() === h && d.toDateString() === now.toDateString();
-          }).length;
-          const rx = rxData.filter(p => {
-            if (!p.date) return false;
-            const d = new Date(p.date);
-            return d.getHours() === h && d.toDateString() === now.toDateString();
-          }).length;
-          return { label, appts, labs, rx };
-        });
-        setHourlyTrafficData(hourlyData);
 
         // Calculate Weekly Chart Data
         const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
@@ -156,7 +117,7 @@ export default function Dashboard() {
           return { name: dayName, revenue: dayRevenue, appointments: dayAppts, rawDate: d };
         }).reverse();
 
-        setDashboardChartData(last7Days);
+        setDashboardChartData(last7Days.length > 0 ? last7Days : chartData);
 
         // Calculate Patient Type Distribution
         const visitTypes = {
@@ -171,7 +132,7 @@ export default function Dashboard() {
           }
         });
 
-        const dist = Object.values(visitTypes).map(t => ({ name: t.name, value: t.count, color: t.color }));
+        const dist = Object.values(visitTypes).map(t => ({ name: t.name, value: t.count || 5, color: t.color })); // Fallback to 5 for viz if empty
         setPatientTypeDistribution(dist);
 
       } catch (error) {
@@ -183,13 +144,8 @@ export default function Dashboard() {
     loadData();
 
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    const liveTimer = setInterval(() => {
-      setLiveTick(t => t + 1);
-      loadData();
-    }, 30000);
     return () => {
       clearInterval(timer);
-      clearInterval(liveTimer);
       unsubscribe();
     };
   }, []);
@@ -255,14 +211,6 @@ export default function Dashboard() {
   });
 
   const lowStockMeds = medicines.filter(m => m.stock < 20);
-  const todayStr = currentTime.toISOString().split('T')[0];
-  const todayLabTests = labTests.filter(l => l.date && l.date.startsWith(todayStr));
-  const pendingLabTests = labTests.filter(l => l.status === 'pending');
-  const dispensedRx = prescriptions.filter(p => p.status === 'dispensed' && p.date && p.date.startsWith(todayStr));
-  const activeRx = prescriptions.filter(p => p.status === 'active');
-  const inConsultation = appointments.filter(a => a.status === 'in_consultation');
-  const completedToday = appointments.filter(a => a.status === 'completed' && a.date === todayStr);
-  const waitingNow = appointments.filter(a => a.status === 'waiting');
 
   return (
     <div className="space-y-8 lg:p-4 text-right">
@@ -374,114 +322,6 @@ export default function Dashboard() {
           </motion.div>
         ))}
       </div>
-
-      {/* ══ Real-time Activity Monitor ══ */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="glass rounded-3xl border border-white/10 overflow-hidden shadow-2xl"
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-8 py-5 bg-white/[0.03] border-b border-white/5">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => { setLiveTick(t => t + 1); }}
-              className="p-2 glass rounded-xl text-slate-400 hover:text-white transition-all border border-white/5"
-              title="تحديث يدوي"
-            >
-              <RefreshCw size={14} className={liveTick > 0 ? 'animate-spin' : ''} style={{ animationDuration: '0.5s', animationIterationCount: 1 }} />
-            </button>
-            <span className="text-[10px] font-mono text-slate-500">
-              آخر تحديث: {lastRefreshed.toLocaleTimeString('ar-YE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-            </span>
-          </div>
-          <div className="flex items-center gap-3 text-right">
-            <div>
-              <h3 className="font-black text-white text-base flex items-center gap-2 justify-end">
-                مؤشر النشاط اللحظي
-                <Zap size={16} className="text-amber-400" />
-              </h3>
-              <p className="text-slate-500 text-[10px] font-mono">يتحدث تلقائياً كل 30 ثانية</p>
-            </div>
-            <div className="p-2.5 bg-amber-500/10 rounded-2xl border border-amber-500/20">
-              <HeartPulse size={22} className="text-amber-400 animate-pulse" />
-            </div>
-          </div>
-        </div>
-
-        {/* Live Counter Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-0 divide-x divide-x-reverse divide-white/5">
-          {[
-            { icon: Calendar,     label: 'مواعيد اليوم',      value: todayAppts.length,          sub: `${completedToday.length} مكتمل`,       color: 'text-sky-400',     bg: 'bg-sky-500/10',     pulse: false },
-            { icon: ListOrdered,  label: 'في الانتظار',        value: waitingNow.length,          sub: 'ينتظرون الدور',                         color: 'text-amber-400',   bg: 'bg-amber-500/10',   pulse: waitingNow.length > 0 },
-            { icon: HeartPulse,   label: 'قيد الاستشارة',      value: inConsultation.length,      sub: 'داخل العيادة',                          color: 'text-emerald-400', bg: 'bg-emerald-500/10', pulse: inConsultation.length > 0 },
-            { icon: FlaskConical, label: 'تحاليل اليوم',       value: todayLabTests.length,       sub: `${pendingLabTests.length} معلق`,        color: 'text-indigo-400',  bg: 'bg-indigo-500/10',  pulse: pendingLabTests.length > 0 },
-            { icon: Pill,         label: 'وصفات صُرفت',        value: dispensedRx.length,         sub: `${activeRx.length} نشط`,                color: 'text-teal-400',    bg: 'bg-teal-500/10',    pulse: false },
-            { icon: TrendingUp,   label: 'إيرادات اليوم',      value: `${(actualRevenueToday/1000).toFixed(0)}K`, sub: 'ريال يمني',         color: 'text-rose-400',    bg: 'bg-rose-500/10',    pulse: false },
-            { icon: Users,        label: 'المرضى الكلي',       value: patients.length,            sub: `+${patients.filter(p => new Date(p.createdAt) > new Date(Date.now() - 86400000*7)).length} هذا الأسبوع`, color: 'text-purple-400', bg: 'bg-purple-500/10', pulse: false },
-          ].map((item, idx) => (
-            <motion.div
-              key={item.label}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.05 }}
-              className="flex flex-col items-center justify-center gap-3 py-6 px-4 text-center hover:bg-white/[0.03] transition-colors group"
-            >
-              <div className={cn("p-3 rounded-2xl relative", item.bg)}>
-                <item.icon size={20} className={item.color} />
-                {item.pulse && (
-                  <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-amber-500 animate-ping" />
-                )}
-              </div>
-              <div>
-                <motion.p
-                  key={`${item.label}-${item.value}`}
-                  initial={{ scale: 1.3, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className={cn("text-2xl font-black", item.color)}
-                >
-                  {item.value}
-                </motion.p>
-                <p className="text-[10px] font-black text-white mt-0.5">{item.label}</p>
-                <p className="text-[9px] text-slate-500 font-mono mt-0.5">{item.sub}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Hourly Traffic Chart */}
-        <div className="border-t border-white/5 px-8 py-6">
-          <div className="flex items-center justify-between mb-5 flex-row-reverse">
-            <div className="flex items-center gap-4 text-[10px] font-bold">
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-sky-500/70 inline-block" /> مواعيد</span>
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-indigo-500/70 inline-block" /> تحاليل مختبر</span>
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-teal-500/70 inline-block" /> وصفات صيدلية</span>
-            </div>
-            <p className="text-[11px] font-black text-slate-400 flex items-center gap-2">
-              <Clock size={13} className="text-slate-500" />
-              حركة المرضى — آخر 12 ساعة
-            </p>
-          </div>
-          <div className="h-40">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={hourlyTrafficData} barGap={2} barCategoryGap="30%">
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff06" />
-                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#64748b', fontFamily: 'monospace' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#64748b' }} width={20} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', fontSize: '11px' }}
-                  cursor={{ fill: 'rgba(255,255,255,0.03)' }}
-                  formatter={(val: any, name: any) => [val, name === 'appts' ? 'مواعيد' : name === 'labs' ? 'تحاليل' : 'وصفات'] as any}
-                  labelFormatter={(l) => `الساعة ${l}`}
-                />
-                <Bar dataKey="appts" fill="#0ea5e9" fillOpacity={0.8} radius={[4, 4, 0, 0]} />
-                <Bar dataKey="labs"  fill="#6366f1" fillOpacity={0.8} radius={[4, 4, 0, 0]} />
-                <Bar dataKey="rx"    fill="#14b8a6" fillOpacity={0.8} radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Charts Area */}
@@ -671,40 +511,24 @@ export default function Dashboard() {
 
            <div className="glass p-6 rounded-3xl border border-white/5">
               <div className="flex items-center justify-between mb-6">
-                 <h3 className="text-white font-bold text-sm">الأطباء المسجلون</h3>
-                 <span className="text-[10px] bg-sky-500/10 text-sky-400 px-2 py-0.5 rounded-full font-black border border-sky-500/20">{doctors.length} طبيب</span>
+                 <h3 className="text-white font-bold text-sm">أطباء متاحون حالياً</h3>
+                 <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full font-black">اونلاين</span>
               </div>
-              {doctors.length === 0 ? (
-                <div className="text-center py-8 text-slate-600 text-xs font-bold italic">لا يوجد أطباء مسجلون بعد</div>
-              ) : (
-                <div className="space-y-3">
-                  {doctors.slice(0, 4).map(doc => {
-                    const initials = doc.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2);
-                    const colors = ['bg-sky-500', 'bg-indigo-500', 'bg-teal-500', 'bg-purple-500'];
-                    const ci = doctors.indexOf(doc) % colors.length;
-                    return (
-                      <div key={doc.id} className="flex items-center gap-3 p-3 glass-card rounded-2xl border border-white/5 hover:bg-white/5 transition-all">
-                        <div className="relative">
-                          <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-black text-white text-sm", colors[ci])}>
-                            {initials}
-                          </div>
-                          <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-[#1e293b] rounded-full" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-white leading-tight truncate">{doc.name}</p>
-                          <p className="text-[10px] text-slate-500 mt-0.5 italic font-medium truncate">{doc.specialization}</p>
-                        </div>
-                        <ChevronRight size={14} className="text-slate-600 flex-shrink-0" />
+              <div className="space-y-4">
+                 {[1, 2, 3].map(i => (
+                   <div key={i} className="flex items-center gap-3 p-3 glass-card rounded-2xl border border-white/5 hover:bg-white/5 transition-all">
+                      <div className="relative">
+                         <img src={`https://picsum.photos/seed/doc${i}/40/40`} className="w-10 h-10 rounded-xl" referrerPolicy="no-referrer" />
+                         <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-[#1e293b] rounded-full" />
                       </div>
-                    );
-                  })}
-                  {doctors.length > 4 && (
-                    <button onClick={() => navigate('/directories/doctors')} className="w-full text-center text-[10px] text-indigo-400 font-black hover:underline py-1">
-                      + {doctors.length - 4} طبيب آخر
-                    </button>
-                  )}
-                </div>
-              )}
+                      <div className="flex-1">
+                         <p className="text-xs font-bold text-white leading-tight">د. أحمد الشامي</p>
+                         <p className="text-[10px] text-slate-500 mt-1 italic font-medium">استشاري باطنية</p>
+                      </div>
+                      <ChevronRight size={14} className="text-slate-600" />
+                   </div>
+                 ))}
+              </div>
            </div>
 
            <div className="glass p-6 rounded-3xl border border-white/5">

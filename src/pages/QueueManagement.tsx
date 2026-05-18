@@ -158,13 +158,13 @@ export default function QueueManagement() {
 
     if (activeVisit.prescriptions && activeVisit.prescriptions.length > 0) {
       const rxItems = activeVisit.prescriptions.map(medName => {
-        const master = masterMedicines.find(m => m.tradeName === medName || m.scientificName === medName);
+        const master = masterMedicines.find(m => m.tradeName === medName);
         return {
-          medicineId: master?.id || '',
+          medicineId: master?.id || 'manual',
           tradeName: medName,
-          dosage: master ? `${master.totalQuantity > 0 ? '1' : '1'} ${master.dosageForm || ''}`.trim() : '',
-          duration: '',
-          instructions: ''
+          dosage: '1x1', // Default dosage
+          duration: '5 days',
+          instructions: 'بعد الأكل'
         };
       });
 
