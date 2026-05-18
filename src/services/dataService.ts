@@ -1,5 +1,5 @@
 import { db, auth } from '../lib/firebase';
-import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, where, addDoc, getCountFromServer, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, where, addDoc, getCountFromServer, writeBatch, onSnapshot } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 import { getSupabaseClient } from '../lib/supabase';
 
@@ -43,6 +43,32 @@ class DataService {
     return () => {
       this.listeners = this.listeners.filter(l => l !== listener);
     };
+  }
+
+  /**
+   * Real-time subscription to a collection
+   */
+  public subscribeToCollection<T>(key: string, callback: (items: T[]) => void) {
+    if (this.provider === 'firebase') {
+      const q = query(collection(db, key));
+      return onSnapshot(q, (snapshot) => {
+        const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as T));
+        this.saveLocalAll(key, items);
+        callback(items);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, key);
+      });
+    }
+
+    // Polling fallback for other providers
+    const fetchAndNotify = async () => {
+      const items = await this.getAll<T>(key);
+      callback(items);
+    };
+    
+    fetchAndNotify();
+    const interval = setInterval(fetchAndNotify, 3000);
+    return () => clearInterval(interval);
   }
 
   private notify() {
@@ -364,6 +390,13 @@ class DataService {
     if (!this.isCloudEnabled()) return;
 
     try {
+      // 1. Check if we already have structural data (e.g. departments)
+      const existingDepts = await this.getAll('departments');
+      if (existingDepts.length > 0) {
+        console.log('[DataService] System already contains structural data. Skipping auto-seed.');
+        return;
+      }
+
       console.log(`[DataService] Starting auto-seed for ${this.provider}...`);
       const seedData = await import('../data/seedData');
       
@@ -372,11 +405,11 @@ class DataService {
         departments: seedData.INITIAL_DEPARTMENTS || [],
         clinics: seedData.INITIAL_CLINICS || [],
         doctors: seedData.INITIAL_DOCTORS || [],
-        patients: seedData.INITIAL_PATIENTS || [],
-        appointments: seedData.INITIAL_APPOINTMENTS || [],
+        // patients: seedData.INITIAL_PATIENTS || [], // Skip "fake" patients
+        // appointments: seedData.INITIAL_APPOINTMENTS || [], // Skip "fake" appointments
         services: seedData.YEMEN_SERVICES || [],
-        pharmacy_items: (seedData.YEMEN_MEDICINES || []).map((m: any, i: number) => ({ id: `pi-${i}`, ...m })),
-        lab_tests: (seedData.YEMEN_LAB_TESTS || []).map((t: any, i: number) => ({ id: `lt-${i}`, ...t }))
+        master_medicines: (seedData.YEMEN_MEDICINES || []).map((m: any, i: number) => ({ id: `MED-M-${i}`, ...m })),
+        master_lab_tests: (seedData.YEMEN_LAB_TESTS || []).map((t: any, i: number) => ({ id: `LAB-M-${i}`, ...t }))
       };
 
       for (const [col, items] of Object.entries(seedMap)) {

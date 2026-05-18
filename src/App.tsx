@@ -74,6 +74,11 @@ const PlaceholderPage = ({ title }: { title: string }) => (
 );
 
 export default function App() {
+  useEffect(() => {
+    // Attempt auto-seed on startup (only seeds if collections are empty)
+    dataStore.autoSeed().catch(err => console.error("AutoSeed failed", err));
+  }, []);
+
   return (
     <LanguageProvider>
       <AuthProvider>

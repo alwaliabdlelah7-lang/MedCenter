@@ -18,24 +18,27 @@ export default function ClinicsDirectory() {
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [deptsData, clinicsData, fieldsData] = await Promise.all([
-          dataStore.getAll<Department>('departments'),
-          dataStore.getAll<Clinic>('clinics'),
-          dataStore.getAll<DynamicFieldDefinition>('dynamic_fields')
-        ]);
-        setDepartments(deptsData.length > 0 ? deptsData : INITIAL_DEPARTMENTS);
-        setClinics(clinicsData.length > 0 ? clinicsData : INITIAL_CLINICS as Clinic[]);
-        
-        setDynamicFields(fieldsData.filter(f => f.entity === 'clinic' && f.isActive));
-      } catch (error) {
-        console.error("Failed to load clinics data", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
+    const unsubs: (() => void)[] = [];
+
+    const collections = [
+      { key: 'departments', setter: setDepartments },
+      { key: 'clinics', setter: setClinics },
+      { key: 'dynamic_fields', setter: setDynamicFields }
+    ];
+
+    collections.forEach(({ key, setter }) => {
+      const unsub = dataStore.subscribeToCollection<any>(key, (data) => {
+        if (key === 'dynamic_fields') {
+          setter(data.filter((f: any) => f.entity === 'clinic' && f.isActive));
+        } else {
+          setter(data);
+        }
+        if (loading) setLoading(false);
+      });
+      unsubs.push(unsub);
+    });
+
+    return () => unsubs.forEach(unsub => unsub());
   }, []);
 
   const handleAddOrUpdate = async (e: React.FormEvent) => {

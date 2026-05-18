@@ -49,68 +49,32 @@ export default function PatientManagement() {
   const [serviceOrders, setServiceOrders] = useState<any[]>([]); // To track ordered services
   const [loading, setLoading] = useState(true);
 
-  const loadData = async () => {
-    try {
-      const [patientsData, fieldsData, apptsData, labsData, scansData, prescriptionsData, visitsData, clinicsData, masterLabsData, masterServicesData, servicesOrdersData] = await Promise.all([
-        dataStore.getAll<Patient>('patients'),
-        dataStore.getAll<DynamicFieldDefinition>('dynamic_fields'),
-        dataStore.getAll<Appointment>('appointments'),
-        dataStore.getAll<LabTest>('lab_tests'),
-        dataStore.getAll<RadiologyScan>('radiology_scans'),
-        dataStore.getAll<Prescription>('prescriptions'),
-        dataStore.getAll<ClinicalVisit>('clinical_visits'),
-        dataStore.getAll<Clinic>('clinics'),
-        dataStore.getAll<MasterLabItem>('master_lab_tests'),
-        dataStore.getAll<Service>('services'),
-        dataStore.getAll<any>('service_orders')
-      ]);
-      setPatients(patientsData.length > 0 ? patientsData : INITIAL_PATIENTS);
-      setDynamicFields(fieldsData);
-      setAppointments(apptsData);
-      setLabTests(labsData);
-      setRadiologyScans(scansData);
-      setPrescriptions(prescriptionsData);
-      setVisits(visitsData);
-      setClinics(clinicsData);
-      setServiceOrders(servicesOrdersData);
-      
-      if (masterLabsData.length === 0) {
-        // Use seed data if DB is empty
-        const seeded = YEMEN_LAB_TESTS.map((t, i) => ({
-          id: `LBT-${i + 1}`,
-          name: t.name,
-          price: t.price,
-          category: t.category || 'عام',
-          isProfile: t.isProfile || false,
-          parameters: t.parameters || []
-        }));
-        setMasterLabTests(seeded);
-      } else {
-        setMasterLabTests(masterLabsData);
-      }
-
-      if (masterServicesData.length === 0) {
-        const seeded = (YEMEN_SERVICES as any[]).map((s, i) => ({
-          id: `SRV-M-${i + 1}`,
-          name: s.name,
-          price: s.price,
-          category: 'Medical Services',
-          departmentId: 'dept-1',
-          revenueAccountId: 'acc-1'
-        }));
-        setMasterServices(seeded);
-      } else {
-        setMasterServices(masterServicesData);
-      }
-    } catch (error) {
-      console.error("Failed to load patient management data", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadData();
+    const unsubs: (() => void)[] = [];
+
+    const collections = [
+      { key: 'patients', setter: setPatients },
+      { key: 'dynamic_fields', setter: setDynamicFields },
+      { key: 'appointments', setter: setAppointments },
+      { key: 'lab_tests', setter: setLabTests },
+      { key: 'radiology_scans', setter: setRadiologyScans },
+      { key: 'prescriptions', setter: setPrescriptions },
+      { key: 'clinical_visits', setter: setVisits },
+      { key: 'clinics', setter: setClinics },
+      { key: 'master_lab_tests', setter: setMasterLabTests },
+      { key: 'services', setter: setMasterServices },
+      { key: 'service_orders', setter: setServiceOrders }
+    ];
+
+    collections.forEach(({ key, setter }) => {
+      const unsub = dataStore.subscribeToCollection<any>(key, (data) => {
+        setter(data);
+        if (loading) setLoading(false);
+      });
+      unsubs.push(unsub);
+    });
+
+    return () => unsubs.forEach(unsub => unsub());
   }, []);
 
   useEffect(() => {

@@ -20,37 +20,24 @@ export default function Pharmacy() {
   const [editingItem, setEditingItem] = useState<PharmacyItem | null>(null);
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [invData, masterData, prescriptionsData, salesData] = await Promise.all([
-          dataStore.getAll<PharmacyItem>('pharmacy_items'),
-          dataStore.getAll<MasterMedicine>('master_medicines'),
-          dataStore.getAll<Prescription>('prescriptions'),
-          dataStore.getAll<any>('pharmacy_sales')
-        ]);
-        setInventory(invData);
-        setMasterMedicines(masterData);
-        setPrescriptions(prescriptionsData);
-        setSales(salesData || []);
-        
-        if (invData.length === 0 && masterData.length === 0) {
-           const seeded = YEMEN_MEDICINES.slice(0, 10).map((m: any, idx: number) => ({
-             id: `PHM-${idx}`,
-             name: m.tradeName,
-             category: 'أدوية عامة',
-             price: m.price,
-             stock: 50,
-             expiryDate: '2027-12-30'
-           }));
-           setInventory(seeded);
-        }
-      } catch (error) {
-        console.error("Failed to load pharmacy data", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
+    const unsubs: (() => void)[] = [];
+
+    const collections = [
+      { key: 'pharmacy_items', setter: setInventory },
+      { key: 'master_medicines', setter: setMasterMedicines },
+      { key: 'prescriptions', setter: setPrescriptions },
+      { key: 'pharmacy_sales', setter: setSales }
+    ];
+
+    collections.forEach(({ key, setter }) => {
+      const unsub = dataStore.subscribeToCollection<any>(key, (data) => {
+        setter(data);
+        if (loading) setLoading(false);
+      });
+      unsubs.push(unsub);
+    });
+
+    return () => unsubs.forEach(unsub => unsub());
   }, []);
 
   const handleAddOrUpdate = async (e: React.FormEvent) => {

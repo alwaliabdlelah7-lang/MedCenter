@@ -77,78 +77,82 @@ export default function Dashboard() {
   const [patientTypeDistribution, setPatientTypeDistribution] = useState<any[]>([]);
 
   useEffect(() => {
-    const unsubscribe = dataStore.subscribe(() => {
+    const unsubProvider = dataStore.subscribe(() => {
       setIsCloudMode(dataStore.isCloudEnabled());
     });
 
-    const loadData = async () => {
-      try {
-        const [apptsData, receiptsData, patientsData, doctorsData, medsData] = await Promise.all([
-          dataStore.getAll<Appointment>('appointments'),
-          dataStore.getAll<Receipt>('receipts'),
-          dataStore.getAll<Patient>('patients'),
-          dataStore.getAll<Doctor>('doctors'),
-          dataStore.getAll<PharmacyItem>('pharmacy_items')
-        ]);
+    const unsubs: (() => void)[] = [];
 
-        const currentAppts = apptsData.length > 0 ? apptsData : INITIAL_APPOINTMENTS;
-        const currentReceipts = receiptsData;
-        const currentPatients = patientsData.length > 0 ? patientsData : INITIAL_PATIENTS;
+    // Real-time subscriptions for all main collections
+    const collections = [
+      { key: 'appointments', setter: setAppointments },
+      { key: 'receipts', setter: setReceipts },
+      { key: 'patients', setter: setPatients },
+      { key: 'doctors', setter: setDoctors },
+      { key: 'pharmacy_items', setter: setMedicines }
+    ];
 
-        setAppointments(currentAppts);
-        setReceipts(currentReceipts);
-        setPatients(currentPatients);
-        setDoctors(doctorsData);
-        setMedicines(medsData);
-
-        // Calculate Weekly Chart Data
-        const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-        // Use receipts to calculate revenue per day for the last 7 days
-        const last7Days = Array.from({ length: 7 }, (_, i) => {
-          const d = new Date();
-          d.setDate(d.getDate() - i);
-          const dateStr = d.toLocaleDateString('ar-YE');
-          const dayName = days[d.getDay()];
-          const dayRevenue = currentReceipts
-            .filter(r => r.date === dateStr && r.status === 'paid')
-            .reduce((sum, r) => sum + r.amount, 0);
-          const dayAppts = currentAppts.filter(a => a.date === d.toISOString().split('T')[0]).length;
-          
-          return { name: dayName, revenue: dayRevenue, appointments: dayAppts, rawDate: d };
-        }).reverse();
-
-        setDashboardChartData(last7Days.length > 0 ? last7Days : chartData);
-
-        // Calculate Patient Type Distribution
-        const visitTypes = {
-          'consultation': { name: 'مرضى جدد', count: 0, color: '#0ea5e9' },
-          'followup': { name: 'متابعة', count: 0, color: '#8b5cf6' },
-          'return': { name: 'عودة مجانية', count: 0, color: '#f59e0b' }
-        };
-
-        currentAppts.forEach(a => {
-          if (visitTypes[a.type as keyof typeof visitTypes]) {
-            visitTypes[a.type as keyof typeof visitTypes].count++;
-          }
-        });
-
-        const dist = Object.values(visitTypes).map(t => ({ name: t.name, value: t.count || 5, color: t.color })); // Fallback to 5 for viz if empty
-        setPatientTypeDistribution(dist);
-
-      } catch (error) {
-        console.error("Dashboard data load failed", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
+    collections.forEach(({ key, setter }) => {
+      const unsub = dataStore.subscribeToCollection<any>(key, (data) => {
+        setter(data);
+        if (key === 'appointments' || key === 'receipts') {
+          // Re-calculate statistics based on updated data
+          setLoading(false);
+        }
+      });
+      unsubs.push(unsub);
+    });
 
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    
     return () => {
       clearInterval(timer);
-      unsubscribe();
+      unsubProvider();
+      unsubs.forEach(unsub => unsub());
     };
   }, []);
+
+  useEffect(() => {
+    // Recalculate derivative data when main state changes
+    if (appointments.length >= 0 || receipts.length >= 0) {
+      // Calculate Weekly Chart Data
+      const daysAr = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+      const last7Days = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toLocaleDateString('ar-YE');
+        const dayName = daysAr[d.getDay()];
+        const dayRevenue = receipts
+          .filter(r => r.date === dateStr && r.status === 'paid')
+          .reduce((sum, r) => sum + r.amount, 0);
+        const dayAppts = appointments.filter(a => a.date === d.toISOString().split('T')[0]).length;
+        
+        return { name: dayName, revenue: dayRevenue, appointments: dayAppts, rawDate: d };
+      }).reverse();
+
+      setDashboardChartData(last7Days);
+
+      // Calculate Patient Type Distribution
+      const visitTypes = {
+        'consultation': { name: 'مرضى جدد', count: 0, color: '#0ea5e9' },
+        'followup': { name: 'متابعة', count: 0, color: '#8b5cf6' },
+        'return': { name: 'عودة مجانية', count: 0, color: '#f59e0b' }
+      };
+
+      appointments.forEach(a => {
+        const typeKey = a.type as keyof typeof visitTypes;
+        if (visitTypes[typeKey]) {
+          visitTypes[typeKey].count++;
+        }
+      });
+
+      setPatientTypeDistribution(Object.values(visitTypes).map(t => ({ 
+        name: t.name, 
+        value: t.count || 0, // No fallback to 5, user wants real data
+        color: t.color 
+      })));
+    }
+  }, [appointments, receipts]);
 
   const quickActions = [
     { label: 'حجز موعد', icon: Calendar, color: 'bg-sky-500', path: '/appointments' },

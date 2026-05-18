@@ -58,25 +58,24 @@ export default function Appointments() {
   const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('grid');
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [apptsData, doctorsData, clinicsData, patientsData] = await Promise.all([
-          dataStore.getAll<Appointment>('appointments'),
-          dataStore.getAll<Doctor>('doctors'),
-          dataStore.getAll<Clinic>('clinics'),
-          dataStore.getAll<Patient>('patients')
-        ]);
-        setAppointments(apptsData);
-        setDoctors(doctorsData);
-        setClinics(clinicsData);
-        setPatients(patientsData.length > 0 ? patientsData : INITIAL_PATIENTS);
-      } catch (error) {
-        console.error("Failed to load appointments data", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
+    const unsubs: (() => void)[] = [];
+
+    const collections = [
+      { key: 'appointments', setter: setAppointments },
+      { key: 'doctors', setter: setDoctors },
+      { key: 'clinics', setter: setClinics },
+      { key: 'patients', setter: setPatients }
+    ];
+
+    collections.forEach(({ key, setter }) => {
+      const unsub = dataStore.subscribeToCollection<any>(key, (data) => {
+        setter(data);
+        if (loading) setLoading(false);
+      });
+      unsubs.push(unsub);
+    });
+
+    return () => unsubs.forEach(unsub => unsub());
   }, []);
 
   const [showAddModal, setShowAddModal] = useState(false);

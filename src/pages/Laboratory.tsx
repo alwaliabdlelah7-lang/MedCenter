@@ -21,25 +21,24 @@ export default function Laboratory() {
   const [resultParams, setResultParams] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [testsData, doctorsData, masterData, patientsData] = await Promise.all([
-          dataStore.getAll<LabTest>('lab_tests'),
-          dataStore.getAll<Doctor>('doctors'),
-          dataStore.getAll<MasterLabItem>('master_lab_tests'),
-          dataStore.getAll<Patient>('patients')
-        ]);
-        setTests(testsData);
-        setDoctors(doctorsData);
-        setMasterTests(masterData.length > 0 ? masterData : YEMEN_LAB_TESTS);
-        setPatients(patientsData);
-      } catch (error) {
-        console.error("Failed to load lab data", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
+    const unsubs: (() => void)[] = [];
+
+    const collections = [
+      { key: 'lab_tests', setter: setTests },
+      { key: 'doctors', setter: setDoctors },
+      { key: 'master_lab_tests', setter: setMasterTests },
+      { key: 'patients', setter: setPatients }
+    ];
+
+    collections.forEach(({ key, setter }) => {
+      const unsub = dataStore.subscribeToCollection<any>(key, (data) => {
+        setter(data);
+        if (loading) setLoading(false);
+      });
+      unsubs.push(unsub);
+    });
+
+    return () => unsubs.forEach(unsub => unsub());
   }, []);
 
   const handleAddOrUpdate = async (e: React.FormEvent) => {
