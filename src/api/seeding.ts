@@ -1,20 +1,20 @@
 import admin from "firebase-admin";
+import { 
+  INITIAL_DEPARTMENTS, 
+  INITIAL_CLINICS, 
+  INITIAL_DOCTORS, 
+  INITIAL_PATIENTS,
+  INITIAL_USERS,
+  INITIAL_NURSES,
+  INITIAL_OPERATIONS,
+  YEMEN_SERVICES,
+  YEMEN_LAB_TESTS,
+  YEMEN_MEDICINES
+} from "../data/seedData";
 
 export async function performSeeding(db: any) {
   if (!db) return { success: false, error: "Firebase not initialized" };
   try {
-    const { 
-      INITIAL_DEPARTMENTS, 
-      INITIAL_CLINICS, 
-      INITIAL_DOCTORS, 
-      INITIAL_PATIENTS,
-      INITIAL_USERS,
-      INITIAL_NURSES,
-      INITIAL_OPERATIONS,
-      YEMEN_SERVICES,
-      YEMEN_LAB_TESTS,
-      YEMEN_MEDICINES
-    } = await import("../data/seedData.ts");
 
     const seedTask = async (collection: string, data: any[]) => {
       const colRef = db.collection(collection);

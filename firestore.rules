@@ -27,12 +27,16 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
+    function hasUserDoc() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
     function hasPermission(perm) {
-      return isSignedIn() && (getUserData().permissions.hasAny([perm]) || getUserData().permissions.hasAny(['all']));
+      return isSignedIn() && hasUserDoc() && (getUserData().permissions.hasAny([perm]) || getUserData().permissions.hasAny(['all']));
     }
 
     function isAdmin() {
-      return isSignedIn() && (getUserData().role == 'admin' || getUserData().permissions.hasAny(['all']));
+      return isSignedIn() && hasUserDoc() && (getUserData().role == 'admin' || getUserData().permissions.hasAny(['all']));
     }
 
     function isOwner(userId) {

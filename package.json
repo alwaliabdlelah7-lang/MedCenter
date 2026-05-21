@@ -8,7 +8,7 @@
   "main": "electron-main.cjs",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=esm --target=node20 --outfile=server-dist.js --external:firebase-admin --external:vite --external:fsevents",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=esm --target=node20 --outfile=server-dist.js --packages=external",
     "preview": "vite preview",
     "clean": "rm -rf dist server-dist.js",
     "lint": "tsc --noEmit",

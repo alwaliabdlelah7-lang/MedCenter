@@ -1,4 +1,4 @@
-import { db, auth } from '../lib/firebase';
+import { db, auth, isFirebaseReady, lastFirebaseError } from '../lib/firebase';
 import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, where, addDoc, getCountFromServer, writeBatch, onSnapshot } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../lib/firestoreErrorHandler';
 import { getSupabaseClient } from '../lib/supabase';
@@ -15,7 +15,43 @@ class DataService {
   private provider: StorageProvider = (localStorage.getItem('db_provider') as StorageProvider) || 'firebase';
   private listeners: (() => void)[] = [];
   
-  private constructor() {}
+  private constructor() {
+    // Detect fatal cloud errors and downgrade or upgrade back when connection is restored
+    const checkAndDowngrade = () => {
+      const isSuspended = lastFirebaseError?.includes('suspended') || lastFirebaseError?.includes('permission-denied') || lastFirebaseError?.includes('api-key');
+      if (this.provider === 'firebase' && isSuspended) {
+        console.warn('[DataService] Detected suspended Firebase project. Falling back to local storage.');
+        this.setProvider('local');
+      }
+    };
+
+    const checkAndUpgrade = () => {
+      const isSuspended = lastFirebaseError?.includes('suspended') || lastFirebaseError?.includes('permission-denied') || lastFirebaseError?.includes('api-key');
+      const hasLocalUser = !!localStorage.getItem('hospital_current_user');
+      const isFirebaseAuthReady = !!auth.currentUser;
+
+      // If there is an active local user session but Firebase Auth isn't ready/signed in yet,
+      // keep local provider to prevent unauthenticated operations on Firebase.
+      if (hasLocalUser && !isFirebaseAuthReady) {
+        return;
+      }
+
+      if (isFirebaseReady && this.provider === 'local' && !isSuspended) {
+        console.log('[DataService] Firebase connected successfully. Restoring cloud data provider.');
+        this.setProvider('firebase');
+      }
+    };
+    
+    // Check immediately in case it was pre-detected on load
+    checkAndDowngrade();
+    checkAndUpgrade();
+    // Re-check after a brief timeout to allow connection tests to complete
+    setTimeout(() => {
+      checkAndDowngrade();
+      checkAndUpgrade();
+    }, 2000);
+    setTimeout(checkAndUpgrade, 5000);
+  }
 
   public static getInstance(): DataService {
     if (!DataService.instance) {
@@ -50,6 +86,17 @@ class DataService {
    */
   public subscribeToCollection<T>(key: string, callback: (items: T[]) => void) {
     if (this.provider === 'firebase') {
+      if (!auth.currentUser) {
+        console.warn(`[DataService] Subscribing to ${key} in Firebase mode, but user is not authenticated. Using local/cached polling fallback.`);
+        const fetchAndNotify = async () => {
+          const items = await this.getAll<T>(key);
+          callback(items);
+        };
+        fetchAndNotify();
+        const interval = setInterval(fetchAndNotify, 3000);
+        return () => clearInterval(interval);
+      }
+
       const q = query(collection(db, key));
       return onSnapshot(q, (snapshot) => {
         const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as T));
@@ -216,6 +263,10 @@ class DataService {
       }
     }
 
+    if (this.provider === 'firebase' && !auth.currentUser) {
+      return this.getLocalAll<T>(key);
+    }
+
     try {
       const snapshot = await getDocs(collection(db, key));
       const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as T));
@@ -246,6 +297,13 @@ class DataService {
       }
     }
 
+    if (this.provider === 'firebase' && !auth.currentUser) {
+      const items = this.getLocalAll<any>(key);
+      return items.filter((item: any) => 
+        Object.entries(queryFilters).every(([field, val]) => item[field] === val)
+      ) as T[];
+    }
+
     try {
       let q = query(collection(db, key));
       Object.entries(queryFilters).forEach(([field, value]) => {
@@ -268,7 +326,7 @@ class DataService {
     const docId = item.id || `ID-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
     const itemWithMeta = { ...item, id: docId, createdAt: new Date().toISOString() };
     
-    if (this.provider === 'local') {
+    if (this.provider === 'local' || (this.provider === 'firebase' && !auth.currentUser)) {
       const current = this.getLocalAll<any>(key);
       // Check if ID already exists to prevent duplicates
       const exists = current.some((i: any) => i.id === docId);
@@ -315,7 +373,7 @@ class DataService {
   public async updateItem<T>(key: string, id: string, updates: Partial<T>): Promise<void> {
     const updatesWithMeta = { ...updates, updatedAt: new Date().toISOString() };
     
-    if (this.provider === 'local') {
+    if (this.provider === 'local' || (this.provider === 'firebase' && !auth.currentUser)) {
       const current = this.getLocalAll<any>(key);
       this.saveLocalAll(key, current.map((item: any) => 
         (item.id === id) ? { ...item, ...updates } : item
@@ -352,7 +410,7 @@ class DataService {
 
   // Generic Delete Item
   public async deleteItem<T>(key: string, id: string): Promise<void> {
-    if (this.provider === 'local') {
+    if (this.provider === 'local' || (this.provider === 'firebase' && !auth.currentUser)) {
       const current = this.getLocalAll<any>(key);
       this.saveLocalAll(key, current.filter(item => item.id !== id));
       this.notify();
@@ -388,6 +446,24 @@ class DataService {
    */
   public async autoSeed(): Promise<void> {
     if (!this.isCloudEnabled()) return;
+
+    // Firebase authentication guard
+    if (this.provider === 'firebase' && !auth.currentUser) {
+      console.log('[DataService] Firebase is unauthenticated. Skipping auto-seed.');
+      return;
+    }
+
+    // Supabase authentication guard
+    if (this.provider === 'supabase') {
+      const sb = this.getSupabase();
+      if (sb) {
+        const { data } = await sb.auth.getSession();
+        if (!data.session) {
+          console.log('[DataService] Supabase is unauthenticated. Skipping auto-seed.');
+          return;
+        }
+      }
+    }
 
     try {
       // 1. Check if we already have structural data (e.g. departments)
@@ -426,7 +502,7 @@ class DataService {
     }
   }
 
-  private getLocalAll<T>(key: string): T[] {
+  public getLocalAll<T>(key: string): T[] {
     const data = localStorage.getItem(`hospital_${key}`);
     return data ? JSON.parse(data) : [];
   }

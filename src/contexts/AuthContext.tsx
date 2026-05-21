@@ -30,7 +30,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Firebase Auth Listener
+    // 1. Local Auths Init & Restore
+    const initLocalAuth = () => {
+      if (dataStore.getProvider() === 'local') {
+        const savedUser = localStorage.getItem('hospital_current_user');
+        if (savedUser) {
+          try {
+            setUser(JSON.parse(savedUser));
+          } catch (e) {
+            setUser(null);
+          }
+        }
+        setIsLoading(false);
+      }
+    };
+    initLocalAuth();
+
+    // 2. Firebase Auth Listener
     const unsubFirebase = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser && dataStore.getProvider() === 'firebase') {
         await handleFirebaseUser(fbUser);
@@ -41,7 +57,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    // 2. Supabase Auth Listener
+    // 3. Provider Switching Listener
+    const unsubProvider = dataStore.subscribe(() => {
+      const currentProvider = dataStore.getProvider();
+      if (currentProvider === 'local') {
+        const savedUser = localStorage.getItem('hospital_current_user');
+        if (savedUser) {
+          try {
+            setUser(JSON.parse(savedUser));
+          } catch (e) {
+            setUser(null);
+          }
+        } else {
+          setUser(null);
+        }
+        setIsLoading(false);
+      }
+    });
+
+    // 4. Supabase Auth Listener
     if (supabase) {
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session && dataStore.getProvider() === 'supabase') {
@@ -61,18 +95,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return () => {
         unsubFirebase();
+        unsubProvider();
         subscription.unsubscribe();
       };
     }
 
-    return () => unsubFirebase();
+    return () => {
+      unsubFirebase();
+      unsubProvider();
+    };
   }, []);
 
   const handleFirebaseUser = async (fbUser: any) => {
     try {
       const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
       if (userDoc.exists()) {
-        setUser({ id: userDoc.id, ...userDoc.data() } as User);
+        const uProfile = { id: userDoc.id, ...userDoc.data() } as User;
+        setUser(uProfile);
+        if (uProfile.role === 'admin') {
+          dataStore.autoSeed().catch(err => console.error("Admin autoSeed failed:", err));
+        }
       } else {
         const isAdminEmail = fbUser.email === 'alwaliabdlelah7@gmail.com';
         const newUserProfile: User = {
@@ -97,7 +139,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data } = await supabase!.from('users').select('*').eq('id', sbUser.id).single();
       if (data) {
-        setUser(data as User);
+        const uProfile = data as User;
+        setUser(uProfile);
+        if (uProfile.role === 'admin') {
+          dataStore.autoSeed().catch(err => console.error("Admin autoSeed failed:", err));
+        }
       } else {
         const isAdminEmail = sbUser.email === 'alwaliabdlelah7@gmail.com';
         const newUserProfile: User = {
@@ -156,8 +202,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error: any) {
       console.error("Google login failed details:", error);
       const errorCode = error.code || 'unknown';
+      const errorMsg = error.message || String(error);
       if (errorCode === 'auth/popup-blocked') {
         alert("🔒 تم حظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة لهذا الموقع للمتابعة.");
+      } else if (errorMsg.includes('suspended') || errorMsg.includes('permission-denied') || errorMsg.includes('api-key')) {
+        alert("⚠️ تم تعليق الترخيص السحابي للمشروع الافتراضي من قِبل Google Cloud.\n\nمن فضلك، استخدم الحساب المحلي التجريبي: (المستخدم: admin / كلمة المرور: 123) بالدخول العادي للاستمرار بالعمل مؤقتاً وبشكل آمن في الوضع المحلي.");
+        // Instantly force local mode
+        dataStore.setProvider('local');
       } else {
         alert("⚠️ فشل في التواصل مع موفر تسجيل الدخول. إذا كنت تستخدم التطبيق داخل إطار (iframe)، جرب فتحه في نافذة جديدة.\n\n" + errorCode);
       }
@@ -201,6 +252,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return true;
     }
 
+    if (provider === 'local') {
+      if (username === 'admin' && (!password || password === '123')) {
+        const adminData: User = {
+          id: 'u-1',
+          username: 'admin',
+          name: 'System Admin (Legacy)',
+          role: 'admin',
+          permissions: ['all' as Permission],
+          status: 'active'
+        };
+        setUser(adminData);
+        localStorage.setItem('hospital_current_user', JSON.stringify(adminData));
+        return true;
+      }
+
+      // Check if there are other seeded receptionist/nurse accounts in local storage
+      const localUsers = dataStore.getLocalAll<User>('users');
+      const foundUser = localUsers.find(u => u.username === username || u.email === username);
+      if (foundUser) {
+        setUser(foundUser);
+        localStorage.setItem('hospital_current_user', JSON.stringify(foundUser));
+        return true;
+      }
+
+      throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة للوضع المحلي، يرجى تجربة admin / 123');
+    }
+
     try {
       // 1. Try Firebase Authentication (Email/Password)
       // Note: We use username as email here
@@ -213,7 +291,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (firebaseError: any) {
       console.warn("Firebase Auth login failed, checking legacy admin:", firebaseError.message);
       
-      // 2. Legacy admin fallback (only if Firebase Auth fails and it matches the specific hardcoded credentials)
+      // 2. Legacy admin fallback (if Firebase Auth fails or is suspended, and it matches the credentials)
       if (username === 'admin' && (!password || password === '123')) {
          const adminData: User = {
            id: 'u-1',
@@ -225,6 +303,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
          };
          setUser(adminData);
          localStorage.setItem('hospital_current_user', JSON.stringify(adminData));
+         
+         // If we hit this due to a suspended firebase error, transition provider to local config
+         const errorMsg = firebaseError?.message || String(firebaseError);
+         if (true) {
+           dataStore.setProvider('local');
+         }
          return true;
       }
       

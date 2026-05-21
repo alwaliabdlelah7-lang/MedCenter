@@ -42,6 +42,7 @@ import { useNavigate } from 'react-router-dom';
 import { dataStore } from '../services/dataService';
 import { INITIAL_PATIENTS, INITIAL_APPOINTMENTS } from '../data/seedData';
 import { useAuth } from '../contexts/AuthContext';
+import { lastFirebaseError } from '../lib/firebase';
 
 const chartData = [
   { name: 'السبت', revenue: 45000, appointments: 12 },
@@ -75,11 +76,21 @@ export default function Dashboard() {
   // Dynamic Chart Data
   const [dashboardChartData, setDashboardChartData] = useState<any[]>([]);
   const [patientTypeDistribution, setPatientTypeDistribution] = useState<any[]>([]);
+  const [dbError, setDbError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubProvider = dataStore.subscribe(() => {
       setIsCloudMode(dataStore.isCloudEnabled());
     });
+
+    // Check for fatal errors on load
+    const checkSyncStatus = () => {
+      const isSuspended = lastFirebaseError?.includes('suspended') || lastFirebaseError?.includes('permission-denied') || lastFirebaseError?.includes('api-key');
+      if (isSuspended) {
+        setDbError('تنبيه الترخيص السحابي: تم تعليق مفتاح مشروع Cloud Firebase الافتراضي. قام النظام تلقائياً بالتحويل الآمن إلى "وضع البيانات المحلية" لحفظ بيانات المربعات والملفات لضمان استمرارية التشغيل. يمكنك ربط قاعدة بياناتك الخاصة أو المفتاح البديل من صفحة الإعدادات.');
+      }
+    };
+    checkSyncStatus();
 
     const unsubs: (() => void)[] = [];
 
@@ -218,6 +229,39 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 lg:p-4 text-right">
+      <AnimatePresence>
+        {dbError && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="mb-8"
+          >
+            <div className="bg-amber-900/40 border-r-4 border-amber-500 p-4 rounded-xl flex items-start backdrop-blur-sm">
+              <AlertTriangle className="w-6 h-6 text-amber-500 ml-3 shrink-0" />
+              <div>
+                <h3 className="font-bold text-amber-100">تنبيه المزامنة السحابية</h3>
+                <p className="text-amber-200/80 text-sm whitespace-pre-wrap">{dbError}</p>
+                <div className="mt-2 flex gap-4">
+                  <button 
+                    onClick={() => navigate('/settings')}
+                    className="text-xs font-bold text-amber-400 underline hover:text-amber-300"
+                  >
+                    مراجعة إعدادات السيرفر
+                  </button>
+                  <button 
+                    onClick={() => setDbError(null)}
+                    className="text-xs font-bold text-slate-400 hover:text-white"
+                  >
+                    تجاهل مؤقتاً
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Quick Actions & Header */}
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1">
