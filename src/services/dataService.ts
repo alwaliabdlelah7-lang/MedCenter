@@ -14,6 +14,25 @@ class DataService {
   private static instance: DataService;
   private provider: StorageProvider = (localStorage.getItem('db_provider') as StorageProvider) || 'firebase';
   private listeners: (() => void)[] = [];
+  private dbIndex: '1' | '2' = (localStorage.getItem('db_index') as '1' | '2') || '1';
+
+  public getDbIndex(): '1' | '2' {
+    return this.dbIndex;
+  }
+
+  public setDbIndex(index: '1' | '2') {
+    this.dbIndex = index;
+    localStorage.setItem('db_index', index);
+    this.notify();
+  }
+
+  public getCloudKey(key: string): string {
+    return this.dbIndex === '2' ? `v2_${key}` : key;
+  }
+
+  public getLocalKey(key: string): string {
+    return `hospital_${this.dbIndex === '2' ? 'v2_' : ''}${key}`;
+  }
   
   private constructor() {
     // Detect fatal cloud errors and downgrade or upgrade back when connection is restored
@@ -97,13 +116,14 @@ class DataService {
         return () => clearInterval(interval);
       }
 
-      const q = query(collection(db, key));
+      const cloudKey = this.getCloudKey(key);
+      const q = query(collection(db, cloudKey));
       return onSnapshot(q, (snapshot) => {
         const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as T));
         this.saveLocalAll(key, items);
         callback(items);
       }, (error) => {
-        handleFirestoreError(error, OperationType.LIST, key);
+        handleFirestoreError(error, OperationType.LIST, cloudKey);
       });
     }
 
@@ -144,7 +164,8 @@ class DataService {
       if (sb) {
         const promises = collections.map(async (col) => {
           try {
-            const { count, error } = await sb.from(col).select('*', { count: 'exact', head: true });
+            const cloudKey = this.getCloudKey(col);
+            const { count, error } = await sb.from(cloudKey).select('*', { count: 'exact', head: true });
             stats[col] = error ? -1 : (count || 0);
           } catch (e) {
             stats[col] = -1;
@@ -158,7 +179,8 @@ class DataService {
     // Default to Firebase
     const promises = collections.map(async (col) => {
       try {
-        const coll = collection(db, col);
+        const cloudKey = this.getCloudKey(col);
+        const coll = collection(db, cloudKey);
         const snapshot = await getCountFromServer(coll);
         stats[col] = snapshot.data().count;
       } catch (e) {
@@ -190,7 +212,7 @@ class DataService {
     
     // Also clear local cache
     collectionsToReset.forEach(col => {
-      localStorage.removeItem(`hospital_${col}`);
+      localStorage.removeItem(this.getLocalKey(col));
     });
 
     console.log('[DataService] System reset complete.');
@@ -198,21 +220,22 @@ class DataService {
   }
   public async wipeCollection(collectionName: string): Promise<void> {
     if (this.provider === 'local') {
-      localStorage.removeItem(`hospital_${collectionName}`);
+      localStorage.removeItem(this.getLocalKey(collectionName));
       this.notify();
       return;
     }
 
+    const cloudKey = this.getCloudKey(collectionName);
     if (this.provider === 'supabase') {
       const sb = this.getSupabase();
       if (sb) {
-        await sb.from(collectionName).delete().neq('id', '0');
+        await sb.from(cloudKey).delete().neq('id', '0');
         this.notify();
         return;
       }
     }
 
-    const snapshot = await getDocs(collection(db, collectionName));
+    const snapshot = await getDocs(collection(db, cloudKey));
     const batch = writeBatch(db);
     snapshot.docs.forEach((d) => {
       batch.delete(d.ref);
@@ -228,9 +251,10 @@ class DataService {
     const user = auth.currentUser;
     if (!user) return { linked: false, profile: null };
 
+    const cloudKey = this.getCloudKey('users');
     if (this.provider === 'firebase') {
       try {
-        const userDoc = await getDocs(query(collection(db, 'users'), where('id', '==', user.uid)));
+        const userDoc = await getDocs(query(collection(db, cloudKey), where('id', '==', user.uid)));
         if (!userDoc.empty) {
           return { linked: true, profile: userDoc.docs[0].data() };
         }
@@ -240,7 +264,7 @@ class DataService {
     } else if (this.provider === 'supabase') {
       const sb = this.getSupabase();
       if (sb) {
-        const { data } = await sb.from('users').select('*').eq('id', user.uid).single();
+        const { data } = await sb.from(cloudKey).select('*').eq('id', user.uid).single();
         if (data) return { linked: true, profile: data };
       }
     }
@@ -254,10 +278,11 @@ class DataService {
       return this.getLocalAll<T>(key);
     }
 
+    const cloudKey = this.getCloudKey(key);
     if (this.provider === 'supabase') {
       const sb = this.getSupabase();
       if (sb) {
-        const { data, error } = await sb.from(key).select('*');
+        const { data, error } = await sb.from(cloudKey).select('*');
         if (error) throw error;
         return data as T[];
       }
@@ -268,13 +293,13 @@ class DataService {
     }
 
     try {
-      const snapshot = await getDocs(collection(db, key));
+      const snapshot = await getDocs(collection(db, cloudKey));
       const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as T));
       this.saveLocalAll(key, items);
       return items;
     } catch (error: any) {
       if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
-        handleFirestoreError(error, OperationType.LIST, key);
+        handleFirestoreError(error, OperationType.LIST, cloudKey);
       }
       console.warn(`Firebase Fetch Error for ${key}:`, error);
     }
@@ -284,10 +309,11 @@ class DataService {
 
   // Generic Search
   public async find<T>(key: string, queryFilters: Partial<Record<keyof T, any>>): Promise<T[]> {
+    const cloudKey = this.getCloudKey(key);
     if (this.provider === 'supabase') {
       const sb = this.getSupabase();
       if (sb) {
-        let q = sb.from(key).select('*');
+        let q = sb.from(cloudKey).select('*');
         Object.entries(queryFilters).forEach(([field, value]) => {
           q = q.eq(field, value);
         });
@@ -305,7 +331,7 @@ class DataService {
     }
 
     try {
-      let q = query(collection(db, key));
+      let q = query(collection(db, cloudKey));
       Object.entries(queryFilters).forEach(([field, value]) => {
         q = query(q, where(field, '==', value));
       });
@@ -313,7 +339,7 @@ class DataService {
       return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as T));
     } catch (error: any) {
       if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
-        handleFirestoreError(error, OperationType.GET, `${key} (query)`);
+        handleFirestoreError(error, OperationType.GET, `${cloudKey} (query)`);
       }
       console.error(`Firebase Find Error for ${key}:`, error);
     }
@@ -339,10 +365,11 @@ class DataService {
       return;
     }
 
+    const cloudKey = this.getCloudKey(key);
     if (this.provider === 'supabase') {
       const sb = this.getSupabase();
       if (sb) {
-        const { error } = await sb.from(key).insert(itemWithMeta);
+        const { error } = await sb.from(cloudKey).insert(itemWithMeta);
         if (error) throw error;
         this.notify();
         return;
@@ -350,10 +377,10 @@ class DataService {
     }
 
     try {
-      await setDoc(doc(db, key, docId), itemWithMeta);
+      await setDoc(doc(db, cloudKey, docId), itemWithMeta);
     } catch (error: any) {
       if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
-        handleFirestoreError(error, OperationType.CREATE, `${key}/${docId}`);
+        handleFirestoreError(error, OperationType.CREATE, `${cloudKey}/${docId}`);
       }
       console.warn(`Firebase Add Error for ${key}:`, error);
     }
@@ -382,10 +409,11 @@ class DataService {
       return;
     }
 
+    const cloudKey = this.getCloudKey(key);
     if (this.provider === 'supabase') {
       const sb = this.getSupabase();
       if (sb) {
-        const { error } = await sb.from(key).update(updatesWithMeta).eq('id', id);
+        const { error } = await sb.from(cloudKey).update(updatesWithMeta).eq('id', id);
         if (error) throw error;
         this.notify();
         return;
@@ -393,10 +421,10 @@ class DataService {
     }
 
     try {
-      await updateDoc(doc(db, key, id), updatesWithMeta as any);
+      await updateDoc(doc(db, cloudKey, id), updatesWithMeta as any);
     } catch (error: any) {
       if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
-        handleFirestoreError(error, OperationType.UPDATE, `${key}/${id}`);
+        handleFirestoreError(error, OperationType.UPDATE, `${cloudKey}/${id}`);
       }
       console.warn(`Firebase Update Error for ${key}:`, error);
     }
@@ -417,10 +445,11 @@ class DataService {
       return;
     }
 
+    const cloudKey = this.getCloudKey(key);
     if (this.provider === 'supabase') {
       const sb = this.getSupabase();
       if (sb) {
-        const { error } = await sb.from(key).delete().eq('id', id);
+        const { error } = await sb.from(cloudKey).delete().eq('id', id);
         if (error) throw error;
         this.notify();
         return;
@@ -428,10 +457,10 @@ class DataService {
     }
 
     try {
-      await deleteDoc(doc(db, key, id));
+      await deleteDoc(doc(db, cloudKey, id));
     } catch (error: any) {
       if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
-        handleFirestoreError(error, OperationType.DELETE, `${key}/${id}`);
+        handleFirestoreError(error, OperationType.DELETE, `${cloudKey}/${id}`);
       }
       console.warn(`Firebase Delete Error for ${key}:`, error);
     }
@@ -503,12 +532,12 @@ class DataService {
   }
 
   public getLocalAll<T>(key: string): T[] {
-    const data = localStorage.getItem(`hospital_${key}`);
+    const data = localStorage.getItem(this.getLocalKey(key));
     return data ? JSON.parse(data) : [];
   }
 
   private saveLocalAll<T>(key: string, data: T[]): void {
-    localStorage.setItem(`hospital_${key}`, JSON.stringify(data));
+    localStorage.setItem(this.getLocalKey(key), JSON.stringify(data));
   }
 
   public async exportAllLocalData(): Promise<any> {

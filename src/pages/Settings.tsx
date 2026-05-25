@@ -28,6 +28,7 @@ export default function SettingsPage() {
   const [isRefreshingStats, setIsRefreshingStats] = useState(false);
   const [dbHealth, setDbHealth] = useState<{ status: 'healthy' | 'warning' | 'error', message: string }>({ status: 'healthy', message: 'جاري الفحص...' });
   const [dbProvider, setDbProvider] = useState(dataStore.getProvider());
+  const [dbIndex, setDbIndexState] = useState(dataStore.getDbIndex());
   const [supabaseUrl, setSupabaseUrl] = useState(localStorage.getItem('supabase_url') || '');
   const [supabaseKey, setSupabaseKey] = useState(localStorage.getItem('supabase_key') || '');
   
@@ -353,6 +354,55 @@ export default function SettingsPage() {
                       <p className="text-sm font-black text-emerald-400">لحظي (Real-time)</p>
                     </div>
                   </div>
+                </div>
+
+                {/* Active Database Selector */}
+                <div className="glass p-8 rounded-[40px] border border-white/5 space-y-6">
+                   <div className="flex items-center gap-3">
+                      <Database className="text-violet-400" size={20} />
+                      <h3 className="text-white font-black italic uppercase tracking-widest text-sm">تحديد قاعدة البيانات النشطة (Database Instance)</h3>
+                   </div>
+                   <p className="text-xs text-slate-400 font-bold leading-relaxed -mt-4 pr-1">
+                     يدعم النظام تنصيب قواعد بيانات متعددة (بيئات مستقلة تماماً). يمكنك التنقل والتبديل بين قاعدة البيانات الأولى وقاعدة البيانات الثانية بمجرد نقرة زر.
+                   </p>
+                   
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <button 
+                        onClick={() => {
+                          dataStore.setDbIndex('1');
+                          setDbIndexState('1');
+                          refreshDbStats();
+                        }}
+                        className={`p-6 rounded-3xl border-2 transition-all text-right flex items-start gap-4 ${dbIndex === '1' ? 'bg-sky-500/10 border-sky-500 text-white shadow-[0_0_20px_rgba(14,165,233,0.1)]' : 'glass bg-white/5 border-transparent text-slate-500 hover:text-slate-300'}`}
+                      >
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${dbIndex === '1' ? 'bg-sky-500/20 text-sky-400' : 'bg-white/5 text-slate-500'}`}>
+                           <Database size={20} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-black text-sm text-slate-200">قاعدة البيانات الأولى (الافتراضية)</p>
+                          <p className="text-[10px] opacity-70 mt-1">البيئة الإنتاجية العامة والمشتركة بالكامل.</p>
+                        </div>
+                        {dbIndex === '1' && <span className="bg-sky-500 text-[8px] text-white px-2 py-1 rounded-full font-black self-center">نشط</span>}
+                      </button>
+
+                      <button 
+                        onClick={() => {
+                          dataStore.setDbIndex('2');
+                          setDbIndexState('2');
+                          refreshDbStats();
+                        }}
+                        className={`p-6 rounded-3xl border-2 transition-all text-right flex items-start gap-4 ${dbIndex === '2' ? 'bg-violet-500/10 border-violet-500 text-white shadow-[0_0_20px_rgba(139,92,246,0.1)]' : 'glass bg-white/5 border-transparent text-slate-500 hover:text-slate-300'}`}
+                      >
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${dbIndex === '2' ? 'bg-violet-500/20 text-violet-400' : 'bg-white/5 text-slate-500'}`}>
+                           <Database size={20} />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-black text-sm text-slate-200">قاعدة البيانات الثانية (الفرعية)</p>
+                          <p className="text-[10px] opacity-70 mt-1">بيئة سحابية/محلية ثانية ومعزولة تماماً للفحص والعمليات الإضافية.</p>
+                        </div>
+                        {dbIndex === '2' && <span className="bg-violet-500 text-[8px] text-white px-2 py-1 rounded-full font-black self-center">نشط</span>}
+                      </button>
+                   </div>
                 </div>
 
                 {/* Provider Selector */}

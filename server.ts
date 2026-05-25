@@ -11,17 +11,11 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
-import { fileURLToPath } from "url";
 import { Server } from "socket.io";
 import { createServer } from "http";
 import "dotenv/config";
 import admin from "firebase-admin";
 import { createApiRouter } from "./src/api/routes";
-import { createRequire } from "module";
-
-const require = createRequire(import.meta.url);
-// Use require for CJS modules if needed for better compatibility in bundled ESM
-// but esbuild will handle the imports if we mark them as external and use import statements.
 
 // Initialize Firebase Admin lazily/conditionally
 let adminApp: admin.app.App | null = null;
@@ -54,9 +48,6 @@ if (serviceAccountRaw) {
     // We don't exit(1) here to allow the server to start for diagnostics, but API calls requiring Admin will fail.
   }
 }
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 console.log("Starting server implementation...");
 

@@ -39,6 +39,23 @@ service cloud.firestore {
       return isSignedIn() && hasUserDoc() && (getUserData().role == 'admin' || getUserData().permissions.hasAny(['all']));
     }
 
+    // --- Helpers V2 ---
+    function getUserDataV2() {
+      return get(/databases/$(database)/documents/v2_users/$(request.auth.uid)).data;
+    }
+
+    function hasUserDocV2() {
+      return isSignedIn() && exists(/databases/$(database)/documents/v2_users/$(request.auth.uid));
+    }
+
+    function hasPermissionV2(perm) {
+      return isSignedIn() && hasUserDocV2() && (getUserDataV2().permissions.hasAny([perm]) || getUserDataV2().permissions.hasAny(['all']));
+    }
+
+    function isAdminV2() {
+      return isSignedIn() && hasUserDocV2() && (getUserDataV2().role == 'admin' || getUserDataV2().permissions.hasAny(['all']));
+    }
+
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
@@ -68,6 +85,30 @@ service cloud.firestore {
       allow delete: if isAdmin() && !isOwner(userId);
     }
 
+    match /v2_users/{userId} {
+      function isValidUser(data) {
+        return data.keys().hasAll(['id', 'username', 'name', 'role', 'permissions', 'status']) 
+               && data.id is string && data.id.size() <= 64
+               && data.username is string && data.username.size() <= 50
+               && data.name is string && data.name.size() <= 100
+               && data.role in ['admin', 'doctor', 'nurse', 'pharmacist', 'lab_tech', 'receptionist']
+               && data.permissions is list
+               && data.status in ['active', 'inactive'];
+      }
+
+      allow get: if isSignedIn() && (isOwner(userId) || isAdminV2());
+      allow list: if isAdminV2();
+
+      allow create: if (isAdminV2() || (isSignedIn() && !exists(/databases/$(database)/documents/v2_users/$(request.auth.uid))))
+                      && isValidUser(incoming());
+
+      allow update: if (isAdminV2() || hasPermissionV2('admin')) && isValidUser(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasAny(['status', 'permissions', 'role', 'lastLogin'])
+      ) || (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['lastLogin', 'name']));
+
+      allow delete: if isAdminV2() && !isOwner(userId);
+    }
+
     // --- Hospital Data Rules ---
     
     // Patients, Appointments, Doctors, Clinics, Departments
@@ -75,30 +116,54 @@ service cloud.firestore {
       allow read: if hasPermission('clinical') || hasPermission('registration') || hasPermission('billing');
       allow write: if hasPermission('clinical') || hasPermission('registration');
     }
+    match /v2_patients/{id} {
+      allow read: if hasPermissionV2('clinical') || hasPermissionV2('registration') || hasPermissionV2('billing');
+      allow write: if hasPermissionV2('clinical') || hasPermissionV2('registration');
+    }
     
     match /appointments/{id} {
       allow read: if hasPermission('clinical') || hasPermission('registration');
       allow write: if hasPermission('clinical') || hasPermission('registration');
+    }
+    match /v2_appointments/{id} {
+      allow read: if hasPermissionV2('clinical') || hasPermissionV2('registration');
+      allow write: if hasPermissionV2('clinical') || hasPermissionV2('registration');
     }
     
     match /doctors/{id} {
       allow read: if isSignedIn();
       allow write: if hasPermission('admin');
     }
+    match /v2_doctors/{id} {
+      allow read: if isSignedIn();
+      allow write: if hasPermissionV2('admin');
+    }
     
     match /nurses/{id} {
       allow read: if isSignedIn();
       allow write: if hasPermission('admin');
+    }
+    match /v2_nurses/{id} {
+      allow read: if isSignedIn();
+      allow write: if hasPermissionV2('admin');
     }
     
     match /departments/{id} {
       allow read: if isSignedIn();
       allow write: if hasPermission('admin');
     }
+    match /v2_departments/{id} {
+      allow read: if isSignedIn();
+      allow write: if hasPermissionV2('admin');
+    }
     
     match /clinics/{id} {
       allow read: if isSignedIn();
       allow write: if hasPermission('admin');
+    }
+    match /v2_clinics/{id} {
+      allow read: if isSignedIn();
+      allow write: if hasPermissionV2('admin');
     }
 
     // Pharmacy
@@ -106,15 +171,27 @@ service cloud.firestore {
       allow read: if hasPermission('pharmacy') || hasPermission('clinical');
       allow write: if hasPermission('pharmacy');
     }
+    match /v2_pharmacy_items/{id} {
+      allow read: if hasPermissionV2('pharmacy') || hasPermissionV2('clinical');
+      allow write: if hasPermissionV2('pharmacy');
+    }
     
     match /pharmacy_sales/{id} {
       allow read: if hasPermission('pharmacy') || hasPermission('billing');
       allow write: if hasPermission('pharmacy');
     }
+    match /v2_pharmacy_sales/{id} {
+      allow read: if hasPermissionV2('pharmacy') || hasPermissionV2('billing');
+      allow write: if hasPermissionV2('pharmacy');
+    }
     
     match /master_medicines/{id} {
       allow read: if hasPermission('pharmacy') || hasPermission('clinical');
       allow write: if hasPermission('pharmacy') || hasPermission('admin');
+    }
+    match /v2_master_medicines/{id} {
+      allow read: if hasPermissionV2('pharmacy') || hasPermissionV2('clinical');
+      allow write: if hasPermissionV2('pharmacy') || hasPermissionV2('admin');
     }
 
     // Lab
@@ -122,10 +199,18 @@ service cloud.firestore {
       allow read: if hasPermission('lab') || hasPermission('clinical');
       allow write: if hasPermission('lab') || hasPermission('clinical');
     }
+    match /v2_lab_tests/{id} {
+      allow read: if hasPermissionV2('lab') || hasPermissionV2('clinical');
+      allow write: if hasPermissionV2('lab') || hasPermissionV2('clinical');
+    }
     
     match /master_lab_tests/{id} {
       allow read: if hasPermission('lab') || hasPermission('clinical');
       allow write: if hasPermission('lab') || hasPermission('admin');
+    }
+    match /v2_master_lab_tests/{id} {
+      allow read: if hasPermissionV2('lab') || hasPermissionV2('clinical');
+      allow write: if hasPermissionV2('lab') || hasPermissionV2('admin');
     }
 
     // Radiology
@@ -133,16 +218,28 @@ service cloud.firestore {
       allow read: if hasPermission('clinical') || hasPermission('lab');
       allow write: if hasPermission('clinical') || hasPermission('lab');
     }
+    match /v2_radiology_scans/{id} {
+      allow read: if hasPermissionV2('clinical') || hasPermissionV2('lab');
+      allow write: if hasPermissionV2('clinical') || hasPermissionV2('lab');
+    }
 
     // Billing & Services
     match /receipts/{id} {
       allow read: if hasPermission('billing') || hasPermission('admin');
       allow write: if hasPermission('billing');
     }
+    match /v2_receipts/{id} {
+      allow read: if hasPermissionV2('billing') || hasPermissionV2('admin');
+      allow write: if hasPermissionV2('billing');
+    }
     
     match /services/{id} {
       allow read: if isSignedIn();
       allow write: if hasPermission('admin');
+    }
+    match /v2_services/{id} {
+      allow read: if isSignedIn();
+      allow write: if hasPermissionV2('admin');
     }
 
     match /service_orders/{id} {
@@ -160,16 +257,39 @@ service cloud.firestore {
       allow update: if (hasPermission('clinical') || hasPermission('admin')) && isValidServiceOrder(incoming());
       allow delete: if hasPermission('admin');
     }
+    match /v2_service_orders/{id} {
+      function isValidServiceOrder(data) {
+        return data.keys().hasAll(['id', 'patientId', 'serviceId', 'price', 'status'])
+               && data.id is string && data.id.size() <= 64
+               && data.patientId is string && data.patientId.size() <= 64
+               && data.serviceId is string && data.serviceId.size() <= 64
+               && data.price is number
+               && data.status in ['pending', 'completed', 'cancelled'];
+      }
+
+      allow read: if hasPermissionV2('clinical') || hasPermissionV2('billing') || hasPermissionV2('admin');
+      allow create: if (hasPermissionV2('clinical') || hasPermissionV2('admin')) && isValidServiceOrder(incoming());
+      allow update: if (hasPermissionV2('clinical') || hasPermissionV2('admin')) && isValidServiceOrder(incoming());
+      allow delete: if hasPermissionV2('admin');
+    }
 
     // Operations & Inpatients
     match /operations/{id} {
       allow read: if hasPermission('clinical');
       allow write: if hasPermission('clinical');
     }
+    match /v2_operations/{id} {
+      allow read: if hasPermissionV2('clinical');
+      allow write: if hasPermissionV2('clinical');
+    }
 
     match /inpatients/{id} {
       allow read: if hasPermission('clinical') || hasPermission('registration');
       allow write: if hasPermission('clinical') || hasPermission('registration');
+    }
+    match /v2_inpatients/{id} {
+      allow read: if hasPermissionV2('clinical') || hasPermissionV2('registration');
+      allow write: if hasPermissionV2('clinical') || hasPermissionV2('registration');
     }
 
     // Dynamic Fields (Configuration)
@@ -177,24 +297,45 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if hasPermission('admin');
     }
+    match /v2_dynamic_fields/{id} {
+      allow read: if isSignedIn();
+      allow write: if hasPermissionV2('admin');
+    }
 
     // Records
     match /prescriptions/{id} {
       allow read: if hasPermission('clinical') || hasPermission('pharmacy');
       allow write: if hasPermission('clinical');
     }
+    match /v2_prescriptions/{id} {
+      allow read: if hasPermissionV2('clinical') || hasPermissionV2('pharmacy');
+      allow write: if hasPermissionV2('clinical');
+    }
     
     match /clinical_visits/{id} {
       allow read: if hasPermission('clinical');
       allow write: if hasPermission('clinical');
+    }
+    match /v2_clinical_visits/{id} {
+      allow read: if hasPermissionV2('clinical');
+      allow write: if hasPermissionV2('clinical');
     }
 
     match /clinical_notes/{id} {
       allow read: if hasPermission('clinical');
       allow write: if hasPermission('clinical');
     }
+    match /v2_clinical_notes/{id} {
+      allow read: if hasPermissionV2('clinical');
+      allow write: if hasPermissionV2('clinical');
+    }
 
     match /notifications/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn(); 
+    }
+    match /v2_notifications/{id} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
       allow update, delete: if isSignedIn(); 
@@ -205,20 +346,38 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update, delete: if isSignedIn();
     }
+    match /v2_chat_messages/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn();
+    }
 
     match /transactions/{id} {
       allow read: if hasPermission('billing') || isAdmin();
       allow write: if hasPermission('billing');
+    }
+    match /v2_transactions/{id} {
+      allow read: if hasPermissionV2('billing') || isAdminV2();
+      allow write: if hasPermissionV2('billing');
     }
 
     match /settings/{id} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
     }
+    match /v2_settings/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdminV2();
+    }
 
+    // Companions
     match /companions/{id} {
       allow read: if hasPermission('clinical') || hasPermission('registration') || isAdmin();
       allow write: if hasPermission('registration') || isAdmin();
+    }
+    match /v2_companions/{id} {
+      allow read: if hasPermissionV2('clinical') || hasPermissionV2('registration') || isAdminV2();
+      allow write: if hasPermissionV2('registration') || isAdminV2();
     }
 
     // --- Audit Log Rules ---
@@ -226,9 +385,16 @@ service cloud.firestore {
       allow read: if isAdmin() || hasPermission('admin');
       allow create: if isSignedIn();
     }
+    match /v2_audit_logs/{logId} {
+      allow read: if isAdminV2() || hasPermissionV2('admin');
+      allow create: if isSignedIn();
+    }
 
     // --- Global connection test ---
     match /_connection_test_/{docId} {
+      allow read: if isSignedIn();
+    }
+    match /v2_connection_test_/{docId} {
       allow read: if isSignedIn();
     }
   }
