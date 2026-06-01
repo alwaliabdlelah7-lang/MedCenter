@@ -7,7 +7,7 @@ import {
   browserPopupRedirectResolver,
   initializeAuth
 } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer, initializeFirestore } from 'firebase/firestore';
+import { getFirestore, doc, getDocFromServer, initializeFirestore, memoryLocalCache } from 'firebase/firestore';
 
 // In AI Studio, firebase-applet-config.json is served at the root
 import firebaseConfig from '@/firebase-applet-config.json';
@@ -39,8 +39,10 @@ const app = initializeApp(mergedConfig);
 // export const analytics = getAnalytics(app);
 
 // Use experimentalForceLongPolling to improve connectivity in restricted environments (iframes, proxies)
+// Configure in-memory cache to avoid IndexedDB locking bugs / Unexpected state (ID: ca9) which occurs inside sandboxed iframes.
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
+  localCache: memoryLocalCache()
 }, (mergedConfig as any).firestoreDatabaseId || (mergedConfig as any).projectId);
 
 // Using initializeAuth with indexedDBLocalPersistence and browserLocalPersistence is 

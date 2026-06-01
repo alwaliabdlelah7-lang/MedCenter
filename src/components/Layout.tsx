@@ -155,20 +155,20 @@ export default function Layout() {
         className="glass rounded-2xl flex flex-col p-4 transition-all duration-300 relative z-50 shadow-2xl"
       >
         <div className="p-4 flex items-center gap-3 mb-8 overflow-hidden">
-          <div className="min-w-[40px] w-10 h-10 bg-sky-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-sky-500/50">
+          <div className="min-w-[40px] w-10 h-10 bg-teal-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-teal-600/30">
             <Hospital size={24} />
           </div>
           {!isCollapsed && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="whitespace-nowrap">
               <h1 className="font-bold text-lg text-white leading-none">{hospitalName}</h1>
-              <p className="text-[10px] text-sky-300 mt-1 uppercase tracking-wider">نظام إدارة المستشفيات</p>
+              <p className="text-[10px] text-teal-400 mt-1 uppercase tracking-wider font-semibold">نظام إدارة المستشفيات</p>
             </motion.div>
           )}
         </div>
 
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute -left-3 top-20 w-6 h-6 glass bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-sky-500 hover:scale-110 transition-all border border-white/20"
+          className="absolute -left-3 top-20 w-6 h-6 glass bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-teal-650 hover:scale-110 transition-all border border-white/20"
         >
           {isCollapsed ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
         </button>
@@ -303,9 +303,9 @@ export default function Layout() {
             <div className="flex items-center gap-3">
               <div className="flex flex-col items-end hidden sm:flex">
                 <span className="text-sm font-semibold text-white">{user?.name || 'مستخدم النظام'}</span>
-                <span className="text-[10px] text-sky-400 font-bold px-2 py-0.5 bg-sky-500/10 border border-sky-500/20 rounded-full italic">{user?.role === 'admin' ? 'مدير النظام' : user?.role || 'موظف'}</span>
+                <span className="text-[10px] text-teal-400 font-bold px-2 py-0.5 bg-teal-500/10 border border-teal-500/20 rounded-full italic">{user?.role === 'admin' ? 'مدير النظام' : user?.role || 'موظف'}</span>
               </div>
-              <div className="w-10 h-10 rounded-full glass-card border-2 border-white/10 overflow-hidden shadow-xl ring-2 ring-sky-500/20">
+              <div className="w-10 h-10 rounded-full glass-card border-2 border-white/10 overflow-hidden shadow-xl ring-2 ring-teal-500/20">
                 <img src={`https://picsum.photos/seed/${user?.username || 'user'}/100/100`} alt="Avatar" referrerPolicy="no-referrer" />
               </div>
             </div>

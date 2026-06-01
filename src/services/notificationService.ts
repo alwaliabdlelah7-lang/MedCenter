@@ -1,5 +1,6 @@
 import { collection, query, where, orderBy, limit, onSnapshot, addDoc, serverTimestamp, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
+import { dataStore } from './dataService';
 import { io } from 'socket.io-client';
 
 const socket = io(window.location.origin, {
@@ -49,8 +50,8 @@ class NotificationService {
     };
 
     try {
-      // 1. Save to Firestore for persistence
-      await addDoc(collection(db, 'notifications'), newNotif);
+      const cloudNotifKey = dataStore.getCloudKey('notifications');
+      await addDoc(collection(db, cloudNotifKey), newNotif);
       
       // 2. Broadcast via Socket.io for real-time (optional if using Firestore listeners, but good for instant)
       socket.emit('broadcast-notification', { ...newNotif, time: new Date().toISOString() });
@@ -60,8 +61,9 @@ class NotificationService {
   }
 
   public onNotifications(callback: (notifications: AppNotification[]) => void) {
+    const cloudNotifKey = dataStore.getCloudKey('notifications');
     const q = query(
-      collection(db, 'notifications'),
+      collection(db, cloudNotifKey),
       orderBy('time', 'desc'),
       limit(20)
     );
@@ -73,11 +75,14 @@ class NotificationService {
         time: doc.data().time?.toDate?.() || new Date(doc.data().time)
       } as AppNotification));
       callback(notifications);
+    }, (error) => {
+      console.warn("Failed to listen to notifications collection:", error.message);
     });
   }
 
   public async markAllAsRead() {
-    const q = query(collection(db, 'notifications'), where('read', '==', false));
+    const cloudNotifKey = dataStore.getCloudKey('notifications');
+    const q = query(collection(db, cloudNotifKey), where('read', '==', false));
     const snapshot = await getDocs(q);
     snapshot.docs.forEach(async (d) => {
        // Ideally use batch, but for small sets it's okay
@@ -86,9 +91,10 @@ class NotificationService {
   }
 
   public async clearAll() {
-    const snapshot = await getDocs(collection(db, 'notifications'));
+    const cloudNotifKey = dataStore.getCloudKey('notifications');
+    const snapshot = await getDocs(collection(db, cloudNotifKey));
     snapshot.docs.forEach(async (d) => {
-      await deleteDoc(doc(db, 'notifications', d.id));
+      await deleteDoc(doc(db, cloudNotifKey, d.id));
     });
   }
 }

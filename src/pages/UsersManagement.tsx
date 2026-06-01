@@ -23,6 +23,7 @@ import {
   setDoc
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { dataStore } from '../services/dataService';
 
 const ROLES: UserType['role'][] = ['admin', 'doctor', 'nurse', 'pharmacist', 'lab_tech', 'receptionist'];
 const PERMISSIONS: Permission[] = ['all', 'read_only', 'clinical', 'pharmacy', 'lab', 'admin', 'registration', 'billing'];
@@ -48,9 +49,13 @@ export default function UsersManagement() {
 
   // Real-time users sync
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'users'), (snapshot) => {
+    const cloudUsersKey = dataStore.getCloudKey('users');
+    const unsub = onSnapshot(collection(db, cloudUsersKey), (snapshot) => {
       const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserType));
       setUsers(usersData);
+      setLoading(false);
+    }, (error) => {
+      console.warn("Failed to listen to users collection:", error.message);
       setLoading(false);
     });
     return () => unsub();
@@ -58,10 +63,13 @@ export default function UsersManagement() {
 
   // Real-time logs sync
   useEffect(() => {
-    const q = query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc'), limit(15));
+    const cloudLogsKey = dataStore.getCloudKey('audit_logs');
+    const q = query(collection(db, cloudLogsKey), orderBy('timestamp', 'desc'), limit(15));
     const unsub = onSnapshot(q, (snapshot) => {
       const logsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AuditLog));
       setLogs(logsData);
+    }, (error) => {
+      console.warn("Failed to listen to audit_logs collection:", error.message);
     });
     return () => unsub();
   }, []);
@@ -78,7 +86,8 @@ export default function UsersManagement() {
   const createAuditLog = async (action: string, details: string) => {
     if (!currentUser) return;
     try {
-      await addDoc(collection(db, 'audit_logs'), {
+      const cloudLogsKey = dataStore.getCloudKey('audit_logs');
+      await addDoc(collection(db, cloudLogsKey), {
         id: `LOG-${Date.now()}`,
         userId: currentUser.id,
         userName: currentUser.name,
@@ -96,8 +105,9 @@ export default function UsersManagement() {
     if (!formState.username || !formState.name) return;
 
     try {
+      const cloudUsersKey = dataStore.getCloudKey('users');
       if (editingUser) {
-        await updateDoc(doc(db, 'users', editingUser.id), {
+        await updateDoc(doc(db, cloudUsersKey, editingUser.id), {
           name: formState.name,
           role: formState.role,
           permissions: formState.permissions,
@@ -106,7 +116,7 @@ export default function UsersManagement() {
         await createAuditLog('تحديث مستخدم', `تم تحديث بيانات المستخدم ${formState.name}`);
       } else {
         const id = `user_${Date.now()}`;
-        await setDoc(doc(db, 'users', id), {
+        await setDoc(doc(db, cloudUsersKey, id), {
           ...formState,
           id,
           createdAt: new Date().toISOString()
@@ -128,7 +138,8 @@ export default function UsersManagement() {
       return;
     }
     const newStatus = user.status === 'active' ? 'inactive' : 'active';
-    await updateDoc(doc(db, 'users', user.id), { status: newStatus });
+    const cloudUsersKey = dataStore.getCloudKey('users');
+    await updateDoc(doc(db, cloudUsersKey, user.id), { status: newStatus });
     await createAuditLog('تغيير حالة', `تم تغيير حالة ${user.name} إلى ${newStatus === 'active' ? 'نشط' : 'معطل'}`);
   };
 
@@ -139,7 +150,8 @@ export default function UsersManagement() {
     }
     if (!confirm(`هل أنت متأكد من حذف المستخدم ${user.name}؟`)) return;
     
-    await deleteDoc(doc(db, 'users', user.id));
+    const cloudUsersKey = dataStore.getCloudKey('users');
+    await deleteDoc(doc(db, cloudUsersKey, user.id));
     await createAuditLog('حذف مستخدم', `تم حذف المستخدم ${user.name}`);
   };
 

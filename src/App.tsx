@@ -60,19 +60,6 @@ const ProtectedRoute = ({ children, permission }: { children: React.ReactNode, p
   return <>{children}</>;
 };
 
-// ... PlaceholderPage definition ...
-const PlaceholderPage = ({ title }: { title: string }) => (
-  <div className="glass-card p-12 rounded-3xl text-center">
-    <h2 className="text-3xl font-bold text-slate-800 mb-4">{title}</h2>
-    <p className="text-slate-500">جاري العمل على برمجة هذه الصفحة لتشمل كافة التفاصيل...</p>
-    <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-      {[1, 2, 3].map(i => (
-        <div key={`pulse-${i}`} className="p-6 border-2 border-dashed border-slate-200 rounded-2xl animate-pulse" />
-      ))}
-    </div>
-  </div>
-);
-
 export default function App() {
   return (
     <LanguageProvider>

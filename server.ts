@@ -55,7 +55,7 @@ async function startServer() {
   try {
     const app = express();
     const httpServer = createServer(app);
-    const PORT = 3000;
+    const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
     
     console.log(`[Server] Attempting to start on port ${PORT}...`);
 
@@ -101,8 +101,21 @@ async function startServer() {
       res.status(404).json({ error: `API route not found: ${req.method} ${req.path}` });
     });
 
-    // Vite middleware for development
-    if (process.env.NODE_ENV !== "production") {
+    // Check if we have production assets built in dist directory
+    const distPath = path.join(process.cwd(), 'dist');
+    const indexPath = path.join(distPath, 'index.html');
+    
+    // Automatically use production static asset serving if index.html is present,
+    // or if NODE_ENV is explicitly set to production.
+    let isProduction = process.env.NODE_ENV === "production";
+    try {
+      const fs = await import('fs');
+      if (fs.existsSync(indexPath)) {
+        isProduction = true;
+      }
+    } catch (_) {}
+
+    if (!isProduction) {
       console.log("[Server] Development mode detected. Loading Vite...");
       try {
         const { createServer: createViteServer } = await import("vite");
@@ -113,12 +126,12 @@ async function startServer() {
         app.use(vite.middlewares);
         console.log("[Server] Vite middleware mounted.");
       } catch (e: any) {
-        console.error("[Server] Failed to load Vite. This is expected in production if NODE_ENV is not set correctly.", e.message);
+        console.error("[Server] Failed to load Vite. Routing fallback to production assets.", e.message);
+        isProduction = true;
       }
-    } else {
-      const distPath = path.join(process.cwd(), 'dist');
-      const indexPath = path.join(distPath, 'index.html');
-      
+    }
+
+    if (isProduction) {
       console.log(`[Production] Serving static files from: ${distPath}`);
       
       // Inline FS check for debugging
