@@ -55,7 +55,7 @@ async function startServer() {
   try {
     const app = express();
     const httpServer = createServer(app);
-    const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+    const PORT = 3000;
     
     console.log(`[Server] Attempting to start on port ${PORT}...`);
 
