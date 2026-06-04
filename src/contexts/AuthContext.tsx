@@ -206,14 +206,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data?.url) {
-        // Open in popup as per AI Studio constraints for iframes
         const authWindow = window.open(data.url, 'supabase_oauth', 'width=600,height=700');
         if (!authWindow) alert('يرجى السماح بالنوافذ المنبثقة لإتمام عملية تسجيل الدخول.');
       }
       return;
     }
 
-    // Default: Firebase
     const googleProvider = new GoogleAuthProvider();
     googleProvider.setCustomParameters({ prompt: 'select_account' });
     try {
@@ -224,7 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const errorMsg = error.message || String(error);
       
       if (errorCode === 'auth/popup-blocked') {
-        alert("🔒 تم حظر النافذة المنبثقة.\n\nيرجى السماح بالنوافذ المنبثقة لهذه الصفحة، أو افتح التطبيق في نافذة خارجية مستقلة.\n\n💡 سيقوم النظام الآن بإدخالك كحساب تجريبي ذكي لتجربة النظام مباشرة!");
+        alert("🔒 تم حظر النافذة المنبثقة.\n\nيرجى السماح بالنوافذ المنبثقة لهذه الصفحة، أو افتح التطبيق في نافذة جديدة.");
         const fallbackUser: User = {
           id: 'dev-google-fallback',
           email: 'alwaliabdlelah7@gmail.com',
@@ -237,7 +235,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(fallbackUser);
         localStorage.setItem('user_provider', 'local');
       } else if (errorCode.includes('internal-error') || errorMsg.includes('internal-error') || errorCode.includes('network-request-failed')) {
-        // Fallback for sandboxed preview iframe blockades
         const fallbackUser: User = {
           id: 'dev-google-fallback',
           email: 'alwaliabdlelah7@gmail.com',
@@ -249,14 +246,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         setUser(fallbackUser);
         localStorage.setItem('user_provider', 'local');
-        
         console.log("Seamless iFrame bypass fallback triggered successfully!");
       } else if (errorMsg.includes('suspended') || errorMsg.includes('permission-denied') || errorMsg.includes('api-key') || errorMsg.includes('app-check')) {
-        alert("⚠️ فشل الاتصال بخدمات جوجل السحابية ومصادقة الحسابات.\n\nمن فضلك، استخدم الحساب المحلي التجريبي: (المستخدم: admin / كلمة المرور: 123) وتأكد من تفعيل السحابة المحلية للاستمرار بالعمل مؤقتاً وبشكل آمن.");
-        // Instantly force local mode
+        alert("⚠️ فشل الاتصال بخدمات جوجل السحابية.\n\nاستخدم الحساب المحلي التجريبي:\nUsername: admin\nPassword: 123");
         dataStore.setProvider('local');
       } else {
-        alert("⚠️ فشل في التواصل مع موفر تسجيل الدخول.\n\nتم الدخول كحساب تجريبي افتراضي لتفادي القيود الأمنية للمعاينة.\n\nتفاصيل الخطأ: " + errorCode);
+        alert("⚠️ فشل في التواصل مع موفر تسجيل الدخول.\n\nتم الدخول كحساب تجريبي افتراضي. يرجى مراجعة إعدادات Firebase.");
         const fallbackUser: User = {
           id: 'dev-google-fallback',
           email: 'alwaliabdlelah7@gmail.com',
@@ -303,7 +298,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const userToFind = username.trim().toLowerCase();
     const passedPassword = password || '';
 
-    // Check pre-seeded users in INITIAL_USERS config
     const matchedSeedUser = INITIAL_USERS.find(u => 
       (u.username?.toLowerCase() === userToFind || u.email?.toLowerCase() === userToFind) && 
       String(u.password) === passedPassword
@@ -334,7 +328,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return true;
       }
 
-      // Check if there are other seeded receptionist/nurse accounts in local storage
       const localUsers = dataStore.getLocalAll<User>('users');
       const foundUser = localUsers.find(u => u.username?.toLowerCase() === userToFind || u.email?.toLowerCase() === userToFind);
       if (foundUser) {
@@ -343,7 +336,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return true;
       }
 
-      // Legacy fallback for admin/123 if not in seed
       if (username === 'admin' && (!password || password === '123')) {
         const adminData: User = {
           id: 'u-1',
@@ -362,26 +354,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      // 1. Try Firebase Authentication (Email/Password)
-      // Note: We use username as email here
       const email = username.includes('@') ? username : `${username}@medcenter.com`;
       const safeEmail = getSafeFirebaseEmail(email);
       const userCredential = await signInWithEmailAndPassword(auth, safeEmail, passedPassword);
-      const fbUser = userCredential.user;
       
-      // The onAuthStateChanged will handle the Firestore profile fetch/creation
       return true;
     } catch (firebaseError: any) {
       console.warn("Firebase Auth login failed, checking fallback:", firebaseError.message);
       
       const errorMsg = firebaseError?.message || String(firebaseError);
       if (errorMsg.includes('app-check') || errorMsg.includes('app_check')) {
-        alert("⚠️ خطأ في التحقق من أمان التطبيق (App Check) من قِبل Firebase.\n\nإذا كنت قد قمت بتفعيل App Check في كونسول Firebase، يرجى تعطيل فرض (Enforcement) لخدمة الـ Auth أو تفعيل الوضع المحلي لاستمرار العمل بشكل طبيعي.");
+        alert("⚠️ خطأ في التحقق من أمان التطبيق (App Check).\n\nإذا قمت بتفعيل App Check في Firebase Console، يرجى تعطيله أو تحديث الإعدادات.");
         dataStore.setProvider('local');
         return true;
       }
       
-      // 2. Safe fallback: if matches any INITIAL_USERS, login locally and set provider to local
       if (matchedSeedUser) {
          setUser(matchedSeedUser as User);
          localStorage.setItem('hospital_current_user', JSON.stringify(matchedSeedUser));
@@ -390,7 +377,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
          return true;
       }
 
-      // Legacy admin fallback (if Firebase Auth fails/suspended, and matches admin fallback credentials)
       if (username === 'admin' && (!password || password === '123')) {
          const adminData: User = {
            id: 'u-1',
@@ -406,7 +392,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
          return true;
       }
       
-      // If we are here, it's a real failure
       throw firebaseError;
     }
   };
