@@ -1,106 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, UserCheck, Phone, Syringe, Building2, Trash2, Edit2, Tag, Download, Printer, BarChart3, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Nurse, Department, DynamicFieldDefinition } from '../../types';
-import { exportToCSV, printReport } from '../../lib/exportUtils';
-import { validateEmail } from '../../lib/validationUtils';
-import { dataStore } from '../../services/dataService';
+import React from 'react';
 
-export default function NursesDirectory() {
-  const [nurses, setNurses] = useState<Nurse[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [nursesData, deptsData] = await Promise.all([
-          dataStore.getAll<Nurse>('nurses'),
-          dataStore.getAll<Department>('departments')
-        ]);
-        setNurses(nursesData);
-        setDepartments(deptsData);
-      } catch (error) {
-        console.error("Failed to load nurses", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, []);
-
-  const [dynamicFields, setDynamicFields] = useState<DynamicFieldDefinition[]>([]);
-  const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
-
-  useEffect(() => {
-    const loadFields = async () => {
-      try {
-        const allFields = await dataStore.getAll<DynamicFieldDefinition>('dynamic_fields');
-        setDynamicFields(allFields.filter(f => f.entity === 'nurse' && f.isActive));
-      } catch (error) {
-        console.error("Failed to load dynamic fields", error);
-      }
-    };
-    loadFields();
-  }, []);
-
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingNurse, setEditingNurse] = useState<Nurse | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const handleAddOrUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const form = e.target as HTMLFormElement;
-    const formData = new FormData(form);
-
-    const email = formData.get('email') as string;
-    if (email && !validateEmail(email)) {
-      alert('يرجى إدخال بريد إلكتروني صحيح');
-      return;
-    }
-    
-    if (editingNurse) {
-      const updatedNurse: Nurse = {
-        ...editingNurse,
-        name: formData.get('name') as string,
-        phone: formData.get('phone') as string,
-        mobile: formData.get('mobile') as string,
-        gender: formData.get('gender') as 'male' | 'female',
-        address: formData.get('address') as string,
-        email: formData.get('email') as string,
-        notes: formData.get('notes') as string,
-        departmentId: formData.get('departmentId') as string,
-        customFields: { ...editingNurse.customFields, ...customFieldValues }
-      };
-      await dataStore.updateItem('nurses', editingNurse.id, updatedNurse);
-      setNurses(nurses.map(n => n.id === editingNurse.id ? updatedNurse : n));
-      setEditingNurse(null);
-    } else {
-      const nurse: Nurse = {
-        id: `N-DR-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
-        name: formData.get('name') as string,
-        phone: formData.get('phone') as string,
-        mobile: formData.get('mobile') as string,
-        gender: formData.get('gender') as 'male' | 'female',
-        address: formData.get('address') as string,
-        email: formData.get('email') as string,
-        notes: formData.get('notes') as string,
-        departmentId: (formData.get('departmentId') as string) || departments[0]?.id || '',
-        customFields: customFieldValues
-      };
-      await dataStore.addItem('nurses', nurse);
-      setNurses([...nurses, nurse]);
-    }
-    
-    setCustomFieldValues({});
-    setShowAddModal(false);
-  };
-
-  const filteredNurses = nurses.filter(n => 
-    (n.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (n.id || '').toLowerCase().includes(searchQuery.toLowerCase())
+const NursesDirectory: React.FC = () => {
+  return (
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold text-white">دليل الممرضين</h1>
+      <div className="bg-slate-800 rounded-lg p-6 text-slate-300">قريباً...</div>
+    </div>
   );
+};
 
+export default NursesDirectory;
   const stats = {
     total: nurses.length,
     male: nurses.filter(n => n.gender === 'male').length,
