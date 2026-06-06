@@ -44,17 +44,14 @@ describe('EntityServiceFactory', () => {
     });
   });
 
-  describe('find', () => {
-    it('should find items by criteria', async () => {
-      const mockItems: TestEntity[] = [
-        { id: '1', name: 'Test' },
-      ];
+  describe('getById', () => {
+    it('should get an item by id', async () => {
+      const mockItem: TestEntity = { id: '1', name: 'Test' };
 
-      (dataStore.find as any).mockResolvedValue(mockItems);
+      (dataStore.find as any).mockResolvedValue([mockItem]);
 
-      const result = await service.find({ name: 'Test' });
-      expect(result).toEqual(mockItems);
-      expect(dataStore.find).toHaveBeenCalled();
+      const result = await service.getById('1');
+      expect(result).toEqual(mockItem);
     });
   });
 
@@ -66,6 +63,18 @@ describe('EntityServiceFactory', () => {
       const result = await service.add(newItem);
       expect(result).toBe('1');
       expect(dataStore.addItem).toHaveBeenCalledWith('test-collection', expect.any(Object));
+    });
+  });
+
+  describe('update', () => {
+    it('should update an item', async () => {
+      const updates: Partial<TestEntity> = { name: 'Updated Name' };
+      (dataStore.updateItem as any).mockResolvedValue(undefined);
+      (dataStore.find as any).mockResolvedValue([{ id: '1', name: 'Updated Name' }]);
+
+      const result = await service.update('1', updates);
+      expect(result.name).toBe('Updated Name');
+      expect(dataStore.updateItem).toHaveBeenCalledWith('test-collection', '1', expect.any(Object));
     });
   });
 
