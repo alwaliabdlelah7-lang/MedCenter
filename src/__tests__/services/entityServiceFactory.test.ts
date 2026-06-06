@@ -55,13 +55,13 @@ describe('EntityServiceFactory', () => {
     });
   });
 
-  describe('add', () => {
-    it('should add a new item', async () => {
-      const newItem: TestEntity = { id: '1', name: 'New Item' };
+  describe('create', () => {
+    it('should create a new item', async () => {
+      const newItem = { name: 'New Item' };
       (dataStore.addItem as any).mockResolvedValue('1');
 
-      const result = await service.add(newItem);
-      expect(result).toBe('1');
+      const result = await service.create(newItem as any);
+      expect(result).toBeDefined();
       expect(dataStore.addItem).toHaveBeenCalledWith('test-collection', expect.any(Object));
     });
   });

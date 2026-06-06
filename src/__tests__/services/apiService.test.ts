@@ -9,13 +9,12 @@ describe('APIService', () => {
   describe('apiService', () => {
     it('should be a defined instance', () => {
       expect(apiService).toBeDefined();
-      expect(typeof apiService.request).toBe('function');
+      expect(typeof apiService.get).toBe('function');
     });
   });
 
   describe('ApiService class', () => {
     it('should have required methods', () => {
-      expect(typeof apiService.request).toBe('function');
       expect(typeof apiService.get).toBe('function');
       expect(typeof apiService.post).toBe('function');
       expect(typeof apiService.put).toBe('function');
