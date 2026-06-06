@@ -1,109 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Building2, Trash2, Edit2, Hospital, Stethoscope, ChevronRight, Tag, Download, Printer, Search, X, BarChart3 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Department, Clinic, DynamicFieldDefinition } from '../../types';
-import { INITIAL_DEPARTMENTS, INITIAL_CLINICS } from '../../data/seedData';
-import { dataStore } from '../../services/dataService';
-import { exportToCSV, printReport } from '../../lib/exportUtils';
-import { cn } from '../../lib/utils';
+import React from 'react';
 
-export default function StructureDirectory() {
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [clinics, setClinics] = useState<Clinic[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingDept, setEditingDept] = useState<Department | null>(null);
-  const [dynamicFields, setDynamicFields] = useState<DynamicFieldDefinition[]>([]);
-  const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [deptsData, clinicsData, fieldsData] = await Promise.all([
-          dataStore.getAll<Department>('departments'),
-          dataStore.getAll<Clinic>('clinics'),
-          dataStore.getAll<DynamicFieldDefinition>('dynamic_fields')
-        ]);
-        setDepartments(deptsData.length > 0 ? deptsData : INITIAL_DEPARTMENTS);
-        setClinics(clinicsData.length > 0 ? clinicsData : INITIAL_CLINICS);
-        
-        setDynamicFields(fieldsData.filter(f => f.entity === 'department' && f.isActive));
-      } catch (error) {
-        console.error("Failed to load structure data", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, []);
-
-  const handleAddOrUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const form = e.target as HTMLFormElement;
-    const formData = new FormData(form);
-    
-    const deptData: any = {
-      name: formData.get('name') as string,
-      description: formData.get('description') as string,
-      customFields: { ...(editingDept?.customFields || {}), ...customFieldValues }
-    };
-
-    if (editingDept) {
-      const updated = { ...editingDept, ...deptData };
-      await dataStore.updateItem('departments', editingDept.id, updated);
-      setDepartments(departments.map(d => d.id === editingDept.id ? updated : d));
-    } else {
-      const newDept = {
-        ...deptData,
-        id: `DEPT-${Math.random().toString(36).substr(2, 4).toUpperCase()}`
-      };
-      await dataStore.addItem('departments', newDept);
-      setDepartments([...departments, newDept]);
-    }
-    
-    setShowAddModal(false);
-    setEditingDept(null);
-    setCustomFieldValues({});
-  };
-
-  const handleDelete = async (id: string) => {
-    if (confirm('هل أنت متأكد من حذف هذا القسم؟ سيتم قطع ارتباط العيادات التابعة له.')) {
-      await dataStore.deleteItem('departments', id);
-      setDepartments(departments.filter(d => d.id !== id));
-    }
-  };
-
-  const handleExportCSV = () => {
-    const data = departments.map(d => ({
-      'المعرف': d.id,
-      'اسم القسم': d.name,
-      'العيادات التابعة': clinics.filter(c => c.departmentId === d.id).length,
-      'الوصف': d.description || ''
-    }));
-    exportToCSV(data, 'hospital_structure');
-  };
-
-  const filtered = departments.filter(d => 
-    (d.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (d.id || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const stats = {
-    totalDepts: departments.length,
-    totalClinics: clinics.length,
-    mostCrowded: departments.map(d => ({
-       name: d.name,
-       count: clinics.filter(c => c.departmentId === d.id).length
-    })).sort((a,b) => b.count - a.count)[0]
-  };
-
-  if (loading) return <div className="h-screen flex items-center justify-center text-white italic font-black">جاري تحميل الهيكل الإداري...</div>;
-
+const StructureDirectory: React.FC = () => {
   return (
-    <div className="space-y-6 lg:p-4 text-right">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold text-white">دليل الأقسام</h1>
+      <div className="bg-slate-800 rounded-lg p-6 text-slate-300">قريباً...</div>
+    </div>
+  );
+};
+
+export default StructureDirectory;
           <h2 className="text-3xl font-black text-white tracking-tight">دليل الهيكل الطبي (الأقسام)</h2>
           <p className="text-sm text-sky-400/70 border-r-4 border-sky-600 pr-4 mt-2 font-bold italic">نمذجة الأقسام الطبية، العيادات، وتوزيع الموارد الإدارية</p>
         </div>
