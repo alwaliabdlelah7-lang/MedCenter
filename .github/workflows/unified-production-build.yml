@@ -153,7 +153,7 @@ jobs:
           find temp_windows -name "*.exe" -exec cp {} release_assets/MedCenter-HIS-v1.0.${{ github.run_number }}.exe \;
 
       - name: Create GitHub Continuous Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             release_assets/MedCenter-HIS-v1.0.${{ github.run_number }}.apk
