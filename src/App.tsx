@@ -3,53 +3,53 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { lazy, Suspense } from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { LanguageProvider } from './contexts/LanguageContext';
 import Layout from './components/Layout.tsx';
+import Dashboard from './pages/Dashboard.tsx';
+import Login from './pages/Login.tsx';
 
-// Feature-based imports with code splitting
-import { Login } from './features/auth';
-import { Dashboard, StaffChat } from './features/dashboard';
-import { ClinicalVisits, AIDiagnosisAssistant, QueueManagement, Appointments } from './features/clinical';
-import { Pharmacy } from './features/pharmacy';
-import { Laboratory } from './features/lab';
-import { Radiology } from './features/radiology';
-import { InpatientManagement } from './features/inpatient';
-import { ReceiptTransactions, DeferredReceipts, Returns } from './features/billing';
-import { 
-  UsersManagement, 
-  DoctorManagement, 
-  Settings, 
-  Reports, 
-  DoctorCommissions, 
-  ClinicsDirectory,
-  PatientManagement 
-} from './features/admin';
-import { 
-  NursesDirectory, 
-  StructureDirectory, 
-  ServicesDirectory, 
-  LabDirectory, 
-  PharmacyDirectory, 
-  CompanionsDirectory, 
-  OperationsDirectory 
-} from './features/directories';
+// ... existing imports ...
+import NursesDirectory from './pages/Directories/NursesDirectory.tsx';
+import StructureDirectory from './pages/Directories/StructureDirectory.tsx';
+import ServicesDirectory from './pages/Directories/ServicesDirectory.tsx';
+import ReceiptTransactions from './pages/Transactions/ReceiptTransactions.tsx';
+import DeferredReceipts from './pages/Transactions/DeferredReceipts.tsx';
+import DoctorCommissions from './pages/Reports/DoctorCommissions.tsx';
+import Reports from './pages/Reports.tsx';
+import InpatientManagement from './pages/InpatientManagement.tsx';
+import CompanionsDirectory from './pages/Directories/CompanionsDirectory.tsx';
+import SettingsPage from './pages/Settings.tsx';
+import Appointments from './pages/Appointments.tsx';
+import Pharmacy from './pages/Pharmacy.tsx';
+import Laboratory from './pages/Laboratory.tsx';
+import Radiology from './pages/Radiology.tsx';
 
+import LabDirectory from './pages/Directories/LabDirectory.tsx';
+import PharmacyDirectory from './pages/Directories/PharmacyDirectory.tsx';
+import ClinicsDirectory from './pages/ClinicsDirectory.tsx';
+import OperationsDirectory from './pages/Directories/OperationsDirectory.tsx';
+import UsersManagement from './pages/UsersManagement.tsx';
+import PatientManagement from './pages/PatientManagement.tsx';
+import AIDiagnosisAssistant from './pages/Clinical/AIDiagnosisAssistant.tsx';
+import ClinicalVisits from './pages/Clinical/ClinicalVisits.tsx';
+import QueueManagement from './pages/QueueManagement.tsx';
+import StaffChat from './pages/StaffChat.tsx';
+import DoctorManagement from './pages/DoctorManagement.tsx';
+import Returns from './pages/Transactions/Returns.tsx';
+
+import { LanguageProvider } from './contexts/LanguageContext';
 import { dataStore } from './services/dataService';
-
-// Loading component
-const LoadingSpinner = () => (
-  <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-    <div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
-  </div>
-);
 
 const ProtectedRoute = ({ children, permission }: { children: React.ReactNode, permission?: string }) => {
   const { user, isLoading, hasPermission } = useAuth();
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+       <div className="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+    </div>
+  );
 
   if (!user) return <Navigate to="/login" replace />;
   
@@ -104,7 +104,7 @@ export default function App() {
               {/* Other Sections */}
               <Route path="reports/doctor-commissions" element={<ProtectedRoute permission="admin"><DoctorCommissions /></ProtectedRoute>} />
               <Route path="reports" element={<ProtectedRoute permission="admin"><Reports /></ProtectedRoute>} />
-              <Route path="settings" element={<ProtectedRoute permission="admin"><Settings /></ProtectedRoute>} />
+              <Route path="settings" element={<ProtectedRoute permission="admin"><SettingsPage /></ProtectedRoute>} />
             </Route>
             
             {/* Fallback */}

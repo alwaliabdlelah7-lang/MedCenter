@@ -152,6 +152,12 @@ async function startServer() {
       }
 
       app.use(express.static(distPath));
+
+      // Handle missing service workers or sourcemaps specifically to prevent them from receiving index.html SPA fallback
+      app.get(["/sw.js", "/service-worker.js", "/**/*.js.map", "/manifest.webmanifest"], (req, res) => {
+        res.status(404).send("Not found");
+      });
+
       app.get('*', (req, res) => {
         res.sendFile(indexPath, (err) => {
           if (err) {
