@@ -255,6 +255,9 @@ async function startServer() {
         console.error("[Server] Error checking file system:", fsErr);
       }
       app.use(import_express2.default.static(distPath));
+      app.get(["/sw.js", "/service-worker.js", "/**/*.js.map", "/manifest.webmanifest"], (req, res) => {
+        res.status(404).send("Not found");
+      });
       app.get("*", (req, res) => {
         res.sendFile(indexPath, (err) => {
           if (err) {
